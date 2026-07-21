@@ -12,6 +12,7 @@ const {
   criarArtigo
 } = require('./novo-artigo');
 const { validarTudo, CATEGORIAS_VALIDAS, RE_SLUG, dataValida } = require('./validador');
+const { parseFrontmatter } = require('./frontmatter');
 
 const RAIZ = path.join(__dirname, '..', '..');
 
@@ -112,13 +113,21 @@ async function main() {
     const destaqueSN = await rl.question('Destaque? (s/n): ');
     const destaque = destaqueSN.toLowerCase() === 's';
 
-    // Avisa se já existe outro destaque
+    // Avisa se já existe outro artigo com destaque:true (checagem direta nos frontmatters
+    // existentes — validarTudo só reprova a partir de 2 artigos com destaque:true, então não
+    // serve pra avisar ANTES de criar o segundo)
     const pastaContentBlog = path.join(RAIZ, 'content', 'blog');
-    if (fs.existsSync(pastaContentBlog)) {
-      const { erros } = validarTudo(pastaContentBlog, path.join(RAIZ, 'dist'));
-      const erroDestaque = erros.find(e => e.includes('mais de um artigo com destaque'));
-      if (destaque && erroDestaque) {
-        console.warn('AVISO: já existe outro artigo com destaque:true');
+    if (destaque && fs.existsSync(pastaContentBlog)) {
+      const arquivosExistentes = fs.readdirSync(pastaContentBlog).filter(f => f.endsWith('.md'));
+      for (const arquivo of arquivosExistentes) {
+        try {
+          const { dados } = parseFrontmatter(fs.readFileSync(path.join(pastaContentBlog, arquivo), 'utf-8'));
+          if (dados.destaque === true) {
+            console.warn(`AVISO: já existe outro artigo com destaque:true (${arquivo}) — só um artigo pode ter destaque:true.`);
+          }
+        } catch (e) {
+          // arquivo com frontmatter quebrado é responsabilidade do blog:validar, ignora aqui
+        }
       }
     }
 
