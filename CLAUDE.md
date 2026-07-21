@@ -171,3 +171,8 @@ ajuste também o mapa correspondente em `Code.gs`.
 - Toda mudança de código termina com as duas suítes de teste passando.
 - Ao terminar uma alteração, lembre de subir o `?v=N` dos assets afetados.
 - Commits pequenos e descritivos, em português.
+- **Modelo por tipo de atividade:** planejamento, criação de especificação (ex.:
+  `ESPECIFICACAO-ADMIN-BLOG.md`) ou qualquer diretiva de arquitetura deve ser feito com
+  **Fable 5** (quando disponível) ou **Opus 4.8** como alternativa. As atividades derivadas
+  desses artefatos (implementação, testes, tarefas mecânicas/repetitivas) devem rodar em
+  subagentes com modelos mais econômicos (menor uso de tokens).
