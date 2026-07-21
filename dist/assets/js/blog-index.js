@@ -27,14 +27,14 @@
       + '<div class="post-card-img">'
       +   (p.imagem ? '<img src="'+esc(p.imagem)+'" alt="" onerror="this.remove()">' : '')
       +   '<span class="post-cat" style="--c:'+corCat(p.categoria)+'">'+esc(p.categoria)+'</span>'
-      +   '<span class="post-seta" aria-hidden="true">\u2192</span>'
+      //+   '<span class="post-seta" aria-hidden="true">\u2192</span>'
       + '</div>'
       + '<div class="post-card-corpo">'
       +   '<span class="selo-novo">\u00daltima publica\u00e7\u00e3o</span>'
       +   '<h2>'+esc(p.titulo)+'</h2>'
       +   '<p>'+esc(p.resumo)+'</p>'
       +   '<span class="post-data">'+esc(p.data)+'</span>'
-      +   '<span class="post-leiamais">Leia mais \u2192</span>'
+      +   '<span class="post-leiamais">Saiba mais \u2192</span>'
       + '</div></a>';
   }
 
@@ -49,7 +49,7 @@
       +   '<span class="post-data">'+esc(p.data)+'</span>'
       +   '<h3>'+esc(p.titulo)+'</h3>'
       +   '<p>'+esc(p.resumo)+'</p>'
-      +   '<span class="post-leiamais">Leia mais \u2192</span>'
+      +   '<span class="post-leiamais">Saiba mais \u2192</span>'
       + '</div></a>';
   }
 
