@@ -253,13 +253,15 @@ class TestBlog(unittest.TestCase):
         for data in re.findall(r"data:\s*'([^']+)'", src):
             self.assertRegex(data, r'^\d{2}-\d{2}-\d{4}$', f'data fora do formato dd-mm-yyyy: {data}')
 
-    def test_artigo_tem_hero_cta_e_relacionados(self):
+    def test_artigo_tem_imagem_cta_e_relacionados(self):
         h = ler(self.ARTIGO)
-        self.assertIn('class="artigo-hero"', h)
+        # imagem do artigo fica embutida no corpo do texto, não em hero de topo
+        self.assertIn('class="artigo-imagem"', h)
+        self.assertNotIn('class="artigo-hero"', h)
         self.assertIn('class="artigo-cta"', h)
         self.assertIn('id="relacionados-grade"', h)
-        # CTA aponta para a LP da categoria (home equity)
-        self.assertIn('href="/home_equity/"', h)
+        # CTA aponta direto para a seção do simulador na LP da categoria (home equity)
+        self.assertIn('href="/home_equity/#simulador"', h)
         # dados do artigo no body para o motor de relacionados
         self.assertIn('data-artigo-categoria="Home Equity"', h)
 

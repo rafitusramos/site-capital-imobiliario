@@ -4,7 +4,7 @@ slug: home-equity-empresario-capital-de-giro
 meta_titulo: "Home Equity para Empresário em Vinhedo — Capital de Giro Mais Barato | Rafael Teixeira"
 meta_descricao: "Capital de giro PJ custa de 30% a 45% ao ano. Com garantia de imóvel, a taxa cai para a faixa de 1,1% a 1,8% ao mês. Como o empresário de Vinhedo e região usa o imóvel para baratear o crédito da empresa."
 categoria: Home Equity
-cta_pagina: /home_equity/
+cta_pagina: /home_equity/#simulador
 rotulo: "Garantia de imóvel"
 data: 21-07-2026
 resumo: "Capital de giro PJ custa de 30% a 45% ao ano. Com garantia de imóvel, a taxa cai para a faixa de 1,1% a 1,8% ao mês. Como o empresário usa o próprio patrimônio para baratear o crédito da empresa."
@@ -49,9 +49,3 @@ Cotar a mesma operação em várias instituições, comparar pelo custo efetivo 
 ## Vale rodar a simulação
 
 Se a empresa paga caro por giro e existe um imóvel com patrimônio disponível, a simulação leva poucos minutos e mostra o crédito estimado e a parcela aproximada. A partir dela, dá para pedir uma análise multibanco sem custo.
-
-**[Simular meu home equity →](/home_equity/)**
-
----
-
-*Rafael Teixeira é corretor de imóveis (CRECI-SP) e correspondente bancário com certificação FEBRABAN em crédito imobiliário, atuando em Vinhedo e região. Conteúdo informativo, não constitui oferta de crédito — condições efetivas dependem de análise de crédito, avaliação do imóvel e instituição financeira. Taxas de capital de giro PJ referenciadas em dados do Banco Central e de instituições do mercado (2026); taxas de home equity conforme levantamento nos cinco maiores bancos.*

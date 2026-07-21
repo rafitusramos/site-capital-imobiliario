@@ -17,7 +17,22 @@ function substituir(template, dados) {
   return saida;
 }
 
+/* Insere a imagem do artigo depois do N-ésimo parágrafo do corpo (fica melhor
+   ali do que no topo). Se o corpo tiver menos parágrafos, anexa ao final. */
+function inserirImagemAposParagrafo(corpoHtml, imagemHtml, n) {
+  const marcador = '</p>';
+  let posBusca = 0;
+  for (let i = 0; i < n; i++) {
+    const idx = corpoHtml.indexOf(marcador, posBusca);
+    if (idx === -1) return corpoHtml + imagemHtml;
+    posBusca = idx + marcador.length;
+  }
+  return corpoHtml.slice(0, posBusca) + imagemHtml + corpoHtml.slice(posBusca);
+}
+
 function gerarHtmlArtigo(dados, corpo, templateHtml) {
+  const imagemHtml = `<figure class="artigo-imagem"><img src="${dados.imagem}" alt="${dados.titulo}" loading="lazy" onerror="this.parentElement.style.display='none'"></figure>`;
+  const corpoHtml = inserirImagemAposParagrafo(corpoParaHtml(corpo), imagemHtml, 2);
   const placeholders = {
     meta_titulo: dados.meta_titulo,
     titulo: dados.titulo,
@@ -28,7 +43,7 @@ function gerarHtmlArtigo(dados, corpo, templateHtml) {
     data_iso: dataParaIso(dados.data),
     imagem: dados.imagem,
     cta_pagina: dados.cta_pagina,
-    corpo_html: corpoParaHtml(corpo)
+    corpo_html: corpoHtml
   };
   return substituir(templateHtml, placeholders);
 }

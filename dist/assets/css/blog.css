@@ -89,8 +89,11 @@
 .blog-vazio{text-align:center;color:#7a807c;font-family:var(--mono);font-size:13px;padding:40px 0;}
 
 /* ---- ARTIGO ---- */
-.artigo-hero{position:relative;aspect-ratio:21/9;max-height:440px;overflow:hidden;background:linear-gradient(135deg,var(--abissal),#123c2e);}
-.artigo-hero img{width:100%;height:100%;object-fit:cover;}
+/* fundo branco e sem a imagem fixa do site, para facilitar a leitura */
+body[data-artigo-slug]{background:var(--branco);}
+body[data-artigo-slug]::before{content:none;}
+.artigo-imagem{margin:28px 0;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,var(--abissal),#123c2e);}
+.artigo-imagem img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;}
 .artigo-corpo{max-width:720px;margin:0 auto;padding:0 24px;}
 .artigo-meta{margin:36px 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);}
 .artigo-meta .sep{color:#c9bfac;margin:0 8px;}
