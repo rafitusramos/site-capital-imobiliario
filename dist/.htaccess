@@ -1,0 +1,4 @@
+# Redirecionamentos 301 da estrutura antiga (URLs .html na raiz) para a árvore nova.
+# A antiga index.html (LP de home equity) agora vive em /home_equity/ — a raiz passou a ser a home institucional.
+Redirect 301 /financiamento.html /financiamento/
+DirectoryIndex index.html
