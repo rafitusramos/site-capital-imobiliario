@@ -115,13 +115,15 @@ Categorias válidas: **Financiamento · Home Equity · Consórcio · Imóveis** 
 visíveis, com "carregar mais" (+6) e filtro por categoria. Cada artigo tem imagem-hero, corpo,
 CTA para a LP da categoria e 3 relacionados da mesma categoria.
 
-**Direção futura decidida:** o blog será administrado por um **admin panel dinâmico** (próxima
-fase). A renderização client-side a partir de `posts.js` foi escolhida justamente para facilitar
-essa migração: o admin servirá o mesmo formato de dados. **A decisão de hospedagem/arquitetura do
-admin ainda está EM ABERTO** (estático regenerado vs. dinâmico; HostGator vs. Vercel; backend
-provavelmente Supabase, mas não fechado). NÃO comece o admin panel sem essa decisão — ela afeta
-custo (o plano HostGator já pago é um fator) e todo o desenho. Ver README-blog.md para o fluxo
-manual atual de publicação.
+**Decisão de arquitetura do admin (tomada — ver `ESPECIFICACAO-ADMIN-BLOG.md`): opção C.**
+O site continua 100% estático na HostGator; o admin é uma **ferramenta local** (CLI, depois UI
+web local em `localhost`) que gera os artefatos (`dist/blog/<slug>/index.html`, `posts.js`,
+`sitemap.xml`) a partir de markdown com frontmatter em `content/blog/`. Sem backend em produção,
+sem banco, sem autenticação; o deploy continua manual no cPanel. Isso preserva uma porta aberta
+para uma migração futura para a **opção A** (páginas regeneradas a partir de banco, Vercel +
+Supabase) — por isso URLs `/blog/<slug>/` são imutáveis e o markdown é sempre a fonte da verdade
+(HTML/posts.js nunca editados à mão, sempre derivados). Ver `ESPECIFICACAO-ADMIN-BLOG.md` para
+o escopo completo da v1 e `README-blog.md` para o fluxo manual atual de publicação.
 
 ---
 
@@ -153,7 +155,9 @@ ajuste também o mapa correspondente em `Code.gs`.
 - **Pendências conhecidas:** imagens dos cards da home (`card-financiamento.jpg`,
   `card-home-equity.jpg`) e a imagem do 1º artigo (`images/blog/home-equity-empresario.jpg`)
   ainda não foram enviadas — hoje caem em fallback de degradê.
-- **Próxima fase:** admin panel dinâmico para o blog (aguardando decisão de arquitetura/hosting).
+- **Próxima fase:** admin panel do blog, opção C (ferramenta local, ver `ESPECIFICACAO-ADMIN-BLOG.md`).
+  Fase 1 (motor: parser de frontmatter + `blog:validar`) já em `tools/blog/`. Faltam fases 2-4
+  (`blog:gerar`, `blog:nova`, `blog:versao`, UI web local).
 - **Estratégia (não é trabalho de código):** SEO forte em Vinhedo, mais artigos de blog.
   A transição para Cachoeiro de Itapemirim/ES saiu do planejamento até nova ordem.
 
