@@ -126,7 +126,7 @@ class TestFormularios(unittest.TestCase):
         arquivos_com_endpoint = []
         for raiz,_,fs in os.walk(os.path.join(DIST,'assets','js')):
             for f in fs:
-                if 'script.google.com' in open(os.path.join(raiz,f)).read():
+                if 'script.google.com' in open(os.path.join(raiz,f), encoding='utf-8').read():
                     arquivos_com_endpoint.append(f)
         self.assertEqual(arquivos_com_endpoint, ['modal-form.js'])
 
