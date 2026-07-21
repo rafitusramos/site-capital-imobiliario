@@ -14,8 +14,10 @@
  *   imagem     caminho da imagem principal (card + topo do artigo)
  *   destaque   true na matéria em destaque (última publicação em linha única)
  *
- * ORDEM: coloque a mais recente no topo. O primeiro item com destaque:true
- * vira a matéria em destaque; o restante entra na grade.
+ * ORDEM: mais recente no topo. O primeiro item com destaque:true vira a
+ * matéria em destaque; o restante entra na grade.
+ *
+ * Gerado por `npm run blog:gerar` a partir de content/blog/*.md — não editar à mão.
  */
 window.BLOG_POSTS = [
   {
@@ -28,7 +30,6 @@ window.BLOG_POSTS = [
     imagem: '/images/blog/home-equity-empresario.jpg',
     destaque: true
   }
-  /* Próximas matérias entram aqui, a mais recente no topo. */
 ];
 
 /* Config de categorias: cor do rótulo e LP de destino do CTA. */

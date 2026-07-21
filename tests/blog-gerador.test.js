@@ -16,6 +16,7 @@ const { parseFrontmatter } = require('../tools/blog/frontmatter');
 const { gerarArtigos } = require('../tools/blog/gerador-artigo');
 const { gerarPostsJs } = require('../tools/blog/gerador-posts-js');
 const { gerarSitemap, MARCADOR_INICIO, MARCADOR_FIM } = require('../tools/blog/gerador-sitemap');
+const { gerarTudo } = require('../tools/blog/gerar');
 
 const RAIZ = path.join(__dirname, '..');
 const SLUG_REAL = 'home-equity-empresario-capital-de-giro';
@@ -45,6 +46,53 @@ function artigoFixture(overrides = {}) {
   }, overrides);
   const linhas = Object.entries(campos).map(([k, v]) => `${k}: ${v}`);
   return `---\n${linhas.join('\n')}\n---\n\n# Corpo\n\nTexto de teste.\n`;
+}
+
+function novoWorkspace(artigos) {
+  const pastaContent = pastaTemporaria();
+  for (const { slug, data } of artigos) {
+    fs.writeFileSync(path.join(pastaContent, `${slug}.md`), artigoFixture({ slug, data }), 'utf-8');
+  }
+  const pastaDist = pastaTemporaria();
+  const pastaDistBlog = path.join(pastaDist, 'blog');
+  fs.mkdirSync(pastaDistBlog, { recursive: true });
+  const caminhoSitemap = path.join(pastaDist, 'sitemap.xml');
+  fs.writeFileSync(caminhoSitemap, [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    `  ${MARCADOR_INICIO}`,
+    `  ${MARCADOR_FIM}`,
+    '</urlset>'
+  ].join('\n'), 'utf-8');
+
+  return {
+    pastaContentBlog: pastaContent,
+    pastaDist,
+    pastaDistBlog,
+    pastaTemplates: path.join(RAIZ, 'tools', 'templates'),
+    caminhoPostsJs: path.join(pastaDist, 'assets', 'js', 'posts.js'),
+    caminhoSitemap,
+    caminhoTemplateIndice: path.join(RAIZ, 'tools', 'templates', 'indice.html'),
+    caminhoDistIndiceBlog: path.join(pastaDistBlog, 'index.html')
+  };
+}
+
+function snapshot(paths) {
+  const arquivos = [];
+  (function coletar(pasta) {
+    for (const nome of fs.readdirSync(pasta)) {
+      const caminho = path.join(pasta, nome);
+      if (fs.statSync(caminho).isDirectory()) coletar(caminho);
+      else arquivos.push(caminho);
+    }
+  })(paths.pastaDistBlog);
+  arquivos.push(paths.caminhoPostsJs, paths.caminhoSitemap);
+
+  const mapa = {};
+  for (const caminho of arquivos.sort()) {
+    mapa[caminho] = fs.readFileSync(caminho, 'utf-8');
+  }
+  return mapa;
 }
 
 function carregarPostsJs(caminho) {
@@ -98,7 +146,7 @@ test('artigo real regenerado bate byte-a-byte com o publicado, exceto title/meta
     .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${dados.meta_descricao}">`)
     .replace(/<meta property="og:description" content="[^"]*">/, `<meta property="og:description" content="${dados.meta_descricao}">`);
 
-  assert.strictEqual(gerado, realComMetaAtualizado);
+  assert.strictEqual(gerado, normalizarAspas(realComMetaAtualizado));
 });
 
 test('posts.js gerado: ordenado por data desc, campos completos, parseável em Node', () => {
@@ -151,4 +199,39 @@ test('sitemap gerado contém exatamente as URLs /blog/<slug>/ dos artigos existe
     Array.from(bloco.matchAll(/<loc>https:\/\/rtcapitalimobiliario\.com\.br\/blog\/([a-z0-9-]+)\/<\/loc>/g)).map(m => m[1])
   );
   assert.deepStrictEqual(slugsNoSitemap, new Set(['artigo-a', 'artigo-b']));
+});
+
+test('blog:gerar é idempotente (rodar 2x seguidas não muda nenhum arquivo)', () => {
+  const paths = novoWorkspace([
+    { slug: 'artigo-a', data: '01-02-2026' },
+    { slug: 'artigo-b', data: '02-03-2026' }
+  ]);
+
+  const r1 = gerarTudo(paths);
+  assert.ok(r1.ok, JSON.stringify(r1.erros));
+  const antes = snapshot(paths);
+
+  const r2 = gerarTudo(paths);
+  assert.ok(r2.ok, JSON.stringify(r2.erros));
+  const depois = snapshot(paths);
+
+  assert.deepStrictEqual(depois, antes);
+});
+
+test('artigo removido de content/blog tem sua pasta removida de dist/blog (com aviso)', () => {
+  const paths = novoWorkspace([
+    { slug: 'fica', data: '01-01-2026' },
+    { slug: 'sai', data: '02-01-2026' }
+  ]);
+
+  gerarTudo(paths);
+  assert.ok(fs.existsSync(path.join(paths.pastaDistBlog, 'sai')));
+
+  fs.unlinkSync(path.join(paths.pastaContentBlog, 'sai.md'));
+  const resultado = gerarTudo(paths);
+
+  assert.ok(resultado.ok, JSON.stringify(resultado.erros));
+  assert.ok(!fs.existsSync(path.join(paths.pastaDistBlog, 'sai')));
+  assert.ok(fs.existsSync(path.join(paths.pastaDistBlog, 'fica')));
+  assert.ok(resultado.relatorio.removidos.includes('sai'));
 });
