@@ -1,0 +1,9 @@
+{
+  "name": "site-capital-imobiliario",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Site institucional e admin do blog de Rafael Teixeira · Capital Imobiliário",
+  "scripts": {
+    "blog:validar": "node tools/blog/cli-validar.js"
+  }
+}
