@@ -5,7 +5,8 @@
   "description": "Site institucional e admin do blog de Rafael Teixeira · Capital Imobiliário",
   "scripts": {
     "blog:validar": "node tools/blog/cli-validar.js",
-    "blog:gerar": "node tools/blog/cli-gerar.js"
+    "blog:gerar": "node tools/blog/cli-gerar.js",
+    "blog:versao": "node tools/blog/cli-versao.js"
   },
   "dependencies": {
     "marked": "4.3.0"
