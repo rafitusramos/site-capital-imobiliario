@@ -95,4 +95,4 @@ function validarTudo(pastaContentBlog, pastaDist) {
   return { erros, avisos };
 }
 
-module.exports = { validarArtigo, validarTudo, dataValida, CAMPOS_OBRIGATORIOS, CATEGORIAS_VALIDAS };
+module.exports = { validarArtigo, validarTudo, dataValida, CAMPOS_OBRIGATORIOS, CATEGORIAS_VALIDAS, RE_SLUG };
