@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-N5PFHEHGZ6"></script>
+<script defer src="/assets/js/analytics.js?v=4"></script>
+<title>{{meta_titulo}}</title>
+<meta name="description" content="{{meta_descricao}}">
+<link rel="canonical" href="https://rtcapitalimobiliario.com.br/blog/{{slug}}/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Rafael Teixeira · Capital Imobiliário">
+<meta property="og:title" content="{{titulo}}">
+<meta property="og:description" content="{{meta_descricao}}">
+<meta property="og:url" content="https://rtcapitalimobiliario.com.br/blog/{{slug}}/">
+<meta property="og:image" content="https://rtcapitalimobiliario.com.br{{imagem}}">
+<meta property="og:locale" content="pt_BR">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "{{titulo}}",
+  "datePublished": "{{data_iso}}",
+  "author": {"@type": "Person", "name": "Rafael Teixeira", "@id": "https://rtcapitalimobiliario.com.br/#rafael"},
+  "publisher": {"@id": "https://rtcapitalimobiliario.com.br/#negocio"},
+  "mainEntityOfPage": "https://rtcapitalimobiliario.com.br/blog/{{slug}}/",
+  "image": "https://rtcapitalimobiliario.com.br{{imagem}}",
+  "articleSection": "{{categoria}}"
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&amp;family=Libre+Caslon+Text:ital@0;1&amp;family=Archivo:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/lp.css?v=4">
+<link rel="stylesheet" href="/assets/css/blog.css?v=4">
+</head>
+<body data-artigo-slug="{{slug}}" data-artigo-categoria="{{categoria}}">
+<nav class="topbar">
+  <div class="wrap">
+    <a class="marca" href="/" aria-label="Rafael Teixeira, Capital Imobiliário — início">
+      <span class="selo" aria-hidden="true">RT</span>
+      <span class="nome">Rafael Teixeira<small>Capital Imobiliário</small></span>
+    </a>
+    <div class="topbar-nav">
+      <a class="nav-link" href="/">Início</a>
+      <div class="nav-drop">
+        <button class="nav-link nav-drop-btn" type="button" aria-expanded="false" aria-haspopup="true">Soluções de Crédito</button>
+        <div class="nav-drop-menu">
+          <a href="/financiamento/">Financiamento<small>Compra do imóvel · SBPE</small></a>
+          <a href="/home_equity/">Home Equity<small>Crédito com garantia de imóvel</small></a>
+        </div>
+      </div>
+      <a class="nav-link ativo" href="/blog/" aria-current="page">Blog</a>
+      <a class="nav-link" href="/sobre.html">Sobre</a>
+    </div>
+  </div>
+</nav>
+
+<div class="artigo-hero" id="topo">
+  <img src="{{imagem}}" alt="{{titulo}}" onerror="this.parentElement.style.display='none'">
+</div>
+
+<article class="artigo-corpo">
+  <div class="artigo-meta">{{categoria}}<span class="sep">·</span>{{data}}</div>
+  <h1>{{titulo}}</h1>
+  <div class="artigo-texto">
+{{corpo_html}}
+  </div>
+
+  <div class="artigo-cta">
+    <h3>Vale simular o seu home equity?</h3>
+    <a class="cta" href="{{cta_pagina}}">Simular meu home equity →</a>
+  </div>
+</article>
+
+<section id="relacionados" class="wrap relacionados">
+  <div class="eyebrow">Continue lendo</div>
+  <h2>Mais sobre {{categoria}}</h2>
+  <div class="post-grade" id="relacionados-grade"></div>
+</section>
+<footer>
+  <div class="wrap">
+    <a class="marca marca-footer" href="#topo" aria-label="Rafael Teixeira, Capital Imobiliário — topo">
+      <span class="selo" aria-hidden="true">RT</span>
+      <span class="nome">Rafael Teixeira<small>Capital Imobiliário</small></span>
+    </a>
+    <div class="footer-email">contato@rtcapitalimobiliario.com.br</div>
+    <div class="footer-disclaimer">Atuação como correspondente bancário na forma da Res. CMN 4.935/2021 — este material tem caráter informativo e não constitui oferta de crédito.</div>
+  </div>
+</footer>
+
+<script defer src="/assets/js/reveal.js?v=4"></script>
+<script defer src="/assets/js/nav.js?v=4"></script>
+<script defer src="/assets/js/posts.js?v=4"></script>
+<script defer src="/assets/js/blog-artigo.js?v=4"></script>
+</body></html>
