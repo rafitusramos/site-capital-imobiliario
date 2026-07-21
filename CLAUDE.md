@@ -156,10 +156,12 @@ ajuste também o mapa correspondente em `Code.gs`.
   `card-home-equity.jpg`) e a imagem do 1º artigo (`images/blog/home-equity-empresario.jpg`)
   ainda não foram enviadas — hoje caem em fallback de degradê.
 - **Próxima fase:** admin panel do blog, opção C (ferramenta local, ver `ESPECIFICACAO-ADMIN-BLOG.md`).
-  Fases 1 (motor: parser de frontmatter + `blog:validar`) e 2 (`blog:gerar`: templates em
+  Fases 1 (motor: parser de frontmatter + `blog:validar`), 2 (`blog:gerar`: templates em
   `tools/templates/`, geração de `dist/blog/<slug>/index.html`, `posts.js` e sitemap a partir
-  de `content/blog/*.md`, idempotente, com `marked` para markdown→HTML) já em `tools/blog/`.
-  Faltam fases 3-4 (`blog:nova`, `blog:versao`, UI web local).
+  de `content/blog/*.md`, idempotente, com `marked` para markdown→HTML) e 3 (`blog:versao`:
+  sobe o `?v=N` em todo o site de forma consistente, propagando aos templates do blog; `blog:nova`:
+  cria um `.md` esqueleto guiado via prompts interativos) já em `tools/blog/`. Falta só a fase 4
+  (opcional): UI web local em cima do mesmo motor.
 - **Estratégia (não é trabalho de código):** SEO forte em Vinhedo, mais artigos de blog.
   A transição para Cachoeiro de Itapemirim/ES saiu do planejamento até nova ordem.
 
