@@ -15,6 +15,7 @@ const vm = require('vm');
 const { parseFrontmatter } = require('../tools/blog/frontmatter');
 const { gerarArtigos } = require('../tools/blog/gerador-artigo');
 const { gerarPostsJs } = require('../tools/blog/gerador-posts-js');
+const { gerarSitemap, MARCADOR_INICIO, MARCADOR_FIM } = require('../tools/blog/gerador-sitemap');
 
 const RAIZ = path.join(__dirname, '..');
 const SLUG_REAL = 'home-equity-empresario-capital-de-giro';
@@ -117,4 +118,37 @@ test('posts.js gerado: ordenado por data desc, campos completos, parseável em N
       assert.ok(post[campo] !== undefined, `campo "${campo}" ausente em ${post.slug}`);
     }
   }
+});
+
+test('sitemap gerado contém exatamente as URLs /blog/<slug>/ dos artigos existentes', () => {
+  const pastaContent = pastaTemporaria();
+  fs.writeFileSync(path.join(pastaContent, 'artigo-a.md'), artigoFixture({ slug: 'artigo-a', data: '05-02-2026' }), 'utf-8');
+  fs.writeFileSync(path.join(pastaContent, 'artigo-b.md'), artigoFixture({ slug: 'artigo-b', data: '15-03-2026' }), 'utf-8');
+
+  const caminhoSitemap = path.join(pastaTemporaria(), 'sitemap.xml');
+  const xmlBase = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    '  <url>',
+    '    <loc>https://rtcapitalimobiliario.com.br/</loc>',
+    '    <lastmod>2026-07-20</lastmod>',
+    '    <changefreq>monthly</changefreq>',
+    '    <priority>1.0</priority>',
+    '  </url>',
+    `  ${MARCADOR_INICIO}`,
+    `  ${MARCADOR_FIM}`,
+    '</urlset>'
+  ].join('\n');
+  fs.writeFileSync(caminhoSitemap, xmlBase, 'utf-8');
+
+  gerarSitemap(pastaContent, caminhoSitemap);
+  const gerado = fs.readFileSync(caminhoSitemap, 'utf-8');
+
+  assert.ok(gerado.includes('<loc>https://rtcapitalimobiliario.com.br/</loc>'), 'entrada não-blog preservada');
+
+  const bloco = gerado.split(MARCADOR_INICIO)[1].split(MARCADOR_FIM)[0];
+  const slugsNoSitemap = new Set(
+    Array.from(bloco.matchAll(/<loc>https:\/\/rtcapitalimobiliario\.com\.br\/blog\/([a-z0-9-]+)\/<\/loc>/g)).map(m => m[1])
+  );
+  assert.deepStrictEqual(slugsNoSitemap, new Set(['artigo-a', 'artigo-b']));
 });
