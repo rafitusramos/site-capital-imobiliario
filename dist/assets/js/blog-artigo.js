@@ -20,7 +20,7 @@
       + '<div class="post-card-corpo">'
       +   '<span class="post-data">'+esc(p.data)+'</span>'
       +   '<h3>'+esc(p.titulo)+'</h3>'
-      +   '<span class="post-leiamais">Leia mais \u2192</span>'
+      +   '<span class="post-leiamais">Saiba mais \u2192</span>'
       + '</div></a>';
   }
 
