@@ -72,7 +72,8 @@ README.md · README-blog.md   documentação de manutenção
 
 2. **Cache-busting por querystring.** Todos os `<link>`/`<script>` de assets terminam em
    `?v=N`. Ao alterar qualquer CSS/JS, suba o N em TODAS as páginas que referenciam o asset
-   e mantenha o número consistente no site inteiro. Versão atual: **v=10**.
+   e mantenha o número consistente no site inteiro. **Só suba o N quando o commit for pedido**
+   (ver seção "Como trabalhar comigo") — não a cada edição intermediária. Versão atual: **v=11**.
 
 3. **Design system em CSS custom properties** (definidas em `lp.css`). Cores: `--abissal`
    (verde muito escuro), `--jade`, `--bronze`, `--areia`, `--marfim`, `--branco`, `--tinta`.
@@ -171,7 +172,10 @@ ajuste também o mapa correspondente em `Code.gs`.
 
 - Faça a menor alteração que resolve; não refatore o que está funcionando sem pedir.
 - Toda mudança de código termina com as duas suítes de teste passando.
-- Ao terminar uma alteração, lembre de subir o `?v=N` dos assets afetados.
+- **Não suba o `?v=N` a cada alteração de CSS/JS.** Só rode `blog:versao` (ou ajuste o
+  cache-busting manualmente) quando eu pedir explicitamente o commit — pode haver várias
+  rodadas de ajuste em CSS/JS antes de eu querer subir pra produção, e versionar cedo demais
+  gera bump desnecessário no meio do trabalho.
 - Commits pequenos e descritivos, em português.
 - **Modelo por tipo de atividade:** planejamento, criação de especificação (ex.:
   `ESPECIFICACAO-ADMIN-BLOG.md`) ou qualquer diretiva de arquitetura deve ser feito com

@@ -21,6 +21,16 @@
  */
 window.BLOG_POSTS = [
   {
+    slug: 'home-equity-o-que-e-como-funciona',
+    titulo: 'Home Equity: o que é, como funciona e quando vale a pena usar seu imóvel como garantia',
+    categoria: 'Home Equity',
+    rotulo: 'Garantia de imóvel',
+    data: '22-07-2026',
+    resumo: 'Seu imóvel quitado pode ser a chave para o crédito mais barato do mercado. Entenda, de forma simples, o que é home equity, como funciona a alienação fiduciária, quanto dá para captar e quais os riscos.',
+    imagem: '/images/blog/home-equity-o-que-e-como-funciona.jpg',
+    destaque: true
+  },
+  {
     slug: 'melhor-taxa-financiamento-imobiliario-bancos',
     titulo: 'Qual Banco Tem a Melhor Taxa de Financiamento Imobiliário em 2026?',
     categoria: 'Financiamento',
@@ -28,7 +38,7 @@ window.BLOG_POSTS = [
     data: '22-07-2026',
     resumo: 'Caixa a partir de 10,65%, Itaú perto de 11,9% e Santander chegando a 13,29% ao ano. A diferença entre a melhor e a pior taxa no mesmo contrato passa de R$ 170 mil. Um guia direto de taxas, prazos e uso do FGTS.',
     imagem: '/images/blog/melhor-taxa-financiamento.jpg',
-    destaque: true
+    destaque: false
   },
   {
     slug: 'home-equity-empresario-capital-de-giro',
