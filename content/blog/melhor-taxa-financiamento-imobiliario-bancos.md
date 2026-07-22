@@ -9,7 +9,7 @@ rotulo: Compra · SBPE
 data: 22-07-2026
 resumo: "Caixa a partir de 10,65%, Itaú perto de 11,9% e Santander chegando a 13,29% ao ano. A diferença entre a melhor e a pior taxa no mesmo contrato passa de R$ 170 mil. Um guia direto de taxas, prazos e uso do FGTS."
 imagem: /images/blog/melhor-taxa-financiamento.jpg
-destaque: false
+destaque: true
 ---
 
 # Qual Banco Tem a Melhor Taxa de Financiamento Imobiliário em 2026?

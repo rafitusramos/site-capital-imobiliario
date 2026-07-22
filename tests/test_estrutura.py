@@ -253,6 +253,23 @@ class TestBlog(unittest.TestCase):
         for data in re.findall(r"data:\s*'([^']+)'", src):
             self.assertRegex(data, r'^\d{2}-\d{2}-\d{4}$', f'data fora do formato dd-mm-yyyy: {data}')
 
+    def test_destaque_e_a_publicacao_mais_recente(self):
+        # a matéria em destaque deve ser sempre a mais recente — se um artigo novo
+        # é criado à mão (sem passar por blog:nova) e a flag destaque não é migrada,
+        # o card "ÚLTIMA PUBLICAÇÃO" acaba apontando pra uma matéria antiga.
+        with open(os.path.join(DIST,'assets','js','posts.js'), encoding='utf-8') as f:
+            src = f.read()
+        posts = re.findall(
+            r"slug:\s*'([^']+)'.*?data:\s*'(\d{2})-(\d{2})-(\d{4})'.*?destaque:\s*(true|false)",
+            src, re.S)
+        self.assertTrue(posts, 'nenhum post encontrado em posts.js')
+        chave = lambda p: (p[3], p[2], p[1])  # (ano, mes, dia) para ordenar
+        mais_recente = max(posts, key=chave)
+        destaques = [p for p in posts if p[4] == 'true']
+        self.assertEqual(len(destaques), 1, f'deveria haver exatamente 1 post com destaque:true, achou {len(destaques)}')
+        self.assertEqual(destaques[0][0], mais_recente[0],
+            f'destaque:true está em "{destaques[0][0]}", mas a publicação mais recente é "{mais_recente[0]}"')
+
     def test_artigo_tem_imagem_cta_e_relacionados(self):
         h = ler(self.ARTIGO)
         # imagem do artigo fica embutida no corpo do texto, não em hero de topo
