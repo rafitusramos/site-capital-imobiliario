@@ -27,13 +27,19 @@
   <!-- blog:inicio -->
   <url>
     <loc>https://rtcapitalimobiliario.com.br/blog/</loc>
-    <lastmod>2026-07-21</lastmod>
+    <lastmod>2026-07-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://rtcapitalimobiliario.com.br/blog/home-equity-empresario-capital-de-giro/</loc>
     <lastmod>2026-07-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://rtcapitalimobiliario.com.br/blog/melhor-taxa-financiamento-imobiliario-bancos/</loc>
+    <lastmod>2026-07-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>

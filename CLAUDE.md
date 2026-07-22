@@ -72,7 +72,7 @@ README.md · README-blog.md   documentação de manutenção
 
 2. **Cache-busting por querystring.** Todos os `<link>`/`<script>` de assets terminam em
    `?v=N`. Ao alterar qualquer CSS/JS, suba o N em TODAS as páginas que referenciam o asset
-   e mantenha o número consistente no site inteiro. Versão atual: **v=6**.
+   e mantenha o número consistente no site inteiro. Versão atual: **v=10**.
 
 3. **Design system em CSS custom properties** (definidas em `lp.css`). Cores: `--abissal`
    (verde muito escuro), `--jade`, `--bronze`, `--areia`, `--marfim`, `--branco`, `--tinta`.

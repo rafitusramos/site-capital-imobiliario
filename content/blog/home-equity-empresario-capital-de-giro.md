@@ -9,7 +9,7 @@ rotulo: "Garantia de imóvel"
 data: 21-07-2026
 resumo: "Capital de giro PJ custa de 30% a 45% ao ano. Com garantia de imóvel, a taxa cai para a faixa de 1,1% a 1,8% ao mês. Como o empresário usa o próprio patrimônio para baratear o crédito da empresa."
 imagem: /images/blog/home-equity-empresario.jpg
-destaque: true
+destaque: false
 ---
 
 # Home Equity para Empresário: Trocando a Taxa do Capital de Giro pela do Imóvel

@@ -253,6 +253,23 @@ class TestBlog(unittest.TestCase):
         for data in re.findall(r"data:\s*'([^']+)'", src):
             self.assertRegex(data, r'^\d{2}-\d{2}-\d{4}$', f'data fora do formato dd-mm-yyyy: {data}')
 
+    def test_destaque_e_a_publicacao_mais_recente(self):
+        # a matéria em destaque deve ser sempre a mais recente — se um artigo novo
+        # é criado à mão (sem passar por blog:nova) e a flag destaque não é migrada,
+        # o card "ÚLTIMA PUBLICAÇÃO" acaba apontando pra uma matéria antiga.
+        with open(os.path.join(DIST,'assets','js','posts.js'), encoding='utf-8') as f:
+            src = f.read()
+        posts = re.findall(
+            r"slug:\s*'([^']+)'.*?data:\s*'(\d{2})-(\d{2})-(\d{4})'.*?destaque:\s*(true|false)",
+            src, re.S)
+        self.assertTrue(posts, 'nenhum post encontrado em posts.js')
+        chave = lambda p: (p[3], p[2], p[1])  # (ano, mes, dia) para ordenar
+        mais_recente = max(posts, key=chave)
+        destaques = [p for p in posts if p[4] == 'true']
+        self.assertEqual(len(destaques), 1, f'deveria haver exatamente 1 post com destaque:true, achou {len(destaques)}')
+        self.assertEqual(destaques[0][0], mais_recente[0],
+            f'destaque:true está em "{destaques[0][0]}", mas a publicação mais recente é "{mais_recente[0]}"')
+
     def test_artigo_tem_imagem_cta_e_relacionados(self):
         h = ler(self.ARTIGO)
         # imagem do artigo fica embutida no corpo do texto, não em hero de topo
@@ -264,6 +281,27 @@ class TestBlog(unittest.TestCase):
         self.assertIn('href="/home_equity/#simulador"', h)
         # dados do artigo no body para o motor de relacionados
         self.assertIn('data-artigo-categoria="Home Equity"', h)
+
+    def test_cta_do_artigo_bate_com_a_categoria(self):
+        # o CTA de fim de artigo é gerado dinamicamente por categoria (gerador-artigo.js);
+        # este teste pega regressão para "home equity" (ou outra) vazando num artigo de
+        # categoria diferente, como aconteceu quando o texto era fixo no template.
+        pasta_blog = os.path.join(DIST, 'blog')
+        categorias_de_credito = {'financiamento', 'home equity', 'consórcio'}
+        for slug in sorted(os.listdir(pasta_blog)):
+            caminho_rel = os.path.join('blog', slug, 'index.html')
+            if not os.path.isfile(os.path.join(DIST, caminho_rel)):
+                continue
+            h = ler(caminho_rel)
+            m_cat = re.search(r'data-artigo-categoria="([^"]+)"', h)
+            m_cta = re.search(r'<div class="artigo-cta">.*?</div>', h, re.S)
+            self.assertIsNotNone(m_cat, slug)
+            self.assertIsNotNone(m_cta, slug)
+            categoria = m_cat.group(1).lower()
+            cta_texto = m_cta.group(0).lower()
+            for outra in categorias_de_credito - {categoria}:
+                self.assertNotIn(outra, cta_texto,
+                    f'{slug}: CTA menciona "{outra}" mas a categoria do artigo é "{categoria}"')
 
     def test_blog_no_menu_de_todas_as_paginas(self):
         for p in PAGINAS:

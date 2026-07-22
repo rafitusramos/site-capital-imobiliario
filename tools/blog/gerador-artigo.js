@@ -9,6 +9,22 @@ function dataParaIso(ddmmyyyy) {
   return `${a}-${m}-${d}`;
 }
 
+/* Rótulo usado no CTA de fim de artigo ("Vale simular o seu ___?"). Categorias
+   sem produto de crédito próprio (ex.: Imóveis) caem no CTA genérico. */
+const ROTULO_CTA_POR_CATEGORIA = {
+  'Financiamento': 'financiamento',
+  'Home Equity': 'home equity',
+  'Consórcio': 'consórcio'
+};
+
+function ctaDoArtigo(categoria) {
+  const rotulo = ROTULO_CTA_POR_CATEGORIA[categoria];
+  if (rotulo) {
+    return { cta_titulo: `Vale simular o seu ${rotulo}?`, cta_botao: `Simular meu ${rotulo} →` };
+  }
+  return { cta_titulo: 'Vale conhecer nossas soluções de crédito?', cta_botao: 'Conhecer as soluções →' };
+}
+
 function substituir(template, dados) {
   let saida = template;
   for (const [campo, valor] of Object.entries(dados)) {
@@ -43,7 +59,8 @@ function gerarHtmlArtigo(dados, corpo, templateHtml) {
     data_iso: dataParaIso(dados.data),
     imagem: dados.imagem,
     cta_pagina: dados.cta_pagina,
-    corpo_html: corpoHtml
+    corpo_html: corpoHtml,
+    ...ctaDoArtigo(dados.categoria)
   };
   return substituir(templateHtml, placeholders);
 }

@@ -44,7 +44,8 @@
 .post-card:hover{transform:translateY(-3px);box-shadow:0 18px 38px -18px rgba(10,36,28,.45);}
 .post-card:hover .post-seta{background:var(--jade);border-color:var(--jade);}
 .post-card-img{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,var(--abissal) 0%,#123c2e 55%,var(--jade) 130%);}
-.post-card-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.post-card-img img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .45s ease;}
+.post-card:hover .post-card-img img{transform:scale(1.06);}
 .post-cat{
   position:absolute;left:16px;bottom:14px;
   font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;
@@ -72,6 +73,7 @@
 }
 .post-destaque:hover{transform:translateY(-3px);box-shadow:0 22px 44px -20px rgba(10,36,28,.5);}
 .post-destaque:hover .post-seta{background:var(--jade);border-color:var(--jade);}
+.post-destaque:hover .post-card-img img{transform:scale(1.06);}
 .post-destaque .post-card-img{aspect-ratio:auto;min-height:300px;}
 .post-destaque .post-card-corpo{padding:34px 32px;justify-content:center;gap:12px;}
 .post-destaque .selo-novo{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--jade);}
@@ -97,9 +99,9 @@ body[data-artigo-slug]::before{content:none;}
 .artigo-corpo{max-width:720px;margin:0 auto;padding:0 24px;}
 .artigo-meta{margin:36px 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);}
 .artigo-meta .sep{color:#c9bfac;margin:0 8px;}
-.artigo-corpo h1{font-family:var(--display);font-weight:400;font-size:clamp(28px,4.5vw,42px);color:var(--abissal);line-height:1.12;margin-bottom:24px;}
+.artigo-corpo h1{font-family:var(--sans);font-weight:600;font-size:clamp(28px,4.5vw,42px);color:var(--abissal);line-height:1.12;margin-bottom:24px;}
 .artigo-texto{font-family:var(--texto);font-size:17.5px;line-height:1.75;color:#2a2f2c;}
-.artigo-texto h2{font-family:var(--display);font-weight:400;font-size:26px;color:var(--abissal);margin:34px 0 12px;max-width:none;}
+.artigo-texto h2{font-family:var(--sans);font-weight:600;font-size:32px;color:var(--abissal);margin:34px 0 12px;max-width:none;}
 .artigo-texto p{margin-bottom:18px;}
 .artigo-texto strong{font-weight:600;}
 .artigo-texto a{color:var(--jade);text-decoration:underline;text-underline-offset:2px;}

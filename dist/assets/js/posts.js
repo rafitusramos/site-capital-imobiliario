@@ -21,6 +21,16 @@
  */
 window.BLOG_POSTS = [
   {
+    slug: 'melhor-taxa-financiamento-imobiliario-bancos',
+    titulo: 'Qual Banco Tem a Melhor Taxa de Financiamento Imobiliário em 2026?',
+    categoria: 'Financiamento',
+    rotulo: 'Compra · SBPE',
+    data: '22-07-2026',
+    resumo: 'Caixa a partir de 10,65%, Itaú perto de 11,9% e Santander chegando a 13,29% ao ano. A diferença entre a melhor e a pior taxa no mesmo contrato passa de R$ 170 mil. Um guia direto de taxas, prazos e uso do FGTS.',
+    imagem: '/images/blog/melhor-taxa-financiamento.jpg',
+    destaque: true
+  },
+  {
     slug: 'home-equity-empresario-capital-de-giro',
     titulo: 'Home Equity para Empresário: Trocando a Taxa do Capital de Giro pela do Imóvel',
     categoria: 'Home Equity',
@@ -28,7 +38,7 @@ window.BLOG_POSTS = [
     data: '21-07-2026',
     resumo: 'Capital de giro PJ custa de 30% a 45% ao ano. Com garantia de imóvel, a taxa cai para a faixa de 1,1% a 1,8% ao mês. Como o empresário usa o próprio patrimônio para baratear o crédito da empresa.',
     imagem: '/images/blog/home-equity-empresario.jpg',
-    destaque: true
+    destaque: false
   }
 ];
 
