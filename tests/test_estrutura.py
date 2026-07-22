@@ -265,6 +265,27 @@ class TestBlog(unittest.TestCase):
         # dados do artigo no body para o motor de relacionados
         self.assertIn('data-artigo-categoria="Home Equity"', h)
 
+    def test_cta_do_artigo_bate_com_a_categoria(self):
+        # o CTA de fim de artigo é gerado dinamicamente por categoria (gerador-artigo.js);
+        # este teste pega regressão para "home equity" (ou outra) vazando num artigo de
+        # categoria diferente, como aconteceu quando o texto era fixo no template.
+        pasta_blog = os.path.join(DIST, 'blog')
+        categorias_de_credito = {'financiamento', 'home equity', 'consórcio'}
+        for slug in sorted(os.listdir(pasta_blog)):
+            caminho_rel = os.path.join('blog', slug, 'index.html')
+            if not os.path.isfile(os.path.join(DIST, caminho_rel)):
+                continue
+            h = ler(caminho_rel)
+            m_cat = re.search(r'data-artigo-categoria="([^"]+)"', h)
+            m_cta = re.search(r'<div class="artigo-cta">.*?</div>', h, re.S)
+            self.assertIsNotNone(m_cat, slug)
+            self.assertIsNotNone(m_cta, slug)
+            categoria = m_cat.group(1).lower()
+            cta_texto = m_cta.group(0).lower()
+            for outra in categorias_de_credito - {categoria}:
+                self.assertNotIn(outra, cta_texto,
+                    f'{slug}: CTA menciona "{outra}" mas a categoria do artigo é "{categoria}"')
+
     def test_blog_no_menu_de_todas_as_paginas(self):
         for p in PAGINAS:
             self.assertIn('href="/blog/"', ler(p), f'{p}: falta link Blog no menu')
