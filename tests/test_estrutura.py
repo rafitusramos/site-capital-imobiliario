@@ -264,11 +264,14 @@ class TestBlog(unittest.TestCase):
             src, re.S)
         self.assertTrue(posts, 'nenhum post encontrado em posts.js')
         chave = lambda p: (p[3], p[2], p[1])  # (ano, mes, dia) para ordenar
-        mais_recente = max(posts, key=chave)
+        data_maxima = max(chave(p) for p in posts)
         destaques = [p for p in posts if p[4] == 'true']
         self.assertEqual(len(destaques), 1, f'deveria haver exatamente 1 post com destaque:true, achou {len(destaques)}')
-        self.assertEqual(destaques[0][0], mais_recente[0],
-            f'destaque:true está em "{destaques[0][0]}", mas a publicação mais recente é "{mais_recente[0]}"')
+        # compara pela data (não pelo slug de um "mais recente" escolhido arbitrariamente
+        # em caso de empate) — dois posts no mesmo dia não devem quebrar o teste.
+        self.assertEqual(chave(destaques[0]), data_maxima,
+            f'destaque:true está em "{destaques[0][0]}" ({destaques[0][1]}-{destaques[0][2]}-{destaques[0][3]}), '
+            f'que não é a data mais recente entre os posts')
 
     def test_artigo_tem_imagem_cta_e_relacionados(self):
         h = ler(self.ARTIGO)
