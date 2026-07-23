@@ -10,6 +10,9 @@ export const metadata: Metadata = {
     "Blog — Crédito Imobiliário e Mercado | Rafael Teixeira · Capital Imobiliário",
   description:
     "Artigos sobre financiamento imobiliário, home equity, consórcio e o mercado de imóveis de Vinhedo e região. Conteúdo prático de crédito para decisões de alto valor.",
+  alternates: {
+    canonical: "/blog/",
+  },
 };
 
 export default async function BlogIndicePage() {
