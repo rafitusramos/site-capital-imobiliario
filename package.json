@@ -11,5 +11,8 @@
   },
   "dependencies": {
     "marked": "4.3.0"
+  },
+  "devDependencies": {
+    "supabase": "^2.109.1"
   }
 }
