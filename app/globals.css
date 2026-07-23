@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* --jade, --bronze, --abissal (e o resto do design system) agora vêm de
+   ../styles/lp.css, importado depois deste arquivo em app/layout.tsx. */
