@@ -3,3 +3,14 @@ node_modules/
 .env.local
 next-env.d.ts
 tsconfig.tsbuildinfo
+
+# next.js
+/.next/
+/out/
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# env files
+.env*.local

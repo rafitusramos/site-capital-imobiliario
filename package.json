@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "description": "Site institucional e admin do blog de Rafael Teixeira · Capital Imobiliário",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "blog:validar": "node tools/blog/cli-validar.js",
     "blog:gerar": "node tools/blog/cli-gerar.js",
     "blog:versao": "node tools/blog/cli-versao.js",
@@ -22,6 +25,13 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "supabase": "^2.109.1"
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.22",
+    "supabase": "^2.109.1",
+    "tailwindcss": "^3.4.19",
+    "typescript": "5.8.2"
   }
 }
