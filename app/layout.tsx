@@ -38,6 +38,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "RT Capital Imobiliário",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 const realEstateAgentJsonLd = {
