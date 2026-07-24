@@ -10,7 +10,16 @@
     "blog:nova": "node tools/blog/cli-nova.js"
   },
   "dependencies": {
-    "marked": "4.3.0"
+    "@supabase/ssr": "^0.12.3",
+    "@supabase/supabase-js": "^2.110.8",
+    "marked": "4.3.0",
+    "next": "^15.5.21",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "server-only": "^0.0.1",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "supabase": "^2.109.1"
