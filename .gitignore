@@ -8,6 +8,9 @@ tsconfig.tsbuildinfo
 /.next/
 /out/
 
+# site estático legado (pré-migração Next.js) — não deve mais ser versionado
+/dist/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
