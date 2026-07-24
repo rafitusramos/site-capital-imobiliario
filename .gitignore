@@ -1,4 +1,8 @@
 node_modules/
+.next/
+.env.local
+next-env.d.ts
+tsconfig.tsbuildinfo
 
 # next.js
 /.next/
