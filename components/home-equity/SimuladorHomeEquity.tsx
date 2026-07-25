@@ -99,14 +99,14 @@ export function SimuladorHomeEquity() {
     <>
       <section className="simulador" id="simulador">
         <div className="wrap">
-          <div className="eyebrow">Simulação</div>
-          <h2>Quanto seu imóvel pode liberar</h2>
-          <p className="intro">
+          <div className="eyebrow reveal">Simulação</div>
+          <h2 className="reveal">Quanto seu imóvel pode liberar</h2>
+          <p className="intro reveal">
             Informe o valor estimado do seu imóvel e veja, na hora, o crédito máximo e uma
             parcela aproximada. É uma estimativa para você ter uma ordem de grandeza — o número
             exato sai na análise.
           </p>
-          <div className="sim-card">
+          <div className="sim-card reveal">
             <div className="sim-grid">
               <div className="sim-entrada">
                 <label htmlFor="sim-valor">Valor estimado do imóvel</label>
@@ -170,7 +170,7 @@ export function SimuladorHomeEquity() {
               </div>
             </div>
           </div>
-          <p className="sim-nota">
+          <p className="sim-nota reveal">
             Estimativa automática para fins de orientação, sem valor de proposta. O crédito
             considera o teto usual de 60% do valor do imóvel; a parcela usa o sistema de
             amortização Price com taxa de referência de mercado para home equity, podendo variar

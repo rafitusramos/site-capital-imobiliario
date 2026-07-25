@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import {
   digitos,
   brl,
@@ -21,6 +21,19 @@ const COMPROMETIMENTO = 0.3;
 
 function campoClasse(erros: Set<string>, id: string): string {
   return `campo${erros.has(id) ? " invalido" : ""}`;
+}
+
+function aoTeclarSegmentado(
+  e: KeyboardEvent<HTMLDivElement>,
+  valorAtual: boolean,
+  definir: (valor: boolean) => void,
+  refs: { simRef: RefObject<HTMLButtonElement | null>; naoRef: RefObject<HTMLButtonElement | null> },
+) {
+  if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  e.preventDefault();
+  const novo = !valorAtual;
+  definir(novo);
+  (novo ? refs.simRef : refs.naoRef).current?.focus();
 }
 
 function validarCampo(campo: string, valores: ValoresFormulario): boolean {
@@ -59,6 +72,8 @@ export function SimuladorFinanciamento() {
   const [percentualEntrada, setPercentualEntrada] = useState(20);
   const [prazoMeses, setPrazoMeses] = useState(420);
   const modalRef = useRef<LeadFormShellHandle>(null);
+  const refFgtsSim = useRef<HTMLButtonElement>(null);
+  const refFgtsNao = useRef<HTMLButtonElement>(null);
 
   const { entradaNum, creditoNum, parcelaNum, rendaSugerida } = useMemo(() => {
     const valorNum = digitos(valorImovelSim);
@@ -101,13 +116,13 @@ export function SimuladorFinanciamento() {
     <>
       <section className="simulador" id="simulador">
         <div className="wrap">
-          <div className="eyebrow">Simulação</div>
-          <h2>Monte seu financiamento</h2>
-          <p className="intro">
+          <div className="eyebrow reveal">Simulação</div>
+          <h2 className="reveal">Monte seu financiamento</h2>
+          <p className="intro reveal">
             Informe o valor do imóvel e ajuste a entrada e o prazo. Você vê na hora o valor
             financiado, a parcela inicial estimada e a renda familiar sugerida para a operação.
           </p>
-          <div className="sim-card">
+          <div className="sim-card reveal">
             <div className="sim-grid">
               <div className="sim-entrada">
                 <label htmlFor="sim-valor">Valor do imóvel</label>
@@ -205,7 +220,7 @@ export function SimuladorFinanciamento() {
               </div>
             </div>
           </div>
-          <p className="sim-nota">
+          <p className="sim-nota reveal">
             Estimativa automática para fins de orientação, sem valor de proposta. A parcela usa o
             sistema de amortização SAC (parcela inicial, decrescente ao longo do contrato) com
             taxa de referência de mercado para SBPE, sem TR, seguros obrigatórios e tarifas — o
@@ -333,22 +348,47 @@ export function SimuladorFinanciamento() {
                     </select>
                     <span className="msg-erro">Selecione o tipo de remuneração.</span>
                   </div>
-                  <div className="flag-linha" id="c-fgts">
-                    <span className="flag-label">Pretende usar FGTS?</span>
-                    <button
-                      type="button"
-                      id="f-fgts"
-                      className="switch"
-                      role="switch"
-                      aria-checked={Boolean(valores.usaFgts)}
-                      aria-label="Pretende usar FGTS"
-                      onClick={() => setValor("usaFgts", !valores.usaFgts)}
+                  <div className="campo" id="c-fgts">
+                    <label>Uso de FGTS</label>
+                    <div
+                      className="segmentado"
+                      role="radiogroup"
+                      aria-label="Uso de FGTS"
+                      onKeyDown={(e) =>
+                        aoTeclarSegmentado(e, Boolean(valores.usaFgts), (novo) => setValor("usaFgts", novo), {
+                          simRef: refFgtsSim,
+                          naoRef: refFgtsNao,
+                        })
+                      }
                     >
-                      <span className="switch-track">
-                        <span className="switch-thumb" />
-                      </span>
-                      <span className="switch-txt">{valores.usaFgts ? "Sim" : "Não"}</span>
-                    </button>
+                      <span
+                        className="segmentado-pill"
+                        aria-hidden="true"
+                        style={{ transform: valores.usaFgts ? "translateX(0%)" : "translateX(100%)" }}
+                      />
+                      <button
+                        type="button"
+                        ref={refFgtsSim}
+                        role="radio"
+                        aria-checked={Boolean(valores.usaFgts)}
+                        tabIndex={valores.usaFgts ? 0 : -1}
+                        className="segmentado-opcao"
+                        onClick={() => setValor("usaFgts", true)}
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        ref={refFgtsNao}
+                        role="radio"
+                        aria-checked={!valores.usaFgts}
+                        tabIndex={!valores.usaFgts ? 0 : -1}
+                        className="segmentado-opcao"
+                        onClick={() => setValor("usaFgts", false)}
+                      >
+                        Não
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <div className={campoClasse(erros, "c-entrada")} id="c-entrada">
