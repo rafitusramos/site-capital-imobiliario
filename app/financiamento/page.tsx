@@ -64,23 +64,23 @@ export default function FinanciamentoPage() {
 
       <header className="hero" id="topo">
         <div className="wrap">
-          <h1>O imóvel você escolhe. O financiamento, a gente disputa banco a banco.</h1>
-          <p className="sub">
+          <h1 className="reveal d1">O imóvel você escolhe. O financiamento, a gente disputa banco a banco.</h1>
+          <p className="sub reveal d2">
             No mesmo contrato de 30 anos, a diferença entre a melhor e a pior taxa do mercado
             pode passar de R$ 200 mil. A cotação multibanco existe para essa diferença ficar com
             você.
           </p>
-          <a className="cta" href="#simulador">
+          <a className="cta reveal d3" href="#simulador">
             Simular meu financiamento
           </a>
-          <div className="cta-nota">Pré-aprovação sem custo · resposta em até 1 dia útil</div>
+          <div className="cta-nota reveal d3">Pré-aprovação sem custo · resposta em até 1 dia útil</div>
         </div>
       </header>
 
       <div className="trust">
         <div className="wrap">
-          <div className="rotulo">Cotação em instituições reguladas pelo Banco Central do Brasil</div>
-          <div className="marcas">
+          <div className="rotulo reveal">Cotação em instituições reguladas pelo Banco Central do Brasil</div>
+          <div className="marcas reveal d1">
             <span>Bancos de varejo</span>
             <span>Bancos digitais</span>
             <span>Bancos de investimento</span>
@@ -91,10 +91,10 @@ export default function FinanciamentoPage() {
 
       <section>
         <div className="wrap">
-          <div className="eyebrow">Antes de qualquer número</div>
-          <h2>Financiar bem começa antes do banco</h2>
+          <div className="eyebrow reveal">Antes de qualquer número</div>
+          <h2 className="reveal d1">Financiar bem começa antes do banco</h2>
           <div className="qual">
-            <div className="col sim">
+            <div className="col sim reveal d1">
               <h3>Faz sentido avaliar se você</h3>
               <ul>
                 <li>
@@ -111,7 +111,7 @@ export default function FinanciamentoPage() {
                 </li>
               </ul>
             </div>
-            <div className="col nao">
+            <div className="col nao reveal d2">
               <h3>Não recomendo avançar se você</h3>
               <ul>
                 <li>Ainda não tem entrada nem FGTS — o SBPE não financia 100% do imóvel</li>
@@ -131,10 +131,10 @@ export default function FinanciamentoPage() {
 
       <section className="stats">
         <div className="wrap">
-          <div className="eyebrow">O que o SBPE permite hoje</div>
-          <h2>As regras do jogo em 2026</h2>
+          <div className="eyebrow reveal">O que o SBPE permite hoje</div>
+          <h2 className="reveal d1">As regras do jogo em 2026</h2>
           <div className="grade">
-            <div className="cel">
+            <div className="cel reveal">
               <div className="rot">Financiamento</div>
               <div className="big mono-num">90%</div>
               <div className="leg">
@@ -142,21 +142,21 @@ export default function FinanciamentoPage() {
                 usual a partir de 20%.
               </div>
             </div>
-            <div className="cel">
+            <div className="cel reveal d1">
               <div className="rot">Prazo</div>
               <div className="big mono-num">
                 420<span style={{ fontSize: ".45em" }}> meses</span>
               </div>
               <div className="leg">Até 35 anos para diluir a parcela e preservar o fluxo de caixa.</div>
             </div>
-            <div className="cel">
+            <div className="cel reveal d2">
               <div className="rot">Teto do SFH</div>
               <div className="big mono-num">
                 R$ 2,25<span style={{ fontSize: ".45em" }}> mi</span>
               </div>
               <div className="leg">Valor de imóvel que permite uso do FGTS e as melhores condições.</div>
             </div>
-            <div className="cel">
+            <div className="cel reveal d3">
               <div className="rot">Entre bancos</div>
               <div className="big mono-num">
                 ~2,3<span style={{ fontSize: ".45em" }}> p.p.</span>
@@ -166,7 +166,7 @@ export default function FinanciamentoPage() {
               </div>
             </div>
           </div>
-          <p className="disclaimer">
+          <p className="disclaimer reveal">
             Referências de condições usuais de mercado em julho/2026; valores efetivos dependem de
             análise de crédito, avaliação do imóvel e instituição.
           </p>
@@ -175,11 +175,11 @@ export default function FinanciamentoPage() {
 
       <section className="como-funciona">
         <div className="wrap">
-          <div className="eyebrow">Como funciona</div>
-          <h2>Da pré-aprovação às chaves</h2>
+          <div className="eyebrow reveal">Como funciona</div>
+          <h2 className="reveal d1">Da pré-aprovação às chaves</h2>
           <div className="processo">
             <div className="linha-central" aria-hidden="true" />
-            <div className="etapa-v esq">
+            <div className="etapa-v esq reveal">
               <div className="caixa">
                 <div className="tempo">Até 1 dia útil</div>
                 <h3>Cotação e comparação</h3>
@@ -191,7 +191,7 @@ export default function FinanciamentoPage() {
               </div>
               <div className="num-v">01</div>
             </div>
-            <div className="etapa-v dir">
+            <div className="etapa-v dir reveal">
               <div className="num-v">02</div>
               <div className="caixa">
                 <div className="tempo">1 a 5 dias úteis</div>
@@ -202,7 +202,7 @@ export default function FinanciamentoPage() {
                 </p>
               </div>
             </div>
-            <div className="etapa-v esq">
+            <div className="etapa-v esq reveal">
               <div className="caixa">
                 <div className="tempo">30 a 60 dias</div>
                 <h3>Avaliação e contratação</h3>
@@ -213,7 +213,7 @@ export default function FinanciamentoPage() {
               </div>
               <div className="num-v">03</div>
             </div>
-            <div className="etapa-v dir">
+            <div className="etapa-v dir reveal">
               <div className="num-v">04</div>
               <div className="caixa">
                 <div className="tempo">Até 30 dias</div>
@@ -230,14 +230,14 @@ export default function FinanciamentoPage() {
 
       <section className="compare">
         <div className="wrap">
-          <div className="eyebrow">O argumento em números</div>
-          <h2>O mesmo imóvel, contratos que não se comparam</h2>
-          <p className="intro">
+          <div className="eyebrow reveal">O argumento em números</div>
+          <h2 className="reveal d1">O mesmo imóvel, contratos que não se comparam</h2>
+          <p className="intro reveal d1">
             A simulação abaixo usa um financiamento de R$ 800 mil em 360 meses, pelo sistema SAC,
             apenas variando a taxa entre as praticadas hoje no mercado. A taxa parece um detalhe
             de vitrine — o total pago mostra que não é.
           </p>
-          <div className="tab-scroll" aria-label="Tabela comparativa do impacto da taxa no financiamento">
+          <div className="tab-scroll reveal d2" aria-label="Tabela comparativa do impacto da taxa no financiamento">
             <table className="tabela">
               <thead>
                 <tr>
@@ -313,10 +313,10 @@ export default function FinanciamentoPage() {
 
       <section className="metodo-dark">
         <div className="wrap">
-          <div className="eyebrow">Método</div>
-          <h2>Três compromissos que regem a análise</h2>
+          <div className="eyebrow reveal">Método</div>
+          <h2 className="reveal d1">Três compromissos que regem a análise</h2>
           <div className="metodo">
-            <div className="item">
+            <div className="item reveal">
               <h3>Multibanco, sem bandeira</h3>
               <p>
                 A mesma operação é cotada em múltiplas instituições ao mesmo tempo. Você vê as
@@ -324,7 +324,7 @@ export default function FinanciamentoPage() {
                 favor.
               </p>
             </div>
-            <div className="item">
+            <div className="item reveal d1">
               <h3>CET, não taxa de vitrine</h3>
               <p>
                 A comparação é sempre pelo Custo Efetivo Total: taxa, seguros obrigatórios e
@@ -332,7 +332,7 @@ export default function FinanciamentoPage() {
                 você paga.
               </p>
             </div>
-            <div className="item">
+            <div className="item reveal d2">
               <h3>Do crédito às chaves</h3>
               <p>
                 Corretor e correspondente bancário na mesma pessoa: da pré-aprovação à avaliação,
@@ -346,8 +346,8 @@ export default function FinanciamentoPage() {
 
       <section>
         <div className="wrap">
-          <div className="eyebrow">Perguntas diretas</div>
-          <h2>Antes de decidir, as dúvidas reais</h2>
+          <div className="eyebrow reveal">Perguntas diretas</div>
+          <h2 className="reveal d1">Antes de decidir, as dúvidas reais</h2>
           <details>
             <summary>Preciso já ter escolhido o imóvel para começar?</summary>
             <div className="resp">

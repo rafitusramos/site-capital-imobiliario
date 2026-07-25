@@ -64,22 +64,22 @@ export default function HomeEquityPage() {
 
       <header className="hero" id="topo">
         <div className="wrap">
-          <h1>Seu imóvel quitado pode financiar seu próximo movimento.</h1>
-          <p className="sub">
+          <h1 className="reveal d1">Seu imóvel quitado pode financiar seu próximo movimento.</h1>
+          <p className="sub reveal d2">
             Capital de longo prazo a uma fração do custo do crédito empresarial — sem vender o
             patrimônio que você levou décadas para construir.
           </p>
-          <a className="cta" href="#simulador">
+          <a className="cta reveal d3" href="#simulador">
             Solicitar análise sem custo
           </a>
-          <div className="cta-nota">Análise preliminar sem custo · resposta em até 1 dia útil</div>
+          <div className="cta-nota reveal d3">Análise preliminar sem custo · resposta em até 1 dia útil</div>
         </div>
       </header>
 
       <div className="trust">
         <div className="wrap">
-          <div className="rotulo">Cotação em instituições reguladas pelo Banco Central do Brasil</div>
-          <div className="marcas">
+          <div className="rotulo reveal">Cotação em instituições reguladas pelo Banco Central do Brasil</div>
+          <div className="marcas reveal d1">
             <span>Bancos de varejo</span>
             <span>Bancos digitais</span>
             <span>Bancos de investimento</span>
@@ -90,10 +90,10 @@ export default function HomeEquityPage() {
 
       <section>
         <div className="wrap">
-          <div className="eyebrow">Antes de qualquer número</div>
-          <h2>Uma estrutura séria exige critério</h2>
+          <div className="eyebrow reveal">Antes de qualquer número</div>
+          <h2 className="reveal d1">Uma estrutura séria exige critério</h2>
           <div className="qual">
-            <div className="col sim">
+            <div className="col sim reveal d1">
               <h3>Faz sentido avaliar se você</h3>
               <ul>
                 <li>Tem imóvel quitado ou quase quitado, residencial ou comercial</li>
@@ -107,7 +107,7 @@ export default function HomeEquityPage() {
                 </li>
               </ul>
             </div>
-            <div className="col nao">
+            <div className="col nao reveal d2">
               <h3>Não recomendo se você</h3>
               <ul>
                 <li>
@@ -124,33 +124,33 @@ export default function HomeEquityPage() {
 
       <section className="stats">
         <div className="wrap">
-          <div className="eyebrow">Por que garantia de imóvel</div>
-          <h2>O que a garantia de imóvel destrava</h2>
+          <div className="eyebrow reveal">Por que garantia de imóvel</div>
+          <h2 className="reveal d1">O que a garantia de imóvel destrava</h2>
           <div className="grade">
-            <div className="cel">
+            <div className="cel reveal">
               <div className="rot">Custo ao ano</div>
               <div className="big mono-num">⅓</div>
               <div className="leg">Fração do custo típico do capital de giro PJ sem garantia.</div>
             </div>
-            <div className="cel">
+            <div className="cel reveal d1">
               <div className="rot">Prazo</div>
               <div className="big mono-num">
                 240<span style={{ fontSize: ".45em" }}> meses</span>
               </div>
               <div className="leg">Contra 12–36 meses das linhas de giro comuns.</div>
             </div>
-            <div className="cel">
+            <div className="cel reveal d2">
               <div className="rot">Liberação</div>
               <div className="big mono-num">~60%</div>
               <div className="leg">Do valor de avaliação do imóvel, conforme perfil.</div>
             </div>
-            <div className="cel">
+            <div className="cel reveal d3">
               <div className="rot">Teto de faturamento</div>
               <div className="big mono-num">0</div>
               <div className="leg">Sem limite de porte — pessoa física ou jurídica.</div>
             </div>
           </div>
-          <p className="disclaimer">
+          <p className="disclaimer reveal">
             Referências de ordem de grandeza para condições usuais de mercado em 2026; valores
             efetivos dependem de análise de crédito, avaliação e instituição.
           </p>
@@ -159,9 +159,9 @@ export default function HomeEquityPage() {
 
       <section id="regiao">
         <div className="wrap">
-          <div className="eyebrow">Onde atuamos</div>
-          <h2>Home equity para quem construiu patrimônio em Vinhedo e região</h2>
-          <p className="intro">
+          <div className="eyebrow reveal">Onde atuamos</div>
+          <h2 className="reveal d1">Home equity para quem construiu patrimônio em Vinhedo e região</h2>
+          <p className="intro reveal d1">
             Vinhedo concentra um dos mercados imobiliários mais valorizados do interior paulista —
             condomínios como Marambaia, São Joaquim, Terras de Vinhedo e Campo de Toscana reúnem
             imóveis que, em muitos casos, já estão quitados ou perto disso. Esse patrimônio é
@@ -170,7 +170,7 @@ export default function HomeEquityPage() {
             aquisição sem se descapitalizar, o próprio imóvel vira a garantia de um crédito mais
             barato e de prazo mais longo.
           </p>
-          <div className="cidades">
+          <div className="cidades reveal d2">
             <span>Vinhedo</span>
             <span>Valinhos</span>
             <span>Louveira</span>
@@ -185,11 +185,11 @@ export default function HomeEquityPage() {
 
       <section className="como-funciona">
         <div className="wrap">
-          <div className="eyebrow">Como funciona</div>
-          <h2>Do diagnóstico ao acompanhamento</h2>
+          <div className="eyebrow reveal">Como funciona</div>
+          <h2 className="reveal d1">Do diagnóstico ao acompanhamento</h2>
           <div className="processo">
             <div className="linha-central" aria-hidden="true" />
-            <div className="etapa-v esq">
+            <div className="etapa-v esq reveal">
               <div className="caixa">
                 <div className="tempo">Sem custo · 30 min</div>
                 <h3>Diagnóstico patrimonial</h3>
@@ -200,7 +200,7 @@ export default function HomeEquityPage() {
               </div>
               <div className="num-v">01</div>
             </div>
-            <div className="etapa-v dir">
+            <div className="etapa-v dir reveal">
               <div className="num-v">02</div>
               <div className="caixa">
                 <div className="tempo">1 – 2 semanas</div>
@@ -211,7 +211,7 @@ export default function HomeEquityPage() {
                 </p>
               </div>
             </div>
-            <div className="etapa-v esq">
+            <div className="etapa-v esq reveal">
               <div className="caixa">
                 <div className="tempo">Sua decisão</div>
                 <h3>Execução acompanhada</h3>
@@ -222,7 +222,7 @@ export default function HomeEquityPage() {
               </div>
               <div className="num-v">03</div>
             </div>
-            <div className="etapa-v dir">
+            <div className="etapa-v dir reveal">
               <div className="num-v">04</div>
               <div className="caixa">
                 <div className="tempo">Após a liberação</div>
@@ -239,14 +239,14 @@ export default function HomeEquityPage() {
 
       <section className="compare">
         <div className="wrap">
-          <div className="eyebrow">O argumento em números</div>
-          <h2>A mesma necessidade, custos que não se comparam</h2>
-          <p className="intro">
+          <div className="eyebrow reveal">O argumento em números</div>
+          <h2 className="reveal d1">A mesma necessidade, custos que não se comparam</h2>
+          <p className="intro reveal d1">
             Para o empresário, a comparação honesta é com o que existe de melhor no crédito PJ —
             incluindo linhas subsidiadas. Cada estrutura tem limites que os números abaixo deixam
             claros.
           </p>
-          <div className="tab-scroll" aria-label="Tabela comparativa de linhas de crédito">
+          <div className="tab-scroll reveal d2" aria-label="Tabela comparativa de linhas de crédito">
             <table className="tabela">
               <thead>
                 <tr>
@@ -340,24 +340,24 @@ export default function HomeEquityPage() {
 
       <section className="metodo-dark">
         <div className="wrap">
-          <div className="eyebrow">Método</div>
-          <h2>Três compromissos que regem a análise</h2>
+          <div className="eyebrow reveal">Método</div>
+          <h2 className="reveal d1">Três compromissos que regem a análise</h2>
           <div className="metodo">
-            <div className="item">
+            <div className="item reveal">
               <h3>Multibanco, sem bandeira</h3>
               <p>
                 A cotação percorre múltiplas instituições e compara custo efetivo total. Você vê
                 as propostas lado a lado, com os critérios abertos.
               </p>
             </div>
-            <div className="item">
+            <div className="item reveal d1">
               <h3>O menor crédito que resolve</h3>
               <p>
                 A recomendação parte do valor mínimo que atinge seu objetivo — nunca do máximo que
                 o banco libera. Alavancagem desnecessária é risco, não conquista.
               </p>
             </div>
-            <div className="item">
+            <div className="item reveal d2">
               <h3>Análise sem custo</h3>
               <p>
                 O diagnóstico, a cotação multibanco e o comparativo de propostas não custam nada
@@ -370,8 +370,8 @@ export default function HomeEquityPage() {
 
       <section>
         <div className="wrap">
-          <div className="eyebrow">Perguntas diretas</div>
-          <h2>Antes de decidir, as dúvidas reais</h2>
+          <div className="eyebrow reveal">Perguntas diretas</div>
+          <h2 className="reveal d1">Antes de decidir, as dúvidas reais</h2>
           <details>
             <summary>Perco a propriedade do imóvel?</summary>
             <div className="resp">

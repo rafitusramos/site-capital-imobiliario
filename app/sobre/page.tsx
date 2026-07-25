@@ -70,15 +70,15 @@ export default function SobrePage() {
       <header className="hero hero-sobre">
         <div className="wrap">
           <div>
-            <div className="eyebrow">Sobre</div>
-            <h1>Um corretor que aprendeu a pensar como analista de crédito.</h1>
-            <p className="sub">
+            <div className="eyebrow reveal">Sobre</div>
+            <h1 className="reveal d1">Um corretor que aprendeu a pensar como analista de crédito.</h1>
+            <p className="sub reveal d2">
               Antes de estruturar crédito, Rafael Teixeira vendia imóveis — e percebeu que a
               decisão mais cara da vida de um cliente quase nunca era sobre o imóvel em si, mas
               sobre como financiá-lo.
             </p>
           </div>
-          <div>
+          <div className="reveal d1">
             <div className="foto-rafael">
               <span className="fallback" aria-hidden="true">RT</span>
               <img
@@ -92,9 +92,9 @@ export default function SobrePage() {
 
       <section className="bio">
         <div className="wrap">
-          <div className="eyebrow">Trajetória</div>
-          <h2>Da corretagem à estruturação de crédito</h2>
-          <div>
+          <div className="eyebrow reveal">Trajetória</div>
+          <h2 className="reveal d1">Da corretagem à estruturação de crédito</h2>
+          <div className="reveal d2">
             <p>
               Rafael Teixeira é corretor de imóveis registrado no CRECI-SP, atuando pela RE/MAX
               Clarity em Vinhedo (SP). Foi na prática diária da corretagem — negociando prazos,
@@ -121,10 +121,10 @@ export default function SobrePage() {
 
       <section className="creds-dark">
         <div className="wrap">
-          <div className="eyebrow">Credenciais</div>
-          <h2>Registros e certificações</h2>
+          <div className="eyebrow reveal">Credenciais</div>
+          <h2 className="reveal d1">Registros e certificações</h2>
           <div className="creds">
-            <div className="cred-card">
+            <div className="cred-card reveal">
               <span className="tag">Licença profissional</span>
               <h3>Corretor de Imóveis</h3>
               <p>
@@ -132,7 +132,7 @@ export default function SobrePage() {
                 locação de imóveis no estado de São Paulo.
               </p>
             </div>
-            <div className="cred-card">
+            <div className="cred-card reveal d1">
               <span className="tag">Certificação</span>
               <h3>FEBRABAN CA-600</h3>
               <p>
@@ -140,7 +140,7 @@ export default function SobrePage() {
                 consórcio — formação específica para estruturar esse tipo de operação.
               </p>
             </div>
-            <div className="cred-card">
+            <div className="cred-card reveal d2">
               <span className="tag">Registro CVM</span>
               <h3>Assessor de Investimentos</h3>
               <p>
@@ -148,7 +148,7 @@ export default function SobrePage() {
                 distinta da intermediação de crédito, não comercializada por meio deste site.
               </p>
             </div>
-            <div className="cred-card">
+            <div className="cred-card reveal">
               <span className="tag">Afiliação</span>
               <h3>RE/MAX Clarity</h3>
               <p>
@@ -162,9 +162,9 @@ export default function SobrePage() {
 
       <section>
         <div className="wrap">
-          <div className="eyebrow">Método</div>
-          <h2>Um método, não um produto</h2>
-          <div className="metodo-link">
+          <div className="eyebrow reveal">Método</div>
+          <h2 className="reveal d1">Um método, não um produto</h2>
+          <div className="metodo-link reveal d2">
             <p>
               Multibanco, sem bandeira. O menor crédito que resolve, não o maior que o banco
               libera. Análise sem custo, em qualquer etapa — o mesmo critério aplicado a home
