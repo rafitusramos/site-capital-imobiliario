@@ -84,23 +84,23 @@ export default function HomePage() {
 
       <header className="hero hero-home" id="topo">
         <div className="wrap">
-          <h1>O crédito certo depende de quem disputa por você.</h1>
-          <p className="sub">
+          <h1 className="reveal d1">O crédito certo depende de quem disputa por você.</h1>
+          <p className="sub reveal d2">
             Financiamento imobiliário e crédito com garantia de imóvel estruturados com a mesma
             lógica: a sua operação cotada em múltiplos bancos, comparada pelo custo efetivo
             total — e a recomendação partindo do menor crédito que resolve.
           </p>
-          <a className="cta" href="#solucoes">
+          <a className="cta reveal d3" href="#solucoes">
             Conhecer as soluções
           </a>
-          <div className="cta-nota">Análise sem custo · resposta em até 1 dia útil</div>
+          <div className="cta-nota reveal d3">Análise sem custo · resposta em até 1 dia útil</div>
         </div>
       </header>
 
       <div className="trust">
         <div className="wrap">
-          <div className="rotulo">Cotação em instituições reguladas pelo Banco Central do Brasil</div>
-          <div className="marcas">
+          <div className="rotulo reveal">Cotação em instituições reguladas pelo Banco Central do Brasil</div>
+          <div className="marcas reveal d1">
             <span>Bancos de varejo</span>
             <span>Bancos digitais</span>
             <span>Bancos de investimento</span>
@@ -111,14 +111,14 @@ export default function HomePage() {
 
       <section id="solucoes">
         <div className="wrap">
-          <div className="eyebrow">Soluções de Crédito</div>
-          <h2>Dois caminhos, um método</h2>
-          <p className="intro" style={{ maxWidth: "62ch", marginBottom: 28 }}>
+          <div className="eyebrow reveal">Soluções de Crédito</div>
+          <h2 className="reveal d1">Dois caminhos, um método</h2>
+          <p className="intro reveal d1" style={{ maxWidth: "62ch", marginBottom: 28 }}>
             Comprar um imóvel ou destravar capital de um imóvel que já é seu: cada situação pede
             uma estrutura diferente — e as duas merecem bancos concorrendo pela sua operação.
           </p>
           <div className="cards">
-            <a className="card" href="/financiamento/" data-produto="financiamento">
+            <a className="card reveal" href="/financiamento/" data-produto="financiamento">
               <div className="card-img">
                 <img src="/images/card-financiamento.jpg" alt="" />
                 <span className="rotulo-img">Compra · SBPE</span>
@@ -134,7 +134,7 @@ export default function HomePage() {
               </div>
             </a>
 
-            <a className="card" href="/home_equity/" data-produto="home_equity">
+            <a className="card reveal d1" href="/home_equity/" data-produto="home_equity">
               <div className="card-img">
                 <img src="/images/card-home-equity.jpg" alt="" />
                 <span className="rotulo-img">Garantia de imóvel</span>
@@ -150,7 +150,7 @@ export default function HomePage() {
               </div>
             </a>
 
-            <div className="card breve" aria-disabled="true">
+            <div className="card breve reveal d2" aria-disabled="true">
               <div className="card-img">
                 <span className="badge-breve">Em breve</span>
                 <span className="rotulo-img">Planejamento de compra</span>
@@ -173,24 +173,24 @@ export default function HomePage() {
 
       <section className="metodo-dark">
         <div className="wrap">
-          <div className="eyebrow">Método</div>
-          <h2>Três compromissos que valem para qualquer produto</h2>
+          <div className="eyebrow reveal">Método</div>
+          <h2 className="reveal d1">Três compromissos que valem para qualquer produto</h2>
           <div className="metodo">
-            <div className="item">
+            <div className="item reveal">
               <h3>Multibanco, sem bandeira</h3>
               <p>
                 A mesma operação é cotada em múltiplas instituições ao mesmo tempo. Você vê as
                 propostas lado a lado, com os critérios abertos.
               </p>
             </div>
-            <div className="item">
+            <div className="item reveal d1">
               <h3>O menor crédito que resolve</h3>
               <p>
                 A recomendação parte do valor mínimo que atinge seu objetivo — nunca do máximo que
                 o banco libera. Alavancagem desnecessária é risco, não conquista.
               </p>
             </div>
-            <div className="item">
+            <div className="item reveal d2">
               <h3>Análise sem custo</h3>
               <p>
                 O diagnóstico, a cotação multibanco e o comparativo de propostas não custam nada —
@@ -203,9 +203,9 @@ export default function HomePage() {
 
       <section>
         <div className="wrap">
-          <div className="eyebrow">Quem responde</div>
-          <h2>Um único interlocutor, do diagnóstico ao registro</h2>
-          <div className="quem">
+          <div className="eyebrow reveal">Quem responde</div>
+          <h2 className="reveal d1">Um único interlocutor, do diagnóstico ao registro</h2>
+          <div className="quem reveal d1">
             <div className="foto">
               <img src="/images/rafael-teixeira.jpg" alt="Rafael Teixeira, corretor de imóveis e correspondente bancário" />
             </div>
@@ -215,7 +215,7 @@ export default function HomePage() {
                 certificação FEBRABAN CA-600 — a combinação que permite cuidar da operação
                 inteira: do crédito ao imóvel, da proposta ao cartório.
               </p>
-              <a className="link-sobre" href="/sobre.html">
+              <a className="link-sobre" href="/sobre/">
                 Conhecer a trajetória e as credenciais →
               </a>
             </div>
