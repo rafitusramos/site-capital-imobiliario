@@ -79,7 +79,6 @@ export interface Database {
           seo_description: string | null;
           canonical_url: string | null;
           rotulo: string | null;
-          destaque: boolean;
           cta_pagina: string | null;
           created_at: string;
           updated_at: string;
@@ -99,7 +98,6 @@ export interface Database {
           seo_description?: string | null;
           canonical_url?: string | null;
           rotulo?: string | null;
-          destaque?: boolean;
           cta_pagina?: string | null;
           created_at?: string;
           updated_at?: string;
