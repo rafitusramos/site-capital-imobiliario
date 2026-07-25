@@ -9,6 +9,8 @@ import "./globals.css";
 import "../styles/lp.css";
 import "../styles/blog.css";
 import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
+import { SiteNav } from "@/components/nav/SiteNav";
+import { RevealOnScroll } from "@/components/efeitos/RevealOnScroll";
 
 const libreCaslonDisplay = Libre_Caslon_Display({
   subsets: ["latin"],
@@ -38,6 +40,9 @@ const ibmPlexMono = IBM_Plex_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: "RT Capital Imobiliário",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 const realEstateAgentJsonLd = {
@@ -64,54 +69,8 @@ export default function RootLayout({
             __html: JSON.stringify(realEstateAgentJsonLd),
           }}
         />
-        <nav className="topbar">
-          <div className="wrap">
-            <a
-              className="marca"
-              href="/"
-              aria-label="Rafael Teixeira, Capital Imobiliário — início"
-            >
-              <span className="selo" aria-hidden="true">
-                RT
-              </span>
-              <span className="nome">
-                Rafael Teixeira
-                <small>Capital Imobiliário</small>
-              </span>
-            </a>
-            <div className="topbar-nav">
-              <a className="nav-link" href="/">
-                Início
-              </a>
-              <div className="nav-drop">
-                <button
-                  className="nav-link nav-drop-btn"
-                  type="button"
-                  aria-expanded="false"
-                  aria-haspopup="true"
-                >
-                  Soluções de Crédito
-                </button>
-                <div className="nav-drop-menu">
-                  <a href="/financiamento/">
-                    Financiamento
-                    <small>Compra do imóvel · SBPE</small>
-                  </a>
-                  <a href="/home_equity/">
-                    Home Equity
-                    <small>Crédito com garantia de imóvel</small>
-                  </a>
-                </div>
-              </div>
-              <a className="nav-link ativo" href="/blog/" aria-current="page">
-                Blog
-              </a>
-              <a className="nav-link" href="/sobre.html">
-                Sobre
-              </a>
-            </div>
-          </div>
-        </nav>
+        <SiteNav />
+        <RevealOnScroll />
 
         {children}
 
