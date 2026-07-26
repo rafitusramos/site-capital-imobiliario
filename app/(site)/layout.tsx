@@ -8,6 +8,7 @@ import {
 import "../globals.css";
 import "../../styles/lp.css";
 import "../../styles/blog.css";
+import "../../styles/imoveis.css";
 import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
 import { SiteNav } from "@/components/nav/SiteNav";
 import { RevealOnScroll } from "@/components/efeitos/RevealOnScroll";

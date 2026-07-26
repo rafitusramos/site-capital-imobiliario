@@ -128,3 +128,27 @@ Container com `overflow-hidden` e padding lateral para revelar o *peek* dos vizi
 - [ ] Sem CLS (dimensões definidas no `next/image`).
 - [ ] `prefers-reduced-motion` respeitado.
 - [ ] Nenhum CSS fora das classes Tailwind + CSS vars inline para valores dinâmicos.
+
+## Adaptação — Imóveis RT Capital
+
+Implementado em `components/imoveis/Carrossel.tsx`, para as galerias das landing pages de
+empreendimentos (`app/(site)/imoveis/[slug]/page.tsx`). Mantém o comportamento essencial deste
+spec (Embla `loop:true`/`align:"center"`/`dragFree:false`, foco central via `scrollProgress()` +
+`scrollSnapList()` escrevendo `--escala`/`--opacidade`, peek lateral, setas, teclado ← →, clique
+no slide lateral centraliza), com os seguintes desvios conscientes por causa do design system e
+das restrições do repo (ver `CLAUDE.md`):
+
+- **Paleta e tipografia do site**, não o teal `#096164` da referência: `--jade`/`--bronze`/
+  `--abissal`/`--areia`/`--marfim` e `var(--display)`/`var(--sans)` (que já mapeiam para Libre
+  Caslon Display e Archivo via `next/font` em `app/(site)/layout.tsx`), em vez de Libre Caslon +
+  Archivo "direto" e da paleta de referência.
+- **CSS em arquivo próprio (`styles/imoveis.css`)**, não classes Tailwind — o projeto não usa
+  Tailwind nas páginas públicas (só no admin); os valores dinâmicos de escala/opacidade continuam
+  via CSS vars inline, exatamente como o spec pede.
+- **`<img>` simples com `aspect-ratio` fixo em CSS**, não `next/image` — o restante do codebase
+  usa `<img>` puro (`components/blog/post-card.tsx`, `app/(site)/blog/[slug]/page.tsx`) e
+  `next.config.ts` não declara `images.remotePatterns` para o domínio do Supabase Storage. A
+  proteção contra CLS vem do `aspect-ratio` no lugar das dimensões do `next/image`.
+- **Sem plugin de autoplay** (`embla-carousel-autoplay` não foi instalado e não deve ser
+  adicionado): autoplay numa galeria de imóvel atrapalha a leitura das fotos e conflita com
+  `prefers-reduced-motion` — decisão consciente, não uma omissão.
