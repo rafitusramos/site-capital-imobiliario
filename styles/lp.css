@@ -11,7 +11,7 @@
   html{scroll-behavior:smooth;}
   body{background:var(--marfim);color:var(--tinta);font-family:var(--sans);font-size:16px;line-height:1.65;}
   /* Imagem de fundo fixa, revelada apenas sob as seções Abissal (que ficam ~70% opacas) */
-  body::before{content:"";position:fixed;inset:0;z-index:-1;background:#0A241C url('/images/background.jpg') center center / cover no-repeat;background-attachment:fixed;opacity:.7;}
+  body::before{content:"";position:fixed;inset:0;z-index:-1;background:#0A241C url('/images/background.jpg') center center / cover no-repeat;background-attachment:fixed;}
   a,button,summary,input,select{touch-action:manipulation;}
   :focus-visible{outline:3px solid var(--bronze);outline-offset:3px;}
   .wrap{max-width:960px;margin:0 auto;padding:0 24px;}
@@ -21,12 +21,7 @@
   h2{font-family:var(--display);font-weight:400;font-size:clamp(26px,4vw,36px);color:var(--abissal);margin-bottom:var(--s3);line-height:1.15;max-width:24ch;}
   .mono-num{font-family:var(--mono);font-weight:500;white-space:nowrap;}
 
-  /* O fundo/blur ficam num ::before em vez de direto em .topbar: backdrop-filter num
-     ancestral vira containing block para descendentes position:fixed, e isso fazia o
-     painel do menu mobile (.topbar-nav, fixed) se posicionar relativo à .topbar
-     (~64px de altura) em vez da viewport — abrindo com altura quase zero. */
-  .topbar{position:sticky;top:0;z-index:50;border-bottom:1px solid rgba(10,36,28,.14);}
-  .topbar::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(242,239,231,.94);backdrop-filter:blur(8px);}
+  .topbar{position:sticky;top:0;z-index:50;background:rgba(242,239,231,.94);backdrop-filter:blur(8px);border-bottom:1px solid rgba(10,36,28,.14);}
   .topbar .wrap{display:flex;align-items:center;gap:14px;padding-top:10px;padding-bottom:10px;}
   .marca{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--abissal);min-height:44px;}
   .selo{width:34px;height:34px;border:1.5px solid var(--abissal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:14px;position:relative;flex:none;}
@@ -290,12 +285,8 @@
   .sucesso .lote-ok{width:44px;height:44px;background:var(--jade);position:relative;margin-bottom:var(--s3);}
   .sucesso .lote-ok::after{content:"";position:absolute;left:14px;top:8px;width:12px;height:22px;border:solid var(--branco);border-width:0 3px 3px 0;transform:rotate(42deg);}
   .sucesso h3{font-family:var(--display);font-weight:400;font-size:24px;color:var(--abissal);margin-bottom:10px;}
-  .sucesso p{font-size:14.5px;color:#3d423e;}
-  .sucesso p+p{margin-top:12px;}
-  .sucesso-acoes{display:flex;gap:12px;margin-top:var(--s4);}
-  .sucesso-acoes .cta{margin:0;flex:1;width:auto;}
-  .btn-sucesso-voltar{flex:0 0 30%;display:inline-flex;align-items:center;justify-content:center;background:#6b706c;color:var(--branco);font-family:var(--sans);font-weight:600;font-size:14px;min-height:48px;border:none;border-radius:4px;cursor:pointer;transition:background .18s ease,transform .18s ease;}
-  .btn-sucesso-voltar:hover{background:#575c58;transform:translateY(-1px);}
+  .sucesso p{font-size:14.5px;color:#3d423e;max-width:40ch;}
+  .sucesso .cta{margin-top:var(--s4);width:100%;}
   .painel.enviado .form-head,.painel.enviado .trilho-wrap,.painel.enviado .form-nav,.painel.enviado .lgpd-form{display:none;}
   .painel.enviado .sucesso{display:block;}
   /* Compacta o modal em telas baixas para os botões nunca cortarem */
@@ -346,7 +337,7 @@
 
 @media(max-width:780px){
   .nav-toggle{display:inline-flex;}
-  .topbar-nav{position:fixed;top:64px;right:0;width:50%;bottom:0;z-index:55;margin-left:0;flex-direction:column;align-items:stretch;gap:0;background:var(--marfim);border-left:1px solid rgba(10,36,28,.14);box-shadow:-16px 0 32px -18px rgba(10,36,28,.30);padding:var(--s3) 24px;overflow-y:auto;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;}
+  .topbar-nav{position:fixed;top:64px;left:0;right:0;bottom:0;z-index:55;margin-left:0;flex-direction:column;align-items:stretch;gap:0;background:var(--marfim);padding:var(--s3) 24px;overflow-y:auto;transform:translateY(-8px);opacity:0;pointer-events:none;transition:opacity .18s ease,transform .18s ease;}
   .topbar-nav.aberto{transform:translateY(0);opacity:1;pointer-events:auto;}
   .topbar-nav .nav-link{padding:16px 0;border-bottom:1px solid rgba(10,36,28,.10);}
   .topbar-nav .nav-link.ativo:not(.nav-drop-btn)::after{display:none;}

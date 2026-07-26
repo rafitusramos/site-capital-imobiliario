@@ -68,38 +68,36 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogPostingJsonLd) }}
       />
-      <div className="artigo-secao">
-        <article className="artigo-corpo" id="topo">
-          <div className="artigo-meta">
-            {categoriaNome}
-            <span className="sep">·</span>
-            {formatarData(post.published_at)}
-          </div>
-          <h1>{post.title}</h1>
+      <article className="artigo-corpo" id="topo">
+        <div className="artigo-meta">
+          {categoriaNome}
+          <span className="sep">·</span>
+          {formatarData(post.published_at)}
+        </div>
+        <h1>{post.title}</h1>
 
-          {post.cover_image ? (
-            <figure className="artigo-imagem">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={post.cover_image} alt={post.title} loading="lazy" />
-            </figure>
+        {post.cover_image ? (
+          <figure className="artigo-imagem">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={post.cover_image} alt={post.title} loading="lazy" />
+          </figure>
+        ) : null}
+
+        <div className="artigo-texto">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {post.content}
+          </ReactMarkdown>
+        </div>
+
+        <div className="artigo-cta">
+          <h3>{cta.titulo}</h3>
+          {post.cta_pagina ? (
+            <a className="cta" href={post.cta_pagina}>
+              {cta.botao}
+            </a>
           ) : null}
-
-          <div className="artigo-texto">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {post.content}
-            </ReactMarkdown>
-          </div>
-
-          <div className="artigo-cta">
-            <h3>{cta.titulo}</h3>
-            {post.cta_pagina ? (
-              <a className="cta" href={post.cta_pagina}>
-                {cta.botao}
-              </a>
-            ) : null}
-          </div>
-        </article>
-      </div>
+        </div>
+      </article>
 
       {relacionados.length > 0 ? (
         <section id="relacionados" className="wrap relacionados">

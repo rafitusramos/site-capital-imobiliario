@@ -31,9 +31,9 @@ export function BlogFiltro({ posts }: BlogFiltroProps) {
     return posts.filter((post) => post.categoria?.slug === filtro);
   }, [posts, filtro]);
 
-  // O destaque é sempre o mais recente (postsFiltrados já vem ordenado por
-  // published_at desc) — não há mais um campo manual para fixar outro post.
-  const destaque = postsFiltrados[0] ?? null;
+  const destaque = useMemo(() => {
+    return postsFiltrados.find((post) => post.destaque) ?? postsFiltrados[0] ?? null;
+  }, [postsFiltrados]);
 
   const grade = postsFiltrados.filter((post) => post.id !== destaque?.id);
 

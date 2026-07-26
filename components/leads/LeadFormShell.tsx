@@ -294,17 +294,10 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
           <div className="sucesso">
             <div className="lote-ok" aria-hidden="true" />
             <h3>{textoSucesso.titulo}</h3>
-            {textoSucesso.corpo.split("\n\n").map((paragrafo, i) => (
-              <p key={i}>{paragrafo}</p>
-            ))}
-            <div className="sucesso-acoes">
-              <button type="button" className="btn-sucesso-voltar" onClick={fechar}>
-                Voltar
-              </button>
-              <a className="cta" href={textoSucesso.whatsappHref}>
-                Entrar em contato agora
-              </a>
-            </div>
+            <p>{textoSucesso.corpo}</p>
+            <a className="cta" href={textoSucesso.whatsappHref}>
+              Entrar em contato agora
+            </a>
           </div>
         </div>
       </div>
