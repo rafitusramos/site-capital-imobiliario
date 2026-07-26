@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { postFormSchema, type PostFormInput } from "@/lib/validations/post";
+import { parseFrontmatter } from "@/lib/blog/frontmatter";
+import { slugify } from "@/lib/blog/slugify";
 
 export interface SalvarPostInput extends PostFormInput {
   id?: string;
@@ -25,6 +27,32 @@ async function usuarioAutenticado() {
     data: { user },
   } = await supabase.auth.getUser();
   return { supabase, user };
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+async function enviarImagem(
+  supabase: SupabaseServerClient,
+  arquivo: File,
+): Promise<{ url?: string; erro?: string }> {
+  if (!TIPOS_CAPA_PERMITIDOS.has(arquivo.type)) {
+    return { erro: "Formato não suportado. Use JPEG, PNG, WEBP ou GIF." };
+  }
+  if (arquivo.size > TAMANHO_MAXIMO_CAPA) {
+    return { erro: "Imagem maior que 5MB." };
+  }
+
+  const extensao = arquivo.name.split(".").pop() ?? "jpg";
+  const caminho = `${randomUUID()}.${extensao}`;
+
+  const { error } = await supabase.storage.from(BUCKET_CAPAS).upload(caminho, arquivo, {
+    contentType: arquivo.type,
+    upsert: false,
+  });
+  if (error) return { erro: "Não foi possível enviar a imagem." };
+
+  const { data } = supabase.storage.from(BUCKET_CAPAS).getPublicUrl(caminho);
+  return { url: data.publicUrl };
 }
 
 function revalidarBlog(slug: string) {
@@ -122,22 +150,95 @@ export async function uploadCapa(formData: FormData): Promise<AcaoResultado & { 
   if (!(arquivo instanceof File) || arquivo.size === 0) {
     return { sucesso: false, erro: "Selecione uma imagem." };
   }
-  if (!TIPOS_CAPA_PERMITIDOS.has(arquivo.type)) {
-    return { sucesso: false, erro: "Formato não suportado. Use JPEG, PNG, WEBP ou GIF." };
+
+  const resultado = await enviarImagem(supabase, arquivo);
+  if (resultado.erro) return { sucesso: false, erro: resultado.erro };
+  return { sucesso: true, url: resultado.url };
+}
+
+const CATEGORIA_POR_APELIDO: Record<string, string> = {
+  financiamento: "financiamento",
+  "home-equity": "home-equity",
+  "home equity": "home-equity",
+  consorcio: "consorcio",
+  "consórcio": "consorcio",
+  imoveis: "imoveis",
+  "imóveis": "imoveis",
+};
+
+/** Cria um post em rascunho a partir de um .md (docs/modelo-artigo.md) + capa opcional. */
+export async function importarMarkdown(formData: FormData): Promise<AcaoResultado> {
+  const { supabase, user } = await usuarioAutenticado();
+  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+
+  const arquivoMd = formData.get("arquivo_md");
+  if (!(arquivoMd instanceof File) || arquivoMd.size === 0) {
+    return { sucesso: false, erro: "Selecione o arquivo .md do artigo." };
   }
-  if (arquivo.size > TAMANHO_MAXIMO_CAPA) {
-    return { sucesso: false, erro: "Imagem maior que 5MB." };
+
+  let dados: Record<string, string>;
+  let corpo: string;
+  try {
+    const texto = await arquivoMd.text();
+    ({ dados, corpo } = parseFrontmatter(texto));
+  } catch (e) {
+    return { sucesso: false, erro: e instanceof Error ? e.message : "Não foi possível ler o arquivo." };
   }
 
-  const extensao = arquivo.name.split(".").pop() ?? "jpg";
-  const caminho = `${randomUUID()}.${extensao}`;
+  const titulo = dados.titulo?.trim();
+  if (!titulo) return { sucesso: false, erro: 'Frontmatter sem "titulo".' };
+  if (!corpo.trim()) return { sucesso: false, erro: "O artigo está sem conteúdo." };
 
-  const { error } = await supabase.storage.from(BUCKET_CAPAS).upload(caminho, arquivo, {
-    contentType: arquivo.type,
-    upsert: false,
-  });
-  if (error) return { sucesso: false, erro: "Não foi possível enviar a imagem." };
+  const apelidoCategoria = (dados.categoria ?? "").trim().toLowerCase();
+  const slugCategoria = CATEGORIA_POR_APELIDO[apelidoCategoria];
+  if (!slugCategoria) {
+    return {
+      sucesso: false,
+      erro: 'Categoria não reconhecida. Use: Financiamento, Home Equity, Consórcio ou Imóveis.',
+    };
+  }
 
-  const { data } = supabase.storage.from(BUCKET_CAPAS).getPublicUrl(caminho);
-  return { sucesso: true, url: data.publicUrl };
+  const { data: categoria, error: erroCategoria } = await supabase
+    .from("categories")
+    .select("id")
+    .eq("slug", slugCategoria)
+    .single();
+  if (erroCategoria || !categoria) {
+    return { sucesso: false, erro: "Categoria não encontrada no banco." };
+  }
+
+  let capaUrl: string | null = null;
+  const arquivoCapa = formData.get("arquivo_capa");
+  if (arquivoCapa instanceof File && arquivoCapa.size > 0) {
+    const resultadoCapa = await enviarImagem(supabase, arquivoCapa);
+    if (resultadoCapa.erro) return { sucesso: false, erro: resultadoCapa.erro };
+    capaUrl = resultadoCapa.url ?? null;
+  }
+
+  const { data: post, error } = await supabase
+    .from("posts")
+    .insert({
+      title: titulo,
+      slug: slugify(titulo),
+      excerpt: dados.resumo || null,
+      content: corpo,
+      cover_image: capaUrl,
+      category_id: categoria.id,
+      rotulo: dados.rotulo || null,
+      cta_pagina: dados.cta_pagina || null,
+      seo_title: dados.seo_titulo || null,
+      seo_description: dados.seo_descricao || null,
+      author_id: user.id,
+    })
+    .select("id")
+    .single();
+
+  if (error) {
+    return {
+      sucesso: false,
+      erro: error.code === "23505" ? "Já existe um artigo com um título/slug igual." : "Não foi possível importar o artigo.",
+    };
+  }
+
+  return { sucesso: true, id: post.id };
 }

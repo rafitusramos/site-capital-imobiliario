@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, IBM_Plex_Mono } from "next/font/google";
+import { Archivo, IBM_Plex_Mono, Libre_Caslon_Display } from "next/font/google";
 import "../globals.css";
 import "./admin.css";
 
@@ -13,6 +13,14 @@ const ibmPlexMono = IBM_Plex_Mono({
   subsets: ["latin"],
   weight: ["400", "500", "600"],
   variable: "--mono",
+});
+
+// Só para o "RT" do selo da marca (components/admin/Marca.tsx) — mesma fonte
+// de display usada em app/(site)/layout.tsx, pra marca ficar idêntica.
+const libreCaslonDisplay = Libre_Caslon_Display({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--display",
 });
 
 export const metadata: Metadata = {
@@ -29,7 +37,7 @@ export default function AdminRootLayout({
   return (
     <html lang="pt-BR">
       <body
-        className={`${archivo.variable} ${ibmPlexMono.variable} min-h-screen bg-[var(--marfim)] text-[var(--tinta)] antialiased [font-family:var(--sans),sans-serif]`}
+        className={`${archivo.variable} ${ibmPlexMono.variable} ${libreCaslonDisplay.variable} min-h-screen bg-[var(--marfim)] text-[var(--tinta)] antialiased [font-family:var(--sans),sans-serif]`}
       >
         {children}
       </body>

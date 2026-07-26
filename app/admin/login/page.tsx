@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Marca } from "@/components/admin/Marca";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -35,8 +36,10 @@ export default function AdminLoginPage() {
         onSubmit={aoEnviar}
         className="w-full max-w-sm rounded-lg border border-black/10 bg-[var(--branco)] p-8 shadow-sm"
       >
-        <h1 className="mb-1 text-xl font-semibold text-[var(--abissal)]">Admin · Blog</h1>
-        <p className="mb-6 text-sm text-neutral-500">RT Capital Imobiliário</p>
+        <div className="mb-6">
+          <Marca />
+          <p className="mt-4 text-sm text-neutral-500">Painel Administrativo</p>
+        </div>
 
         <label className="mb-1 block text-sm font-medium text-[var(--abissal)]" htmlFor="email">
           E-mail
