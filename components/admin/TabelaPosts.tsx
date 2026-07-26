@@ -156,7 +156,7 @@ export function TabelaPosts({ posts }: { posts: PostAdmin[] }) {
 
       <ul role="list" className="divide-y divide-black/5">
         {posts.map((post) => (
-          <li key={post.id} className={`flex flex-col gap-2 p-4 sm:px-4 sm:py-3 ${GRADE}`}>
+          <li key={post.id} className={`flex flex-col gap-2 p-4 text-sm sm:px-4 sm:py-3 ${GRADE}`}>
             <div className="min-w-0">
               <span className="font-medium text-[var(--abissal)]">{post.title}</span>
               <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 sm:hidden">
@@ -168,7 +168,7 @@ export function TabelaPosts({ posts }: { posts: PostAdmin[] }) {
               </div>
             </div>
 
-            <span className="hidden text-neutral-600 sm:block">{post.categoria?.name ?? "—"}</span>
+            <span className="hidden text-base text-neutral-600 sm:block">{post.categoria?.name ?? "—"}</span>
             <span className="hidden sm:block">
               <StatusBadge status={post.status} />
             </span>
