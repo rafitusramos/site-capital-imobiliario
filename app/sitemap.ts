@@ -1,9 +1,10 @@
 import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/queries/posts";
+import { getImoveisPublicados } from "@/lib/queries/imoveis";
 import { SITE_URL } from "@/lib/site";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const posts = await getPublishedPosts();
+  const [posts, imoveis] = await Promise.all([getPublishedPosts(), getImoveisPublicados()]);
 
   const paginasFixas: MetadataRoute.Sitemap = [
     { url: `${SITE_URL}/` },
@@ -11,6 +12,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/home_equity/` },
     { url: `${SITE_URL}/sobre/` },
     { url: `${SITE_URL}/blog/` },
+    { url: `${SITE_URL}/imoveis/` },
   ];
 
   const paginasPosts: MetadataRoute.Sitemap = posts.map((post) => ({
@@ -18,5 +20,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: post.updated_at,
   }));
 
-  return [...paginasFixas, ...paginasPosts];
+  const paginasImoveis: MetadataRoute.Sitemap = imoveis.map((imovel) => ({
+    url: `${SITE_URL}/imoveis/${imovel.slug}/`,
+    lastModified: imovel.updated_at,
+  }));
+
+  return [...paginasFixas, ...paginasPosts, ...paginasImoveis];
 }
