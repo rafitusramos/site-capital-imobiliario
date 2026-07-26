@@ -1,6 +1,10 @@
 export type ProfileRole = "admin" | "corretor";
 export type PostStatus = "draft" | "published" | "archived";
 export type ImovelStatus = "ativo" | "reservado" | "vendido" | "inativo";
+export type ImovelTipo = "apartamento" | "vila" | "loteamento";
+export type ImovelFase = "pre_lancamento" | "lancamento" | "em_construcao" | "pronto";
+export type ImovelImagemGrupo = "empreendimento" | "decorado" | "planta" | "implantacao";
+export type ImovelDiferencialGrupo = "lazer" | "diferencial";
 export type LeadTipoSlug = "financiamento" | "home-equity" | "imoveis" | "consorcio";
 export type LeadStatusSlug =
   | "criado"
@@ -105,25 +109,39 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["posts"]["Insert"]>;
         Relationships: [];
       };
+      // Empreendimento em lançamento (007_imoveis_empreendimentos.sql).
+      // As colunas de unidade avulsa de revenda (valor_venda, metragem,
+      // dormitorios…) foram substituídas por faixas *_min/*_max.
       imoveis: {
         Row: {
           id: string;
           slug: string;
           titulo: string;
+          tipo: ImovelTipo;
+          fase: ImovelFase;
           bairro: string | null;
-          condominio: string | null;
           cidade: string | null;
           estado: string | null;
-          valor_venda: number | null;
-          valor_condominio: number | null;
-          valor_iptu: number | null;
+          endereco: string | null;
+          cep: string | null;
+          area_min: number | null;
+          area_max: number | null;
+          dormitorios_min: number | null;
+          dormitorios_max: number | null;
+          banheiros_min: number | null;
+          banheiros_max: number | null;
+          vagas_min: number | null;
+          vagas_max: number | null;
+          valor_a_partir_de: number | null;
+          previsao_entrega: string | null;
+          construtora: string | null;
+          construtora_logo_url: string | null;
           descricao_breve: string | null;
           descricao_completa: string | null;
-          metragem: number | null;
-          dormitorios: number | null;
-          banheiros: number | null;
-          vagas: number | null;
-          diferenciais: string[];
+          descricao_unidades: string | null;
+          seo_title: string | null;
+          seo_description: string | null;
+          ordem: number;
           latitude: number | null;
           longitude: number | null;
           video_youtube_url: string | null;
@@ -136,20 +154,31 @@ export interface Database {
           id?: string;
           slug: string;
           titulo: string;
+          tipo?: ImovelTipo;
+          fase?: ImovelFase;
           bairro?: string | null;
-          condominio?: string | null;
           cidade?: string | null;
           estado?: string | null;
-          valor_venda?: number | null;
-          valor_condominio?: number | null;
-          valor_iptu?: number | null;
+          endereco?: string | null;
+          cep?: string | null;
+          area_min?: number | null;
+          area_max?: number | null;
+          dormitorios_min?: number | null;
+          dormitorios_max?: number | null;
+          banheiros_min?: number | null;
+          banheiros_max?: number | null;
+          vagas_min?: number | null;
+          vagas_max?: number | null;
+          valor_a_partir_de?: number | null;
+          previsao_entrega?: string | null;
+          construtora?: string | null;
+          construtora_logo_url?: string | null;
           descricao_breve?: string | null;
           descricao_completa?: string | null;
-          metragem?: number | null;
-          dormitorios?: number | null;
-          banheiros?: number | null;
-          vagas?: number | null;
-          diferenciais?: string[];
+          descricao_unidades?: string | null;
+          seo_title?: string | null;
+          seo_description?: string | null;
+          ordem?: number;
           latitude?: number | null;
           longitude?: number | null;
           video_youtube_url?: string | null;
@@ -167,6 +196,7 @@ export interface Database {
           imovel_id: string;
           url: string;
           ambiente: string | null;
+          grupo: ImovelImagemGrupo;
           ordem: number;
           destaque: boolean;
           created_at: string;
@@ -176,11 +206,87 @@ export interface Database {
           imovel_id: string;
           url: string;
           ambiente?: string | null;
+          grupo?: ImovelImagemGrupo;
           ordem?: number;
           destaque?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["imovel_imagens"]["Insert"]>;
+        Relationships: [];
+      };
+      imovel_tipologias: {
+        Row: {
+          id: string;
+          imovel_id: string;
+          nome: string;
+          area: number | null;
+          dormitorios: number | null;
+          suites: number | null;
+          banheiros: number | null;
+          vagas: number | null;
+          valor_a_partir_de: number | null;
+          planta_url: string | null;
+          ordem: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          imovel_id: string;
+          nome: string;
+          area?: number | null;
+          dormitorios?: number | null;
+          suites?: number | null;
+          banheiros?: number | null;
+          vagas?: number | null;
+          valor_a_partir_de?: number | null;
+          planta_url?: string | null;
+          ordem?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["imovel_tipologias"]["Insert"]>;
+        Relationships: [];
+      };
+      imovel_diferenciais: {
+        Row: {
+          id: string;
+          imovel_id: string;
+          grupo: ImovelDiferencialGrupo;
+          nome: string;
+          /** slug do catálogo em components/imoveis/icones.tsx */
+          icone: string | null;
+          ordem: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          imovel_id: string;
+          grupo?: ImovelDiferencialGrupo;
+          nome: string;
+          icone?: string | null;
+          ordem?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["imovel_diferenciais"]["Insert"]>;
+        Relationships: [];
+      };
+      imovel_faqs: {
+        Row: {
+          id: string;
+          imovel_id: string;
+          pergunta: string;
+          resposta: string;
+          ordem: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          imovel_id: string;
+          pergunta: string;
+          resposta: string;
+          ordem?: number;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["imovel_faqs"]["Insert"]>;
         Relationships: [];
       };
       lead_tipos: {

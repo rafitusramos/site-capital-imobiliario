@@ -51,7 +51,7 @@ const ITENS: {
 }[] = [
   { label: "CRM", href: null, icone: IconeCRM },
   { label: "Cadastro de Artigos", href: "/admin/posts", icone: IconeArtigos },
-  { label: "Cadastro de Imóveis", href: null, icone: IconeImoveis },
+  { label: "Cadastro de Imóveis", href: "/admin/imoveis", icone: IconeImoveis },
 ];
 
 export function SidebarAdmin() {
