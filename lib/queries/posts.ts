@@ -41,6 +41,19 @@ export async function getPostBySlug(
   return data as unknown as PostComCategoria | null;
 }
 
+export async function getFeaturedPost(): Promise<PostComCategoria | null> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase
+    .from("posts")
+    .select(SELECT_COM_CATEGORIA)
+    .eq("status", "published")
+    .eq("destaque", true)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as unknown as PostComCategoria | null;
+}
+
 export async function getRelatedPosts(
   postId: string,
   categoryId: string,

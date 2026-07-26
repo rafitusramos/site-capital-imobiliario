@@ -77,13 +77,6 @@ export function SiteNav() {
             </div>
           </div>
           <a
-            className={`nav-link${ehAtivo(pathname, "/imoveis") ? " ativo" : ""}`}
-            href="/imoveis/"
-            aria-current={ehAtivo(pathname, "/imoveis") ? "page" : undefined}
-          >
-            Imóveis
-          </a>
-          <a
             className={`nav-link${ehAtivo(pathname, "/blog") ? " ativo" : ""}`}
             href="/blog/"
             aria-current={ehAtivo(pathname, "/blog") ? "page" : undefined}

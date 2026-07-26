@@ -22,10 +22,6 @@ Variáveis CSS existentes: --jade, --bronze, --abissal.
 ## Categorias do blog
 Financiamento, Home Equity, Consórcio, Imóveis.
 
-## Documentos de referência
-- `docs/carousel-spec.md`: usar sempre que for criada uma página com galeria de imagens
-  (ex.: futura página de imóveis).
-
 ## REGRAS INVIOLÁVEIS
 1. Nenhum slug de URL pode mudar. As URLs atuais são a base do SEO.
 2. Nenhum texto de artigo pode ser reescrito. Conteúdo migra idêntico.
