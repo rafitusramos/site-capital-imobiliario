@@ -32,6 +32,8 @@
 }
 .im-badge-fase[data-fase="pronto"]{background:var(--jade);}
 .im-badge-fase[data-fase="em_construcao"]{background:var(--bronze);}
+/* No hero da LP a badge é parte do fluxo, não um selo sobre a capa do card. */
+.im-badge-fase--inline{position:static;display:inline-block;margin-bottom:18px;}
 
 .im-card-corpo{padding:20px 20px 22px;display:flex;flex-direction:column;gap:8px;flex:1;}
 .im-card-corpo h3{font-family:var(--sans);font-weight:400;font-size:20px;color:var(--abissal);line-height:1.22;}
@@ -46,6 +48,19 @@
 .im-preco small{display:block;font-family:var(--mono);font-weight:400;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:#8a908b;}
 
 .im-vazio{text-align:center;color:#7a807c;font-family:var(--mono);font-size:13px;padding:56px 0;}
+
+/* ---------------------------------------------------------------------
+   MODAL DE LEAD DA VERTICAL
+   Bloco próprio em vez de reusar `.bloco` do lp.css: aquele nasce com
+   width:33.3333% para ser 1/3 de `.trilho{width:300%}` (o carrossel de 3
+   etapas do LeadFormShell). Fora daquele contexto ele viraria um terço do
+   painel, espremendo os campos. Pelo mesmo motivo, `.painel.enviado` do
+   lp.css esconde `.trilho-wrap` — que não existe aqui —, então o estado de
+   sucesso precisa esconder este bloco explicitamente.
+   --------------------------------------------------------------------- */
+.im-lead-bloco{padding:6px 26px 20px;}
+.painel.enviado .im-lead-bloco{display:none;}
+@media(max-height:720px){.im-lead-bloco{padding:4px 24px 12px;}}
 
 /* ---------------------------------------------------------------------
    CARROSSEL — foco central (docs/carousel-spec.md), paleta do site
@@ -91,6 +106,10 @@
 /* ---------------------------------------------------------------------
    LANDING PAGE DO EMPREENDIMENTO
    --------------------------------------------------------------------- */
+/* Capa do hero. z-index:0 fica sob o overlay .hero::after (lp.css), que é
+   conteúdo gerado e por isso pinta depois, mantendo o texto legível. */
+.im-hero-capa{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+
 .im-hero-fatos{display:flex;flex-wrap:wrap;gap:22px;margin-top:var(--s4);}
 .im-hero-fatos .im-fato{display:flex;align-items:center;gap:8px;font-family:var(--sans);font-size:14px;color:rgba(252,250,244,.9);}
 .im-hero-fatos .im-fato svg{width:19px;height:19px;color:var(--bronze);flex:none;}

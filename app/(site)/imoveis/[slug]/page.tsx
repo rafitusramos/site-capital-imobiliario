@@ -156,25 +156,25 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
 
       <div className="im-lp-com-barra">
         {/* 1 + 2. Hero (capa, nome, localização, preço, CTA) e fatos rápidos */}
-        <header
-          className="hero"
-          id="topo"
-          style={
-            capa
-              ? { backgroundImage: `url(${capa})`, backgroundSize: "cover", backgroundPosition: "center" }
-              : undefined
-          }
-        >
+        <header className="hero" id="topo">
+          {capa ? (
+            /* Elemento LCP da página: <img> real (e não background-image) para o
+               browser poder priorizar o download e para aceitar srcset depois.
+               O overlay .hero::after do lp.css pinta por cima e preserva o
+               contraste do texto. */
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="im-hero-capa" src={capa} alt="" fetchPriority="high" />
+          ) : null}
           <div className="wrap">
-            <span
-              className="im-badge-fase"
-              data-fase={imovel.fase}
-              style={{ position: "static", display: "inline-block", marginBottom: 18 }}
-            >
+            <span className="im-badge-fase im-badge-fase--inline" data-fase={imovel.fase}>
               {formatarFase(imovel.fase)}
             </span>
             <h1 className="reveal d1">{imovel.titulo}</h1>
-            {local ? <p className="sub reveal d2">Lançamento em {local}</p> : null}
+            {local ? (
+              <p className="sub reveal d2">
+                {formatarFase(imovel.fase)} em {local}
+              </p>
+            ) : null}
 
             <div className="im-hero-fatos reveal d2">
               {area ? (

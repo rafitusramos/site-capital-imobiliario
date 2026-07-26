@@ -37,7 +37,11 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
         </span>
       </div>
       <div className="im-card-corpo">
-        {local ? <span className="im-card-local">Lançamento em {local}</span> : null}
+        {local ? (
+          <span className="im-card-local">
+            {formatarFase(imovel.fase)} em {local}
+          </span>
+        ) : null}
         <h3>{imovel.titulo}</h3>
         {imovel.descricao_breve ? <p className="im-card-resumo">{imovel.descricao_breve}</p> : null}
 
