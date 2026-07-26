@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
 export type ImagemCarrossel = { url: string; ambiente: string | null };
@@ -19,6 +19,11 @@ const FATOR_BASE = 0.52;
 const ESCALA_MIN = 0.9;
 const OPACIDADE_MIN = 0.65;
 
+// `duration` do Embla é expresso na escala interna dele, não em ms: 25 é o
+// padrão da lib e 0 faz o deslocamento ser instantâneo.
+const DURACAO_PADRAO = 25;
+const DURACAO_SEM_MOVIMENTO = 0;
+
 function dentroDoIntervalo(valor: number, min: number, max: number) {
   return Math.min(Math.max(valor, min), max);
 }
@@ -31,10 +36,25 @@ function dentroDoIntervalo(valor: number, min: number, max: number) {
  * spec original).
  */
 export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: CarrosselProps) {
+  // O CSS já desliga a transição de escala/opacidade dos slides, mas o
+  // deslocamento do próprio Embla continuaria animado — daí zerar `duration`.
+  // Começa `false` para o servidor e o cliente renderizarem igual; o valor real
+  // entra no efeito abaixo, e o hook do Embla re-inicializa ao ver a opção mudar.
+  const [reduzirMovimento, setReduzirMovimento] = useState(false);
+
+  useEffect(() => {
+    const consulta = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduzirMovimento(consulta.matches);
+    const aoMudar = (e: MediaQueryListEvent) => setReduzirMovimento(e.matches);
+    consulta.addEventListener("change", aoMudar);
+    return () => consulta.removeEventListener("change", aoMudar);
+  }, []);
+
   const [emblaRef, emblaApi] = useEmblaCarousel({
     loop: true,
     align: "center",
     dragFree: false,
+    duration: reduzirMovimento ? DURACAO_SEM_MOVIMENTO : DURACAO_PADRAO,
   });
 
   const fatorTween = useRef(0);
@@ -145,9 +165,14 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: Carross
               key={`${imagem.url}-${indice}`}
               style={{ "--escala": 1, "--opacidade": 1 } as React.CSSProperties}
             >
+              {/* tabIndex -1: clicar num slide lateral para centralizá-lo é uma
+                  conveniência de mouse redundante — pelo teclado as setas e o
+                  ← → na região já fazem o mesmo. Sem isso, cada galeria somaria
+                  um tab stop por imagem, e a LP tem três galerias. */}
               <button
                 type="button"
                 className="im-carrossel-slide-botao"
+                tabIndex={-1}
                 onClick={() => emblaApi?.scrollTo(indice)}
                 aria-label={imagem.ambiente ?? `Imagem ${indice + 1} de ${imagens.length}`}
               >

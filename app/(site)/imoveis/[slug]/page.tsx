@@ -111,6 +111,13 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
 
   const indiceFaseAtual = ORDEM_FASES.indexOf(imovel.fase);
 
+  // Teto de preço e nº de ofertas saem das tipologias — o Search Console avisa
+  // quando um AggregateOffer traz só lowPrice.
+  const precosTipologias = imovel.tipologias
+    .map((tipologia) => tipologia.valor_a_partir_de)
+    .filter((valor): valor is number => typeof valor === "number");
+  const maiorPreco = precosTipologias.length > 0 ? Math.max(...precosTipologias) : null;
+
   const productJsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -122,6 +129,12 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
       ? {
           "@type": "AggregateOffer",
           lowPrice: imovel.valor_a_partir_de,
+          // highPrice só entra com dado real e acima do piso: um teto menor que
+          // o piso reprova o rich result.
+          ...(maiorPreco !== null && maiorPreco > imovel.valor_a_partir_de
+            ? { highPrice: maiorPreco }
+            : {}),
+          ...(imovel.tipologias.length > 0 ? { offerCount: imovel.tipologias.length } : {}),
           priceCurrency: "BRL",
           availability: "https://schema.org/InStock",
         }
