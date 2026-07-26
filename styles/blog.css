@@ -91,9 +91,11 @@
 .blog-vazio{text-align:center;color:#7a807c;font-family:var(--mono);font-size:13px;padding:40px 0;}
 
 /* ---- ARTIGO ---- */
-/* fundo branco e sem a imagem fixa do site, para facilitar a leitura */
-body[data-artigo-slug]{background:var(--branco);}
-body[data-artigo-slug]::before{content:none;}
+/* Fundo branco cobrindo a largura toda, por cima da imagem fixa do body
+   (styles/lp.css) — sem isso ela aparece atrás do texto e atrapalha a
+   leitura. (Substitui um seletor body[data-artigo-slug] órfão: nada no app
+   Next.js define esse atributo — era do pipeline HTML estático antigo.) */
+.artigo-secao{background:var(--branco);display:flow-root;}
 .artigo-imagem{margin:28px 0;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,var(--abissal),#123c2e);}
 .artigo-imagem img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;}
 .artigo-corpo{max-width:720px;margin:0 auto;padding:0 24px;}
