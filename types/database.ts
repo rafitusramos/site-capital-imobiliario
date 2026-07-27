@@ -133,6 +133,7 @@ export interface Database {
           vagas_min: number | null;
           vagas_max: number | null;
           valor_a_partir_de: number | null;
+          valor_sob_consulta: boolean;
           previsao_entrega: string | null;
           construtora: string | null;
           construtora_logo_url: string | null;
@@ -170,6 +171,7 @@ export interface Database {
           vagas_min?: number | null;
           vagas_max?: number | null;
           valor_a_partir_de?: number | null;
+          valor_sob_consulta?: boolean;
           previsao_entrega?: string | null;
           construtora?: string | null;
           construtora_logo_url?: string | null;

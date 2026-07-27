@@ -11,12 +11,20 @@ type CarrosselProps = {
   ariaLabel: string;
   /** A primeira imagem do primeiro carrossel da página pode carregar eager (acima da dobra). */
   primeiraEager?: boolean;
+  /**
+   * Quando informado, clicar na imagem já centralizada a amplia (usado nas
+   * plantas). Clicar numa lateral continua apenas centralizando-a.
+   */
+  aoAmpliar?: (indice: number) => void;
 };
 
 // Fator de intensidade do efeito de foco central — mesma constante do
 // exemplo oficial "Tween Scale" do Embla, ajustado ao número de slides.
 const FATOR_BASE = 0.52;
-const ESCALA_MIN = 0.9;
+// A imagem central aparece 50% maior que as vizinhas: laterais no tamanho
+// natural do slide, central ampliada por cima delas (daí o z-index no tween).
+const ESCALA_LATERAL = 1;
+const ESCALA_CENTRAL = 1.5;
 const OPACIDADE_MIN = 0.65;
 
 // `duration` do Embla é expresso na escala interna dele, não em ms: 25 é o
@@ -35,7 +43,12 @@ function dentroDoIntervalo(valor: number, min: number, max: number) {
  * atrapalha e conflita com prefers-reduced-motion — desvio consciente do
  * spec original).
  */
-export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: CarrosselProps) {
+export function Carrossel({
+  imagens,
+  ariaLabel,
+  primeiraEager = false,
+  aoAmpliar,
+}: CarrosselProps) {
   // O CSS já desliga a transição de escala/opacidade dos slides, mas o
   // deslocamento do próprio Embla continuaria animado — daí zerar `duration`.
   // Começa `false` para o servidor e o cliente renderizarem igual; o valor real
@@ -59,6 +72,7 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: Carross
 
   const fatorTween = useRef(0);
   const nosSlide = useRef<HTMLElement[]>([]);
+  const [indiceSelecionado, setIndiceSelecionado] = useState(0);
 
   const definirFatorTween = useCallback(() => {
     if (!emblaApi) return;
@@ -92,13 +106,16 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: Carross
 
           const valorTween = 1 - Math.abs(diferenca * fatorTween.current);
           const proporcao = dentroDoIntervalo(valorTween, 0, 1);
-          const escala = ESCALA_MIN + (1 - ESCALA_MIN) * proporcao;
+          const escala = ESCALA_LATERAL + (ESCALA_CENTRAL - ESCALA_LATERAL) * proporcao;
           const opacidade = OPACIDADE_MIN + (1 - OPACIDADE_MIN) * proporcao;
 
           const no = nosSlide.current[indiceSlide];
           if (no) {
             no.style.setProperty("--escala", escala.toFixed(4));
             no.style.setProperty("--opacidade", opacidade.toFixed(4));
+            // Empilha o slide em foco acima dos vizinhos, senão a imagem
+            // ampliada passaria por baixo deles.
+            no.style.setProperty("--z", String(Math.round(proporcao * 10)));
           }
         });
       });
@@ -116,6 +133,9 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: Carross
     };
     const aoRolar = () => aplicarTween(emblaApi, "scroll");
     const aoFocarSlide = () => aplicarTween(emblaApi);
+    const aoSelecionar = () => setIndiceSelecionado(emblaApi.selectedScrollSnap());
+    aoSelecionar();
+    emblaApi.on("select", aoSelecionar);
 
     nosSlide.current = emblaApi.slideNodes();
     definirFatorTween();
@@ -129,6 +149,7 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: Carross
       emblaApi.off("reInit", aoReiniciar);
       emblaApi.off("scroll", aoRolar);
       emblaApi.off("slideFocus", aoFocarSlide);
+      emblaApi.off("select", aoSelecionar);
     };
   }, [emblaApi, definirFatorTween, aplicarTween]);
 
@@ -163,24 +184,39 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false }: Carross
             <div
               className="im-carrossel-slide"
               key={`${imagem.url}-${indice}`}
-              style={{ "--escala": 1, "--opacidade": 1 } as React.CSSProperties}
+              style={{ "--escala": 1, "--opacidade": 1, "--z": 0 } as React.CSSProperties}
             >
-              {/* tabIndex -1: clicar num slide lateral para centralizá-lo é uma
-                  conveniência de mouse redundante — pelo teclado as setas e o
-                  ← → na região já fazem o mesmo. Sem isso, cada galeria somaria
-                  um tab stop por imagem, e a LP tem três galerias. */}
+              {/* tabIndex -1 nos slides: centralizar por clique é conveniência de
+                  mouse redundante (as setas e o ← → na região fazem o mesmo), e
+                  sem isso cada galeria somaria um tab stop por imagem. A exceção
+                  é quando há ampliação: aí o slide central fica focável, para o
+                  teclado também conseguir abrir a planta. */}
               <button
                 type="button"
                 className="im-carrossel-slide-botao"
-                tabIndex={-1}
-                onClick={() => emblaApi?.scrollTo(indice)}
-                aria-label={imagem.ambiente ?? `Imagem ${indice + 1} de ${imagens.length}`}
+                tabIndex={aoAmpliar && indice === indiceSelecionado ? 0 : -1}
+                onClick={() => {
+                  if (aoAmpliar && indice === indiceSelecionado) aoAmpliar(indice);
+                  else emblaApi?.scrollTo(indice);
+                }}
+                aria-label={
+                  aoAmpliar && indice === indiceSelecionado
+                    ? `Ampliar ${imagem.ambiente ?? `imagem ${indice + 1}`}`
+                    : (imagem.ambiente ?? `Imagem ${indice + 1} de ${imagens.length}`)
+                }
               >
+                {/* Sem loading="lazy": medido no navegador que imagens lazy dentro
+                    do overflow:hidden do viewport do Embla nunca disparam o
+                    carregamento, nem com a galeria centralizada na tela — só a
+                    primeira (eager) aparecia. Galeria é conteúdo principal e
+                    finita, então carrega tudo; `fetchPriority` baixo nas demais
+                    evita competir com a capa do hero (LCP). */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagem.url}
                   alt={imagem.ambiente ?? ""}
-                  loading={primeiraEager && indice === 0 ? "eager" : "lazy"}
+                  decoding="async"
+                  fetchPriority={primeiraEager && indice === 0 ? "high" : "low"}
                 />
               </button>
             </div>

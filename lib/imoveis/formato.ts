@@ -39,6 +39,32 @@ export function formatarPrecoAPartir(valor: number | null): string | null {
   return brl(valor);
 }
 
+/**
+ * ID do vídeo a partir das formas que o corretor pode colar no cadastro:
+ * youtube.com/watch?v=ID, youtu.be/ID, /embed/ID, /shorts/ID — ou o ID puro.
+ * Retorna null quando não reconhece, e a seção de vídeo some da LP.
+ */
+export function extrairIdYoutube(url: string | null): string | null {
+  if (!url) return null;
+  const texto = url.trim();
+  if (!texto) return null;
+
+  // ID puro (11 caracteres do padrão do YouTube)
+  if (/^[\w-]{11}$/.test(texto)) return texto;
+
+  const padroes = [
+    /[?&]v=([\w-]{11})/,
+    /youtu\.be\/([\w-]{11})/,
+    /\/embed\/([\w-]{11})/,
+    /\/shorts\/([\w-]{11})/,
+  ];
+  for (const padrao of padroes) {
+    const encontrado = texto.match(padrao);
+    if (encontrado) return encontrado[1];
+  }
+  return null;
+}
+
 const FASE_LABEL: Record<string, string> = {
   pre_lancamento: "Pré-lançamento",
   lancamento: "Lançamento",

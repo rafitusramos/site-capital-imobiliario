@@ -67,18 +67,25 @@
    --------------------------------------------------------------------- */
 .im-carrossel{position:relative;margin:var(--s5) 0;}
 .im-carrossel:focus-visible{outline:3px solid var(--bronze);outline-offset:6px;}
-.im-carrossel-viewport{overflow:hidden;padding:0 8%;}
-@media(min-width:768px){.im-carrossel-viewport{padding:0 18%;}}
-@media(min-width:1024px){.im-carrossel-viewport{padding:0 26%;}}
-.im-carrossel-trilho{display:flex;touch-action:pan-y pinch-zoom;}
+/* O padding vertical abre espaço para a central ampliada (1.5x): o transform
+   não ocupa espaço no layout, então sem essa folga o overflow:hidden cortaria
+   o topo e a base da imagem em destaque. */
+.im-carrossel-viewport{overflow:hidden;padding:clamp(36px,4.5vw,64px) 8%;}
+@media(min-width:768px){.im-carrossel-viewport{padding-left:18%;padding-right:18%;}}
+@media(min-width:1024px){.im-carrossel-viewport{padding-left:26%;padding-right:26%;}}
+.im-carrossel-trilho{display:flex;touch-action:pan-y pinch-zoom;align-items:center;}
 .im-carrossel-slide{
-  flex:0 0 85%;min-width:0;padding:0 8px;
+  position:relative;
+  /* Base menor que a original: a central cresce 1.5x sobre as vizinhas e
+     precisa caber na área útil do viewport. */
+  flex:0 0 60%;min-width:0;padding:0 8px;
   transform:scale(var(--escala,1));opacity:var(--opacidade,1);
+  z-index:var(--z,0);
   transition:transform .3s ease-out,opacity .3s ease-out;
   will-change:transform,opacity;
 }
-@media(min-width:768px){.im-carrossel-slide{flex-basis:60%;}}
-@media(min-width:1024px){.im-carrossel-slide{flex-basis:45%;}}
+@media(min-width:768px){.im-carrossel-slide{flex-basis:50%;}}
+@media(min-width:1024px){.im-carrossel-slide{flex-basis:40%;}}
 @media(prefers-reduced-motion:reduce){.im-carrossel-slide{transition:none;}}
 
 .im-carrossel-slide-botao{
@@ -106,9 +113,16 @@
 /* ---------------------------------------------------------------------
    LANDING PAGE DO EMPREENDIMENTO
    --------------------------------------------------------------------- */
-/* Capa do hero. z-index:0 fica sob o overlay .hero::after (lp.css), que é
-   conteúdo gerado e por isso pinta depois, mantendo o texto legível. */
-.im-hero-capa{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+/* ---- Hero da LP ----
+   Fundo preto sólido com a foto a 30% por cima: contraste máximo com o texto
+   branco. O véu verde do .hero::after (lp.css, compartilhado com as LPs de
+   crédito) é neutralizado só aqui, senão escureceria duas vezes. */
+.im-hero{background:#000;padding:32px 0;}
+.im-hero::after{background:transparent;}
+.im-hero-capa{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.3;}
+
+/* Seções da LP: 24px de respiro vertical (sobrescreve os 36px do lp.css). */
+.im-lp-com-barra section{padding:24px 0;}
 
 .im-hero-fatos{display:flex;flex-wrap:wrap;gap:22px;margin-top:var(--s4);}
 .im-hero-fatos .im-fato{display:flex;align-items:center;gap:8px;font-family:var(--sans);font-size:14px;color:rgba(252,250,244,.9);}
@@ -116,7 +130,9 @@
 .im-hero-preco{font-family:var(--display);font-weight:400;font-size:clamp(24px,4vw,32px);color:var(--branco);margin-top:var(--s3);}
 .im-hero-preco small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--areia);}
 
-.im-projeto{font-family:var(--texto);font-size:17px;line-height:1.75;color:#2a2f2c;white-space:pre-line;}
+/* Archivo (--sans) em vez da serifada: decisão do Rafael, lê melhor nos
+   blocos descritivos longos do projeto e das unidades. */
+.im-projeto{font-family:var(--sans);font-size:17px;line-height:1.75;color:#2a2f2c;white-space:pre-line;}
 
 /* ---- Fase da obra: timeline com cor + ícone + texto, nunca só cor ---- */
 .im-fases{display:flex;gap:0;margin-top:var(--s5);counter-reset:fase;}
@@ -144,6 +160,32 @@
   .im-fase-rotulo{margin-top:0;margin-left:14px;}
 }
 
+/* ---- Vídeo do empreendimento ---- */
+.im-video{position:relative;width:100%;aspect-ratio:16/9;margin-top:var(--s4);border-radius:8px;overflow:hidden;background:var(--abissal);box-shadow:0 16px 40px -18px rgba(10,36,28,.4);}
+.im-video iframe{position:absolute;inset:0;width:100%;height:100%;border:0;}
+
+/* ---- Mapa: prévia clicável ----
+   O iframe fica sem eventos de ponteiro e um link transparente cobre tudo, para
+   o clique abrir o Maps numa aba nova em vez de navegar dentro do iframe. */
+.im-mapa{position:relative;width:100%;aspect-ratio:16/9;max-height:420px;margin-top:var(--s4);border-radius:8px;overflow:hidden;border:1px solid rgba(10,36,28,.14);box-shadow:0 10px 26px -18px rgba(10,36,28,.35);}
+.im-mapa iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none;filter:grayscale(.15);}
+.im-mapa-link{position:absolute;inset:0;z-index:1;display:flex;align-items:flex-end;justify-content:center;padding:16px;text-decoration:none;background:linear-gradient(to top,rgba(10,36,28,.45),transparent 45%);transition:background .18s ease;}
+.im-mapa-link:hover{background:linear-gradient(to top,rgba(10,36,28,.6),transparent 55%);}
+.im-mapa-link span{font-family:var(--sans);font-weight:600;font-size:13.5px;color:var(--branco);background:rgba(10,36,28,.85);border-radius:20px;padding:10px 18px;}
+
+/* ---- Planta ampliada (lightbox) ---- */
+.im-planta-scrim{position:fixed;inset:0;z-index:140;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(23,26,23,.55);}
+.im-planta-caixa{position:relative;max-width:min(960px,100%);max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px;}
+.im-planta-caixa img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:8px;background:var(--branco);box-shadow:0 24px 60px -20px rgba(0,0,0,.5);}
+.im-planta-legenda{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--branco);}
+.im-planta-fechar{position:absolute;top:-12px;right:-12px;z-index:2;width:44px;height:44px;border-radius:50%;border:none;background:var(--branco);color:var(--abissal);font-family:var(--mono);font-size:24px;line-height:1;cursor:pointer;box-shadow:0 8px 20px -8px rgba(0,0,0,.5);}
+.im-planta-fechar:hover{background:var(--areia);}
+
+/* ---- Realização: logo centralizado, nome abaixo ---- */
+.im-realizacao-centro{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;margin-top:var(--s4);}
+.im-realizacao-centro img{max-height:72px;width:auto;object-fit:contain;}
+.im-realizacao-centro span{font-family:var(--display);font-size:22px;color:var(--abissal);}
+
 /* ---- Lazer: checklist ---- */
 .im-lazer{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:var(--s5);}
 .im-lazer-item{display:flex;align-items:center;gap:12px;font-family:var(--sans);font-size:14.5px;color:var(--abissal);}
@@ -164,6 +206,14 @@
 .im-realizacao{display:flex;align-items:center;gap:20px;margin-top:var(--s4);}
 .im-realizacao img{max-height:56px;width:auto;object-fit:contain;}
 .im-realizacao span{font-family:var(--display);font-size:20px;color:var(--abissal);}
+
+/* ---- CTA final: dois caminhos (falar com corretor / simular) ---- */
+.im-cta-final-acoes{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;}
+.im-cta-final-acoes .cta{margin:0;}
+/* Secundária: mesma forma do CTA, peso visual menor — só um primário por tela. */
+.im-cta-final-acoes .cta-secundaria{background:transparent;color:var(--branco);border:1px solid rgba(252,250,244,.5);box-shadow:none;}
+.im-cta-final-acoes .cta-secundaria::after{background:var(--branco);}
+.im-cta-final-acoes .cta-secundaria:hover{background:rgba(252,250,244,.12);border-color:var(--branco);}
 
 /* ---- Barra de CTA fixa (mobile) ---- */
 .im-barra-cta{

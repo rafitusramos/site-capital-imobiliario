@@ -21,7 +21,9 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
   const area = formatarFaixaArea(imovel.area_min, imovel.area_max);
   const dormitorios = formatarFaixaDormitorios(imovel.dormitorios_min, imovel.dormitorios_max);
   const vagas = formatarFaixaVagas(imovel.vagas_min, imovel.vagas_max);
-  const preco = formatarPrecoAPartir(imovel.valor_a_partir_de);
+  const preco = imovel.valor_sob_consulta
+    ? null
+    : formatarPrecoAPartir(imovel.valor_a_partir_de);
 
   const local = [imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
 
@@ -63,7 +65,9 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
           ) : null}
         </div>
 
-        {preco ? (
+        {imovel.valor_sob_consulta ? (
+          <div className="im-preco">Sob consulta</div>
+        ) : preco ? (
           <div className="im-preco">
             <small>A partir de</small>
             {preco}

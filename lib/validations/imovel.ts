@@ -69,7 +69,10 @@ export const imovelFormSchema = z
     vagas_max: inteiroOpcional,
 
     valor_a_partir_de: numeroOpcional,
+    valor_sob_consulta: z.boolean().default(false),
     previsao_entrega: opcional,
+
+    video_youtube_url: opcional,
 
     construtora: opcional,
     construtora_logo_url: opcional,

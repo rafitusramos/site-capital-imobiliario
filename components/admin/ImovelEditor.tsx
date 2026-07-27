@@ -82,7 +82,9 @@ type ValoresDados = {
   vagas_min: string;
   vagas_max: string;
   valor_a_partir_de: string;
+  valor_sob_consulta: boolean;
   previsao_entrega: string;
+  video_youtube_url: string;
   construtora: string;
   construtora_logo_url: string;
   descricao_breve: string;
@@ -113,7 +115,9 @@ function valoresIniciaisDados(imovel: ImovelComColecoesAdmin | null): ValoresDad
     vagas_min: imovel?.vagas_min?.toString() ?? "",
     vagas_max: imovel?.vagas_max?.toString() ?? "",
     valor_a_partir_de: imovel?.valor_a_partir_de?.toString() ?? "",
+    valor_sob_consulta: imovel?.valor_sob_consulta ?? false,
     previsao_entrega: imovel?.previsao_entrega ?? "",
+    video_youtube_url: imovel?.video_youtube_url ?? "",
     construtora: imovel?.construtora ?? "",
     construtora_logo_url: imovel?.construtora_logo_url ?? "",
     descricao_breve: imovel?.descricao_breve ?? "",
@@ -190,7 +194,9 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
       vagas_min: paraNumeroOuNull(valoresDados.vagas_min),
       vagas_max: paraNumeroOuNull(valoresDados.vagas_max),
       valor_a_partir_de: paraNumeroOuNull(valoresDados.valor_a_partir_de),
+      valor_sob_consulta: valoresDados.valor_sob_consulta,
       previsao_entrega: valoresDados.previsao_entrega,
+      video_youtube_url: valoresDados.video_youtube_url,
       construtora: valoresDados.construtora,
       construtora_logo_url: valoresDados.construtora_logo_url,
       descricao_breve: valoresDados.descricao_breve,
@@ -756,8 +762,17 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                     id="valor_a_partir_de"
                     value={valoresDados.valor_a_partir_de}
                     onChange={(e) => setCampoDados("valor_a_partir_de", e.target.value)}
-                    className={CAMPO}
+                    disabled={valoresDados.valor_sob_consulta}
+                    className={`${CAMPO} disabled:bg-neutral-100 disabled:text-neutral-400`}
                   />
+                  <label className="-mt-2 mb-4 flex items-center gap-2 text-sm text-[var(--abissal)]">
+                    <input
+                      type="checkbox"
+                      checked={valoresDados.valor_sob_consulta}
+                      onChange={(e) => setCampoDados("valor_sob_consulta", e.target.checked)}
+                    />
+                    Sob consulta (não exibe o valor na página)
+                  </label>
                 </div>
                 <div>
                   <label className={LABEL} htmlFor="previsao_entrega">
@@ -772,6 +787,17 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   />
                 </div>
               </div>
+
+              <label className={LABEL} htmlFor="video_youtube_url">
+                Vídeo do YouTube (opcional)
+              </label>
+              <input
+                id="video_youtube_url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={valoresDados.video_youtube_url}
+                onChange={(e) => setCampoDados("video_youtube_url", e.target.value)}
+                className={CAMPO}
+              />
 
               <label className={LABEL} htmlFor="ordem">
                 Ordem no índice (menor aparece primeiro)
