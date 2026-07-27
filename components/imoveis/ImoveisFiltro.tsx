@@ -35,11 +35,6 @@ export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
   const [filtroFase, setFiltroFase] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
 
-  const fases = useMemo(() => {
-    const vistas = new Set(imoveis.map((imovel) => imovel.fase));
-    return ORDEM_FASES.filter((fase) => vistas.has(fase));
-  }, [imoveis]);
-
   const tipos = useMemo(() => {
     const vistos = new Set(imoveis.map((imovel) => imovel.tipo));
     return ORDEM_TIPOS.filter((tipo) => vistos.has(tipo));
@@ -101,19 +96,54 @@ export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
     });
   }, [imoveis, filtroFase, filtroTipo, filtroCidade, filtroQuartos, filtroValor]);
 
+  const algumFiltroAtivo = Boolean(
+    filtroFase || filtroTipo || filtroCidade || filtroQuartos || filtroValor,
+  );
+
   function mensagemVazio(): string {
-    const algumFiltroAtivo =
-      filtroFase || filtroTipo || filtroCidade || filtroQuartos || filtroValor;
     if (algumFiltroAtivo) {
       return "Nenhum empreendimento encontrado com esses filtros.";
     }
     return "Nenhum empreendimento em lançamento no momento.";
   }
 
+  function limparFiltros() {
+    setFiltroCidade("");
+    setFiltroQuartos("");
+    setFiltroValor("");
+    setFiltroFase(null);
+    setFiltroTipo(null);
+  }
+
   return (
     <>
       <section className="im-filtros-secao">
         <div className="wrap">
+          <div className="im-filtros">
+            {/* Sempre mostra as 4 fases, independentemente das existentes nos
+                imóveis publicados — o corretor pode cadastrar um lançamento
+                em qualquer fase a qualquer momento. */}
+            <div className="blog-filtro" role="group" aria-label="Filtrar por fase da obra">
+              <button
+                type="button"
+                className={filtroFase === null ? "ativo" : undefined}
+                onClick={() => setFiltroFase(null)}
+              >
+                Todos os tipos
+              </button>
+              {ORDEM_FASES.map((fase) => (
+                <button
+                  key={fase}
+                  type="button"
+                  className={filtroFase === fase ? "ativo" : undefined}
+                  onClick={() => setFiltroFase(fase)}
+                >
+                  {formatarFase(fase)}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="im-filtros-selects">
             <div className="im-filtro-campo">
               <label htmlFor="filtro-cidade">Cidade</label>
@@ -162,31 +192,18 @@ export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
                 ))}
               </select>
             </div>
+
+            <button
+              type="button"
+              className="im-limpar-filtros"
+              onClick={limparFiltros}
+              disabled={!algumFiltroAtivo}
+            >
+              Limpar filtros
+            </button>
           </div>
 
           <div className="im-filtros">
-            {fases.length > 1 ? (
-              <div className="blog-filtro" role="group" aria-label="Filtrar por fase da obra">
-                <button
-                  type="button"
-                  className={filtroFase === null ? "ativo" : undefined}
-                  onClick={() => setFiltroFase(null)}
-                >
-                  Todas as fases
-                </button>
-                {fases.map((fase) => (
-                  <button
-                    key={fase}
-                    type="button"
-                    className={filtroFase === fase ? "ativo" : undefined}
-                    onClick={() => setFiltroFase(fase)}
-                  >
-                    {formatarFase(fase)}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-
             {tipos.length > 1 ? (
               <div className="blog-filtro" role="group" aria-label="Filtrar por tipo de empreendimento">
                 <button

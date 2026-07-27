@@ -6,10 +6,13 @@ import { useEffect, useRef } from "react";
  * Vídeo de fundo do hero da home de imóveis. Cliente porque depende de APIs
  * de browser (matchMedia, IntersectionObserver) que não existem no server.
  *
- * Duas economias: usuários com prefers-reduced-motion nunca veem o vídeo
- * rodar (fica parado no primeiro quadro), e o vídeo pausa assim que sai da
- * viewport — o arquivo tem 8MB, não faz sentido gastar bateria/dados com ele
- * rolando fora de vista.
+ * O `poster` é um quadro do próprio vídeo: pinta na hora, enquanto o mp4
+ * carrega, e a troca para o vídeo é imperceptível por ser a mesma cena. Por
+ * isso o elemento **não** entra com opacity:0 — isso esconderia o poster, que
+ * é justamente o que resolve o hero vazio dos primeiros instantes.
+ *
+ * Duas economias: quem tem prefers-reduced-motion nunca vê o vídeo rodar (fica
+ * no poster/primeiro quadro), e o vídeo pausa assim que sai da viewport.
  */
 export function HeroVideo() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -51,11 +54,12 @@ export function HeroVideo() {
     <video
       ref={videoRef}
       className="im-hero-video"
-      src="/hero-imoveis.mp4"
+      src="/hero-imoveis-1280.mp4"
+      poster="/hero-imoveis-poster.jpg"
       loop
       muted
       playsInline
-      preload="metadata"
+      preload="auto"
       aria-hidden="true"
     />
   );

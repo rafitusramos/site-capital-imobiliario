@@ -253,12 +253,14 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               <div className="eyebrow reveal">Vídeo</div>
               <h2 className="reveal d1">Conheça em movimento</h2>
               <div className="im-video reveal d2">
+                {/* O YouTube não permite escolher botões individualmente: ou a
+                    barra inteira ou nenhuma (controls=0). Estes parâmetros são
+                    o mínimo alcançável sem construir um player próprio. */}
                 <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${idVideo}`}
+                  src={`https://www.youtube-nocookie.com/embed/${idVideo}?rel=0&modestbranding=1&fs=0&disablekb=1&iv_load_policy=3`}
                   title={`Vídeo do ${imovel.titulo}`}
                   loading="lazy"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
                 />
               </div>
             </div>

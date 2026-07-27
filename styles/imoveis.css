@@ -9,7 +9,7 @@
 /* ---------------------------------------------------------------------
    HERO DA HOME /imoveis/ — vídeo de fundo, título e sub centralizados
    --------------------------------------------------------------------- */
-.im-hero-home{padding:24px 0;}
+.im-hero-home{padding:36px 0;background:var(--abissal);}
 /* .hero h1 do lp.css tem max-width:17ch; aqui o título ocupa a largura toda. */
 .im-hero-home h1{max-width:none;text-align:center;margin-left:auto;margin-right:auto;}
 .im-hero-home h1::after{margin-left:auto;margin-right:auto;}
@@ -17,6 +17,11 @@
    Archivo, sem itálico, e acompanha o título centralizado. */
 .im-hero-home .sub{max-width:none;font-family:var(--sans);font-style:normal;text-align:center;margin-left:auto;margin-right:auto;}
 
+/* Sem opacity:0 aqui de propósito: o elemento pinta o `poster` (um quadro do
+   próprio vídeo) já no primeiro frame da página, e escondê-lo anularia o
+   ganho. A transição poster -> vídeo é imperceptível por ser a mesma cena.
+   O background:var(--abissal) do .im-hero-home cobre o instante anterior ao
+   poster carregar. */
 .im-hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
 /* .hero::after do lp.css é um véu verde-escuro (rgba(10,36,28,.70)) pensado
    para o fundo estático das outras heros; sobre o vídeo isso lava demais a
@@ -28,13 +33,30 @@
    --------------------------------------------------------------------- */
 .im-filtros-secao{padding:24px 0;background:var(--marfim);}
 
-.im-filtros-selects{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:var(--s4);}
+/* Os três blocos (chips de fase, selects, chips de tipo) ficam centralizados
+   horizontalmente. `.blog-filtro` vem de styles/blog.css (compartilhado com
+   o blog) — centralizamos aqui com um seletor mais específico em vez de
+   editar aquele arquivo. */
+.im-filtros-secao .blog-filtro{justify-content:center;}
+
+.im-filtros-selects{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:var(--s4);}
 .im-filtro-campo{display:flex;flex-direction:column;gap:6px;}
 .im-filtro-campo label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5b615d;}
 .im-filtro-campo select{
   min-height:44px;padding:0 14px;border-radius:6px;border:1px solid rgba(10,36,28,.18);
   background:var(--branco);color:var(--tinta);font-family:var(--sans);font-size:14px;
 }
+
+/* Botão discreto: não pode competir com os CTAs verdes do site. Alinhado à
+   altura dos selects (44px) e desabilitado de verdade quando não há filtro
+   ativo, para não deixar um controle morto na tela. */
+.im-limpar-filtros{
+  min-height:44px;padding:0 16px;border-radius:6px;border:1px solid rgba(10,36,28,.18);
+  background:transparent;color:var(--abissal);font-family:var(--sans);font-size:14px;cursor:pointer;
+  transition:border-color .18s ease;
+}
+.im-limpar-filtros:hover:not(:disabled){border-color:rgba(10,36,28,.4);}
+.im-limpar-filtros:disabled{opacity:.5;cursor:not-allowed;}
 
 .im-filtros{display:flex;flex-direction:column;gap:14px;margin-bottom:var(--s5);}
 
