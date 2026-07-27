@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getImoveisPublicados } from "@/lib/queries/imoveis";
 import { ImoveisFiltro } from "@/components/imoveis/ImoveisFiltro";
+import { HeroVideo } from "@/components/imoveis/HeroVideo";
 
 export const revalidate = 3600;
 
@@ -18,10 +19,10 @@ export default async function ImoveisIndicePage() {
 
   return (
     <>
-      <header className="hero" id="topo">
+      <header className="hero im-hero-home" id="topo">
+        <HeroVideo />
         <div className="wrap">
-          <div className="eyebrow reveal">Empreendimentos em lançamento</div>
-          <h1 className="reveal d1">Imóveis novos em Vinhedo e região</h1>
+          <h1 className="reveal d1">Lançamentos e imóveis prontos para morar</h1>
           <p className="sub reveal d2">
             Apartamentos, vilas de casas e loteamentos com informação completa de fase de
             obra, plantas e condições de pagamento.
@@ -29,11 +30,7 @@ export default async function ImoveisIndicePage() {
         </div>
       </header>
 
-      <section>
-        <div className="wrap">
-          <ImoveisFiltro imoveis={imoveis} />
-        </div>
-      </section>
+      <ImoveisFiltro imoveis={imoveis} />
     </>
   );
 }

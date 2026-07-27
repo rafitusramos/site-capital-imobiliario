@@ -56,8 +56,10 @@ export async function getImoveisPublicados(): Promise<ImovelComCapa[]> {
     .from("imoveis")
     .select(SELECT_COM_IMAGENS)
     .eq("status", "ativo")
+    // Ordem no índice (admin) é o critério primário; dentro dela, o Rafael
+    // quer os cards em ordem crescente de data de cadastro.
     .order("ordem", { ascending: true })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: true });
 
   if (error) throw error;
   const imoveis = (data ?? []) as unknown as (Imovel & { imagens: ImovelImagem[] })[];

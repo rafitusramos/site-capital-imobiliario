@@ -66,7 +66,7 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
         </div>
 
         {imovel.valor_sob_consulta ? (
-          <div className="im-preco">Sob consulta</div>
+          <div className="im-preco">Preço: Sob consulta</div>
         ) : preco ? (
           <div className="im-preco">
             <small>A partir de</small>

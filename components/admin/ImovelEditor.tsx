@@ -16,6 +16,7 @@ import {
   type SalvarImovelInput,
 } from "@/app/actions/admin-imoveis";
 import { slugify } from "@/lib/blog/slugify";
+import { mascaraMoeda } from "@/lib/mascaras";
 import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
 import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/lib/validations/imovel";
 import type {
@@ -51,6 +52,22 @@ function paraNumeroOuNull(valor: string): number | null {
   if (t === "") return null;
   const n = Number(t.replace(",", "."));
   return Number.isNaN(n) ? null : n;
+}
+
+/**
+ * Campos monetários do cadastro. Diferente de `paraNumeroOuNull`, lê só os
+ * dígitos — assim o texto mascarado ("R$ 445.000") volta a ser 445000 — e
+ * devolve null quando não sobra dígito nenhum (campo apagado), em vez de 0.
+ */
+function paraMoedaOuNull(valor: string): number | null {
+  const digitos = valor.replace(/\D/g, "");
+  return digitos === "" ? null : Number(digitos);
+}
+
+/** Número do banco -> texto mascarado do input. Os preços aqui são reais inteiros. */
+function moedaParaCampo(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return "";
+  return mascaraMoeda(String(Math.round(valor)));
 }
 
 function paraInteiro(valor: string, padrao = 0): number {
@@ -114,7 +131,7 @@ function valoresIniciaisDados(imovel: ImovelComColecoesAdmin | null): ValoresDad
     banheiros_max: imovel?.banheiros_max?.toString() ?? "",
     vagas_min: imovel?.vagas_min?.toString() ?? "",
     vagas_max: imovel?.vagas_max?.toString() ?? "",
-    valor_a_partir_de: imovel?.valor_a_partir_de?.toString() ?? "",
+    valor_a_partir_de: moedaParaCampo(imovel?.valor_a_partir_de),
     valor_sob_consulta: imovel?.valor_sob_consulta ?? false,
     previsao_entrega: imovel?.previsao_entrega ?? "",
     video_youtube_url: imovel?.video_youtube_url ?? "",
@@ -193,7 +210,7 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
       banheiros_max: paraNumeroOuNull(valoresDados.banheiros_max),
       vagas_min: paraNumeroOuNull(valoresDados.vagas_min),
       vagas_max: paraNumeroOuNull(valoresDados.vagas_max),
-      valor_a_partir_de: paraNumeroOuNull(valoresDados.valor_a_partir_de),
+      valor_a_partir_de: paraMoedaOuNull(valoresDados.valor_a_partir_de),
       valor_sob_consulta: valoresDados.valor_sob_consulta,
       previsao_entrega: valoresDados.previsao_entrega,
       video_youtube_url: valoresDados.video_youtube_url,
@@ -760,8 +777,10 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   </label>
                   <input
                     id="valor_a_partir_de"
+                    inputMode="numeric"
+                    placeholder="R$ 445.000"
                     value={valoresDados.valor_a_partir_de}
-                    onChange={(e) => setCampoDados("valor_a_partir_de", e.target.value)}
+                    onChange={(e) => setCampoDados("valor_a_partir_de", mascaraMoeda(e.target.value))}
                     disabled={valoresDados.valor_sob_consulta}
                     className={`${CAMPO} disabled:bg-neutral-100 disabled:text-neutral-400`}
                   />
@@ -1094,11 +1113,12 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   />
                   <input
                     aria-label="Valor a partir de"
-                    placeholder="Valor a partir de"
-                    value={tipologia.valor_a_partir_de ?? ""}
+                    placeholder="R$ 445.000"
+                    inputMode="numeric"
+                    value={moedaParaCampo(tipologia.valor_a_partir_de)}
                     onChange={(e) =>
                       atualizarTipologia(tipologia.chaveLocal, {
-                        valor_a_partir_de: paraNumeroOuNull(e.target.value),
+                        valor_a_partir_de: paraMoedaOuNull(e.target.value),
                       })
                     }
                     className={`${CAMPO_INLINE} sm:col-span-2`}

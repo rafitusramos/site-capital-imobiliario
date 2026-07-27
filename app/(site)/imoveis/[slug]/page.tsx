@@ -221,7 +221,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             </div>
 
             {imovel.valor_sob_consulta ? (
-              <div className="im-hero-preco reveal d3">Sob consulta</div>
+              <div className="im-hero-preco reveal d3">Preço: Sob consulta</div>
             ) : precoFormatado ? (
               <div className="im-hero-preco reveal d3">
                 <small>A partir de</small>
@@ -389,10 +389,18 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                           </td>
                           <td data-label="Banheiros">{tipologia.banheiros ?? "—"}</td>
                           <td data-label="Vagas">{tipologia.vagas ?? "—"}</td>
+                          {/* O quadro de áreas herda a marcação do empreendimento:
+                              com "sob consulta" ligado, nenhuma tipologia mostra
+                              preço. Aqui não repete "Preço:" porque a própria
+                              coluna já se chama "A partir de". */}
                           <td data-label="A partir de">
-                            <span className="mono-num">
-                              {formatarPrecoAPartir(tipologia.valor_a_partir_de) ?? "—"}
-                            </span>
+                            {imovel.valor_sob_consulta ? (
+                              "Sob consulta"
+                            ) : (
+                              <span className="mono-num">
+                                {formatarPrecoAPartir(tipologia.valor_a_partir_de) ?? "—"}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -533,7 +541,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
       <div className="im-barra-cta">
         <div className="preco">
           {precoFormatado ? <small>A partir de</small> : null}
-          <strong>{precoFormatado ?? "Sob consulta"}</strong>
+          <strong>{precoFormatado ?? "Preço: Sob consulta"}</strong>
         </div>
         <button type="button" className="cta" data-abrir-lead="Fale com um corretor agora">
           Fale conosco

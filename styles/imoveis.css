@@ -7,8 +7,35 @@
    =================================================================== */
 
 /* ---------------------------------------------------------------------
+   HERO DA HOME /imoveis/ — vídeo de fundo, título e sub centralizados
+   --------------------------------------------------------------------- */
+.im-hero-home{padding:24px 0;}
+/* .hero h1 do lp.css tem max-width:17ch; aqui o título ocupa a largura toda. */
+.im-hero-home h1{max-width:none;text-align:center;margin-left:auto;margin-right:auto;}
+.im-hero-home h1::after{margin-left:auto;margin-right:auto;}
+/* .hero .sub do lp.css é serifado/itálico com max-width:52ch — a home usa
+   Archivo, sem itálico, e acompanha o título centralizado. */
+.im-hero-home .sub{max-width:none;font-family:var(--sans);font-style:normal;text-align:center;margin-left:auto;margin-right:auto;}
+
+.im-hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;}
+/* .hero::after do lp.css é um véu verde-escuro (rgba(10,36,28,.70)) pensado
+   para o fundo estático das outras heros; sobre o vídeo isso lava demais a
+   cena, então aqui o véu vira preto a 30%. */
+.im-hero-home::after{background:rgba(0,0,0,.30);}
+
+/* ---------------------------------------------------------------------
    ÍNDICE /imoveis/ — filtro e grid de cards
    --------------------------------------------------------------------- */
+.im-filtros-secao{padding:24px 0;background:var(--marfim);}
+
+.im-filtros-selects{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:var(--s4);}
+.im-filtro-campo{display:flex;flex-direction:column;gap:6px;}
+.im-filtro-campo label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5b615d;}
+.im-filtro-campo select{
+  min-height:44px;padding:0 14px;border-radius:6px;border:1px solid rgba(10,36,28,.18);
+  background:var(--branco);color:var(--tinta);font-family:var(--sans);font-size:14px;
+}
+
 .im-filtros{display:flex;flex-direction:column;gap:14px;margin-bottom:var(--s5);}
 
 .im-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
