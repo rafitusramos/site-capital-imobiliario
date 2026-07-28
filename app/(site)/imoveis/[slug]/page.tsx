@@ -117,7 +117,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const IconeDormitorio = obterIcone("dormitorio");
   const IconeVaga = obterIcone("vaga");
 
-  const indiceFaseAtual = ORDEM_FASES.indexOf(imovel.fase);
+  const indiceFaseAtual = ORDEM_FASES.indexOf(imovel.fase.slug as (typeof ORDEM_FASES)[number]);
 
   // Teto de preço e nº de ofertas saem das tipologias — o Search Console avisa
   // quando um AggregateOffer traz só lowPrice.
@@ -189,13 +189,13 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             <img className="im-hero-capa" src={capa} alt="" fetchPriority="high" />
           ) : null}
           <div className="wrap">
-            <span className="im-badge-fase im-badge-fase--inline" data-fase={imovel.fase}>
-              {formatarFase(imovel.fase)}
+            <span className="im-badge-fase im-badge-fase--inline" data-fase={imovel.fase.slug}>
+              {imovel.fase.nome}
             </span>
             <h1 className="reveal d1">{imovel.titulo}</h1>
             {local ? (
               <p className="sub reveal d2">
-                {formatarFase(imovel.fase)} em {local}
+                {imovel.fase.nome} em {local}
               </p>
             ) : null}
 
@@ -291,7 +291,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               {ORDEM_FASES.map((fase) => {
                 const indiceFase = ORDEM_FASES.indexOf(fase);
                 const feita = indiceFase < indiceFaseAtual;
-                const atual = fase === imovel.fase;
+                const atual = fase === imovel.fase.slug;
                 return (
                   <li
                     key={fase}

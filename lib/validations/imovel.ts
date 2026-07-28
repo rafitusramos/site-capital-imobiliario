@@ -50,8 +50,8 @@ export const imovelFormSchema = z
       .trim()
       .min(3, "Informe um slug.")
       .regex(SLUG_REGEX, "Use apenas letras minúsculas, números e hífens (kebab-case)."),
-    tipo: z.enum(["apartamento", "vila", "loteamento"]),
-    fase: z.enum(["pre_lancamento", "lancamento", "em_construcao", "pronto"]),
+    tipo_id: z.string().uuid("Selecione o tipo do imóvel."),
+    fase_id: z.string().uuid("Selecione a fase do imóvel."),
 
     bairro: opcional,
     cidade: opcional,

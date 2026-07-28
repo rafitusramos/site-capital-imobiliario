@@ -18,13 +18,9 @@ import {
 import { slugify } from "@/lib/blog/slugify";
 import { mascaraMoeda } from "@/lib/mascaras";
 import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
+import type { ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/lib/validations/imovel";
-import type {
-  ImovelTipo,
-  ImovelFase,
-  ImovelImagemGrupo,
-  ImovelDiferencialGrupo,
-} from "@/types/database";
+import type { ImovelImagemGrupo, ImovelDiferencialGrupo } from "@/types/database";
 import { listaDeIcones, obterIcone } from "@/components/imoveis/icones";
 
 const CAMPO =
@@ -83,8 +79,8 @@ function idTemporario(): string {
 type ValoresDados = {
   titulo: string;
   slug: string;
-  tipo: ImovelTipo;
-  fase: ImovelFase;
+  tipo_id: string;
+  fase_id: string;
   bairro: string;
   cidade: string;
   estado: string;
@@ -112,12 +108,26 @@ type ValoresDados = {
   ordem: string;
 };
 
-function valoresIniciaisDados(imovel: ImovelComColecoesAdmin | null): ValoresDados {
+/**
+ * Empreendimento novo (imovel === null) nasce com tipo "Apartamento" e fase
+ * "Lançamento" pré-selecionados, quando essas opções existem — o mesmo
+ * default de antes da normalização em tabela. Se a opção não existir mais
+ * (desativada), cai para a primeira da lista.
+ */
+function idPadrao(opcoes: { id: string; slug: string }[], slugPreferido: string): string {
+  return opcoes.find((opcao) => opcao.slug === slugPreferido)?.id ?? opcoes[0]?.id ?? "";
+}
+
+function valoresIniciaisDados(
+  imovel: ImovelComColecoesAdmin | null,
+  tipos: ImovelTipoOpcao[],
+  fases: ImovelFaseOpcao[],
+): ValoresDados {
   return {
     titulo: imovel?.titulo ?? "",
     slug: imovel?.slug ?? "",
-    tipo: imovel?.tipo ?? "apartamento",
-    fase: imovel?.fase ?? "lancamento",
+    tipo_id: imovel?.tipo_id ?? idPadrao(tipos, "apartamento"),
+    fase_id: imovel?.fase_id ?? idPadrao(fases, "lancamento"),
     bairro: imovel?.bairro ?? "",
     cidade: imovel?.cidade ?? "",
     estado: imovel?.estado ?? "",
@@ -146,14 +156,22 @@ function valoresIniciaisDados(imovel: ImovelComColecoesAdmin | null): ValoresDad
   };
 }
 
-export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null }) {
+type ImovelEditorProps = {
+  imovel: ImovelComColecoesAdmin | null;
+  tipos: ImovelTipoOpcao[];
+  fases: ImovelFaseOpcao[];
+};
+
+export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   const router = useRouter();
   const [aba, setAba] = useState<AbaId>("dados");
 
   // -----------------------------------------------------------------
   // Aba 1 — Dados gerais
   // -----------------------------------------------------------------
-  const [valoresDados, setValoresDados] = useState<ValoresDados>(() => valoresIniciaisDados(imovel));
+  const [valoresDados, setValoresDados] = useState<ValoresDados>(() =>
+    valoresIniciaisDados(imovel, tipos, fases),
+  );
   const [slugTocado, setSlugTocado] = useState(Boolean(imovel));
   const [confirmaSlug, setConfirmaSlug] = useState(false);
   const [enviandoDados, setEnviandoDados] = useState<
@@ -195,8 +213,8 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
       id: imovel?.id,
       titulo: valoresDados.titulo,
       slug: valoresDados.slug,
-      tipo: valoresDados.tipo,
-      fase: valoresDados.fase,
+      tipo_id: valoresDados.tipo_id,
+      fase_id: valoresDados.fase_id,
       bairro: valoresDados.bairro,
       cidade: valoresDados.cidade,
       estado: valoresDados.estado,
@@ -615,13 +633,15 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   </label>
                   <select
                     id="tipo"
-                    value={valoresDados.tipo}
-                    onChange={(e) => setCampoDados("tipo", e.target.value as ImovelTipo)}
+                    value={valoresDados.tipo_id}
+                    onChange={(e) => setCampoDados("tipo_id", e.target.value)}
                     className={CAMPO}
                   >
-                    <option value="apartamento">Apartamento</option>
-                    <option value="vila">Vila de casas</option>
-                    <option value="loteamento">Loteamento</option>
+                    {tipos.map((tipo) => (
+                      <option key={tipo.id} value={tipo.id}>
+                        {tipo.nome}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -630,14 +650,15 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   </label>
                   <select
                     id="fase"
-                    value={valoresDados.fase}
-                    onChange={(e) => setCampoDados("fase", e.target.value as ImovelFase)}
+                    value={valoresDados.fase_id}
+                    onChange={(e) => setCampoDados("fase_id", e.target.value)}
                     className={CAMPO}
                   >
-                    <option value="pre_lancamento">Pré-lançamento</option>
-                    <option value="lancamento">Lançamento</option>
-                    <option value="em_construcao">Em construção</option>
-                    <option value="pronto">Pronto para morar</option>
+                    {fases.map((fase) => (
+                      <option key={fase.id} value={fase.id}>
+                        {fase.nome}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

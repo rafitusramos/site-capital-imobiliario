@@ -1,11 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ImovelComCapa } from "@/lib/queries/imoveis";
+import type { ImovelComCapa, ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import { ImovelCard } from "@/components/imoveis/ImovelCard";
-import { ORDEM_FASES, formatarFase, formatarTipo } from "@/lib/imoveis/formato";
-
-const ORDEM_TIPOS = ["apartamento", "vila", "loteamento"] as const;
 
 const OPCOES_QUARTOS = ["1", "2", "3", "4+"] as const;
 
@@ -21,6 +18,8 @@ const OPCOES_VALOR = [
 
 type ImoveisFiltroProps = {
   imoveis: ImovelComCapa[];
+  tipos: ImovelTipoOpcao[];
+  fases: ImovelFaseOpcao[];
 };
 
 type OpcaoCidade = {
@@ -28,17 +27,12 @@ type OpcaoCidade = {
   rotulo: string;
 };
 
-export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
+export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
   const [filtroCidade, setFiltroCidade] = useState("");
   const [filtroQuartos, setFiltroQuartos] = useState("");
   const [filtroValor, setFiltroValor] = useState("");
   const [filtroFase, setFiltroFase] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
-
-  const tipos = useMemo(() => {
-    const vistos = new Set(imoveis.map((imovel) => imovel.tipo));
-    return ORDEM_TIPOS.filter((tipo) => vistos.has(tipo));
-  }, [imoveis]);
 
   // Combinações distintas de cidade+estado entre os imóveis publicados
   // (ignorando os sem cidade), ordenadas alfabeticamente pelo rótulo. O
@@ -58,8 +52,8 @@ export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
 
   const filtrados = useMemo(() => {
     return imoveis.filter((imovel) => {
-      if (filtroFase && imovel.fase !== filtroFase) return false;
-      if (filtroTipo && imovel.tipo !== filtroTipo) return false;
+      if (filtroFase && imovel.fase?.slug !== filtroFase) return false;
+      if (filtroTipo && imovel.tipo?.slug !== filtroTipo) return false;
 
       if (filtroCidade) {
         const chave = `${imovel.cidade ?? ""}|${imovel.estado ?? ""}`;
@@ -120,9 +114,9 @@ export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
       <section className="im-filtros-secao">
         <div className="wrap">
           <div className="im-filtros">
-            {/* Sempre mostra as 4 fases, independentemente das existentes nos
-                imóveis publicados — o corretor pode cadastrar um lançamento
-                em qualquer fase a qualquer momento. */}
+            {/* Sempre mostra as fases ativas cadastradas, independentemente das
+                existentes nos imóveis publicados — o corretor pode cadastrar um
+                lançamento em qualquer fase a qualquer momento. */}
             <div className="blog-filtro" role="group" aria-label="Filtrar por fase da obra">
               <button
                 type="button"
@@ -131,14 +125,14 @@ export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
               >
                 Todos os tipos
               </button>
-              {ORDEM_FASES.map((fase) => (
+              {fases.map((fase) => (
                 <button
-                  key={fase}
+                  key={fase.id}
                   type="button"
-                  className={filtroFase === fase ? "ativo" : undefined}
-                  onClick={() => setFiltroFase(fase)}
+                  className={filtroFase === fase.slug ? "ativo" : undefined}
+                  onClick={() => setFiltroFase(fase.slug)}
                 >
-                  {formatarFase(fase)}
+                  {fase.nome}
                 </button>
               ))}
             </div>
@@ -203,28 +197,29 @@ export function ImoveisFiltro({ imoveis }: ImoveisFiltroProps) {
             </button>
           </div>
 
+          {/* Os tipos ativos aparecem sempre, como as fases acima: condicionar à
+              existência no acervo fazia a fileira sumir por completo enquanto
+              houvesse só um tipo cadastrado. */}
           <div className="im-filtros">
-            {tipos.length > 1 ? (
-              <div className="blog-filtro" role="group" aria-label="Filtrar por tipo de empreendimento">
+            <div className="blog-filtro" role="group" aria-label="Filtrar por tipo de empreendimento">
+              <button
+                type="button"
+                className={filtroTipo === null ? "ativo" : undefined}
+                onClick={() => setFiltroTipo(null)}
+              >
+                Todos os imóveis
+              </button>
+              {tipos.map((tipo) => (
                 <button
+                  key={tipo.id}
                   type="button"
-                  className={filtroTipo === null ? "ativo" : undefined}
-                  onClick={() => setFiltroTipo(null)}
+                  className={filtroTipo === tipo.slug ? "ativo" : undefined}
+                  onClick={() => setFiltroTipo(tipo.slug)}
                 >
-                  Todos os tipos
+                  {tipo.nome}
                 </button>
-                {tipos.map((tipo) => (
-                  <button
-                    key={tipo}
-                    type="button"
-                    className={filtroTipo === tipo ? "ativo" : undefined}
-                    onClick={() => setFiltroTipo(tipo)}
-                  >
-                    {formatarTipo(tipo)}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+              ))}
+            </div>
           </div>
         </div>
       </section>

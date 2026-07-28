@@ -4,7 +4,6 @@ import {
   formatarFaixaArea,
   formatarFaixaDormitorios,
   formatarFaixaVagas,
-  formatarFase,
   formatarPrecoAPartir,
 } from "@/lib/imoveis/formato";
 import { obterIcone } from "@/components/imoveis/icones";
@@ -34,14 +33,14 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imovel.capa} alt="" loading="lazy" />
         ) : null}
-        <span className="im-badge-fase" data-fase={imovel.fase}>
-          {formatarFase(imovel.fase)}
+        <span className="im-badge-fase" data-fase={imovel.fase?.slug}>
+          {imovel.fase?.nome}
         </span>
       </div>
       <div className="im-card-corpo">
         {local ? (
           <span className="im-card-local">
-            {formatarFase(imovel.fase)} em {local}
+            {imovel.fase?.nome} em {local}
           </span>
         ) : null}
         <h3>{imovel.titulo}</h3>

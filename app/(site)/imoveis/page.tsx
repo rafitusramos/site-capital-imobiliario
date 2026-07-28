@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getImoveisPublicados } from "@/lib/queries/imoveis";
+import { getImoveisPublicados, getTiposEFases } from "@/lib/queries/imoveis";
 import { ImoveisFiltro } from "@/components/imoveis/ImoveisFiltro";
 import { HeroVideo } from "@/components/imoveis/HeroVideo";
 
@@ -15,7 +15,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ImoveisIndicePage() {
-  const imoveis = await getImoveisPublicados();
+  const [imoveis, { tipos, fases }] = await Promise.all([
+    getImoveisPublicados(),
+    getTiposEFases(),
+  ]);
 
   return (
     <>
@@ -30,7 +33,7 @@ export default async function ImoveisIndicePage() {
         </div>
       </header>
 
-      <ImoveisFiltro imoveis={imoveis} />
+      <ImoveisFiltro imoveis={imoveis} tipos={tipos} fases={fases} />
     </>
   );
 }
