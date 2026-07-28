@@ -4,6 +4,7 @@ import {
   getImovelBySlug,
   getImoveisPublicados,
   getImoveisRelacionados,
+  getTiposEFases,
 } from "@/lib/queries/imoveis";
 import { Carrossel } from "@/components/imoveis/Carrossel";
 import { GaleriaPlantas } from "@/components/imoveis/GaleriaPlantas";
@@ -15,9 +16,7 @@ import {
   formatarFaixaArea,
   formatarFaixaDormitorios,
   formatarFaixaVagas,
-  formatarFase,
   formatarPrecoAPartir,
-  ORDEM_FASES,
 } from "@/lib/imoveis/formato";
 import { SITE_URL } from "@/lib/site";
 
@@ -91,6 +90,10 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const relacionados = imovel.cidade
     ? await getImoveisRelacionados(imovel.id, imovel.cidade, 3)
     : [];
+  // Jornada completa do empreendimento: todas as fases ativas do banco, na
+  // ordem cadastrada — não só as "em uso" entre os imóveis publicados (essa
+  // regra vale para os chips de filtro da home, não para a timeline da LP).
+  const { fases } = await getTiposEFases();
 
   const imagensEmpreendimento = imovel.imagens.filter((img) => img.grupo === "empreendimento");
   const imagensDecorado = imovel.imagens.filter((img) => img.grupo === "decorado");
@@ -117,7 +120,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const IconeDormitorio = obterIcone("dormitorio");
   const IconeVaga = obterIcone("vaga");
 
-  const indiceFaseAtual = ORDEM_FASES.indexOf(imovel.fase.slug as (typeof ORDEM_FASES)[number]);
+  const indiceFaseAtual = fases.findIndex((fase) => fase.slug === imovel.fase.slug);
 
   // Teto de preço e nº de ofertas saem das tipologias — o Search Console avisa
   // quando um AggregateOffer traz só lowPrice.
@@ -288,18 +291,17 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             <div className="eyebrow reveal">Fase da obra</div>
             <h2 className="reveal d1">Onde estamos hoje</h2>
             <ol className="im-fases" aria-label="Linha do tempo da obra">
-              {ORDEM_FASES.map((fase) => {
-                const indiceFase = ORDEM_FASES.indexOf(fase);
+              {fases.map((fase, indiceFase) => {
                 const feita = indiceFase < indiceFaseAtual;
-                const atual = fase === imovel.fase.slug;
+                const atual = fase.slug === imovel.fase.slug;
                 return (
                   <li
-                    key={fase}
+                    key={fase.id}
                     className={`im-fase${feita ? " feita" : ""}`}
                     aria-current={atual ? "step" : undefined}
                   >
-                    <span className="im-fase-marca">{ICONE_FASE[fase]}</span>
-                    <span className="im-fase-rotulo">{formatarFase(fase)}</span>
+                    <span className="im-fase-marca">{ICONE_FASE[fase.slug]}</span>
+                    <span className="im-fase-rotulo">{fase.nome}</span>
                   </li>
                 );
               })}

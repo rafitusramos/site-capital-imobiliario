@@ -65,9 +65,8 @@ export function extrairIdYoutube(url: string | null): string | null {
   return null;
 }
 
-// Fallback para quando só o slug está disponível (ex.: a timeline de fase da
-// LP, que itera ORDEM_FASES sem ter a linha inteira de imovel_fases à mão).
-// Preferir sempre `fase.nome`/`tipo.nome`, vindos do banco — ver abaixo.
+// Fallback para quando só o slug está disponível. Preferir sempre
+// `fase.nome`/`tipo.nome`, vindos do banco — ver abaixo.
 const FASE_LABEL: Record<string, string> = {
   pre_lancamento: "Pré-lançamento",
   lancamento: "Lançamento",
@@ -109,5 +108,3 @@ export function formatarFase(fase: string | RegistroDominio | null | undefined):
 export function formatarTipo(tipo: string | RegistroDominio | null | undefined): string {
   return rotuloDominio(tipo, TIPO_LABEL);
 }
-
-export const ORDEM_FASES = ["pre_lancamento", "lancamento", "em_construcao", "pronto"] as const;

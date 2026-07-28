@@ -50,6 +50,20 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
     return [...vistas.values()].sort((a, b) => a.rotulo.localeCompare(b.rotulo, "pt-BR"));
   }, [imoveis]);
 
+  // Só entram nos chips os valores em uso entre os imóveis publicados — evita
+  // poluir o filtro com fases/tipos cadastrados no domínio mas sem nenhum
+  // imóvel ativo. A ordem vinda do banco (props já ordenadas por `ordem`) é
+  // preservada pelo `.filter`.
+  const fasesEmUso = useMemo(() => {
+    const slugsEmUso = new Set(imoveis.map((imovel) => imovel.fase?.slug).filter(Boolean));
+    return fases.filter((fase) => slugsEmUso.has(fase.slug));
+  }, [imoveis, fases]);
+
+  const tiposEmUso = useMemo(() => {
+    const slugsEmUso = new Set(imoveis.map((imovel) => imovel.tipo?.slug).filter(Boolean));
+    return tipos.filter((tipo) => slugsEmUso.has(tipo.slug));
+  }, [imoveis, tipos]);
+
   const filtrados = useMemo(() => {
     return imoveis.filter((imovel) => {
       if (filtroFase && imovel.fase?.slug !== filtroFase) return false;
@@ -113,30 +127,56 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
     <>
       <section className="im-filtros-secao">
         <div className="wrap">
-          <div className="im-filtros">
-            {/* Sempre mostra as fases ativas cadastradas, independentemente das
-                existentes nos imóveis publicados — o corretor pode cadastrar um
-                lançamento em qualquer fase a qualquer momento. */}
-            <div className="blog-filtro" role="group" aria-label="Filtrar por fase da obra">
-              <button
-                type="button"
-                className={filtroFase === null ? "ativo" : undefined}
-                onClick={() => setFiltroFase(null)}
-              >
-                Todos os tipos
-              </button>
-              {fases.map((fase) => (
+          {/* Só a fileira some quando não há nenhuma fase em uso (acervo vazio).
+              Com só um valor publicado, a fileira continua — sumir por completo
+              nesse caso foi bug relatado antes. */}
+          {fasesEmUso.length > 0 ? (
+            <div className="im-filtros">
+              <div className="blog-filtro" role="group" aria-label="Filtrar por fase da obra">
                 <button
-                  key={fase.id}
                   type="button"
-                  className={filtroFase === fase.slug ? "ativo" : undefined}
-                  onClick={() => setFiltroFase(fase.slug)}
+                  className={filtroFase === null ? "ativo" : undefined}
+                  onClick={() => setFiltroFase(null)}
                 >
-                  {fase.nome}
+                  Todos os tipos
                 </button>
-              ))}
+                {fasesEmUso.map((fase) => (
+                  <button
+                    key={fase.id}
+                    type="button"
+                    className={filtroFase === fase.slug ? "ativo" : undefined}
+                    onClick={() => setFiltroFase(fase.slug)}
+                  >
+                    {fase.nome}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : null}
+
+          {tiposEmUso.length > 0 ? (
+            <div className="im-filtros">
+              <div className="blog-filtro" role="group" aria-label="Filtrar por tipo de empreendimento">
+                <button
+                  type="button"
+                  className={filtroTipo === null ? "ativo" : undefined}
+                  onClick={() => setFiltroTipo(null)}
+                >
+                  Todos os imóveis
+                </button>
+                {tiposEmUso.map((tipo) => (
+                  <button
+                    key={tipo.id}
+                    type="button"
+                    className={filtroTipo === tipo.slug ? "ativo" : undefined}
+                    onClick={() => setFiltroTipo(tipo.slug)}
+                  >
+                    {tipo.nome}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="im-filtros-selects">
             <div className="im-filtro-campo">
@@ -195,31 +235,6 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
             >
               Limpar filtros
             </button>
-          </div>
-
-          {/* Os tipos ativos aparecem sempre, como as fases acima: condicionar à
-              existência no acervo fazia a fileira sumir por completo enquanto
-              houvesse só um tipo cadastrado. */}
-          <div className="im-filtros">
-            <div className="blog-filtro" role="group" aria-label="Filtrar por tipo de empreendimento">
-              <button
-                type="button"
-                className={filtroTipo === null ? "ativo" : undefined}
-                onClick={() => setFiltroTipo(null)}
-              >
-                Todos os imóveis
-              </button>
-              {tipos.map((tipo) => (
-                <button
-                  key={tipo.id}
-                  type="button"
-                  className={filtroTipo === tipo.slug ? "ativo" : undefined}
-                  onClick={() => setFiltroTipo(tipo.slug)}
-                >
-                  {tipo.nome}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </section>

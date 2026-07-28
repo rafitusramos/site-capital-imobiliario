@@ -39,6 +39,14 @@
    editar aquele arquivo. */
 .im-filtros-secao .blog-filtro{justify-content:center;}
 
+/* Overrides escopados sob .im-filtros-secao: `.blog-filtro`/`.blog-filtro button`
+   vêm de styles/blog.css, compartilhado com o filtro de categorias do blog —
+   os chips daqui precisam ser menores, mas sem tocar naquele arquivo. */
+.im-filtros-secao .blog-filtro{margin-bottom:8px;}
+.im-filtros-secao .blog-filtro button{
+  font-size:12px;border-radius:12px;min-height:32px;padding:6px 18px;
+}
+
 .im-filtros-selects{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:var(--s4);}
 .im-filtro-campo{display:flex;flex-direction:column;gap:6px;}
 .im-filtro-campo label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5b615d;}
