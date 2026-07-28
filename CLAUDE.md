@@ -22,6 +22,21 @@ Variáveis CSS existentes: --jade, --bronze, --abissal.
 ## Categorias do blog
 Financiamento, Home Equity, Consórcio, Imóveis.
 
+## Documentos de referência
+- `docs/carousel-spec.md`: usar sempre que for criada uma página com galeria de imagens
+  (ex.: futura página de imóveis).
+
+## Como trabalhar comigo neste projeto
+
+Toda melhoria ou ajuste segue três etapas, cada uma com seu modelo:
+
+1. **Planejar — Opus 5.** Levantamento, decisões de arquitetura, especificação.
+2. **Desenvolver — Sonnet 5.** A implementação derivada do plano roda em subagente Sonnet 5.
+3. **Validar — Opus 5.** Revisar o que o subagente entregou antes de dar como pronto.
+
+Para qualquer diretiva de design, carregar **sempre** as duas skills: `frontend-design`
+(web design) e `ui-ux-pro-max`.
+
 ## REGRAS INVIOLÁVEIS
 1. Nenhum slug de URL pode mudar. As URLs atuais são a base do SEO.
 2. Nenhum texto de artigo pode ser reescrito. Conteúdo migra idêntico.

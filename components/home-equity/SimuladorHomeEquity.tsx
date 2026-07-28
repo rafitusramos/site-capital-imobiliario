@@ -190,7 +190,7 @@ export function SimuladorHomeEquity() {
         textoSucesso={{
           titulo: "Solicitação recebida.",
           corpo:
-            "Entraremos em contato em até 1 dia útil com a análise preliminar do seu caso e uma estimativa de valor para o seu imóvel. Para agilizar, tenha em mãos seus documentos pessoais, os do imóvel e os comprovantes de renda.",
+            "Entraremos em contato em até 1 dia útil com a análise preliminar do seu caso e uma estimativa de valor para o seu imóvel.\n\nPara agilizar, tenha em mãos seus documentos pessoais, os do imóvel e os comprovantes de renda.",
           whatsappHref:
             "https://wa.me/5519997834187?text=Ol%C3%A1%2C%20acabei%20de%20enviar%20minha%20solicita%C3%A7%C3%A3o%20de%20an%C3%A1lise%20de%20home%20equity%20e%20gostaria%20de%20conversar%20agora.",
         }}

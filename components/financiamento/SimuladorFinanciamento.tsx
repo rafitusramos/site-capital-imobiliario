@@ -241,7 +241,7 @@ export function SimuladorFinanciamento() {
         textoSucesso={{
           titulo: "Solicitação recebida.",
           corpo:
-            "Entraremos em contato em até 1 dia útil com a pré-análise do seu financiamento e as condições estimadas para o seu perfil. Para agilizar, tenha em mãos documentos pessoais, comprovantes de renda e, se houver, o extrato do FGTS.",
+            "Entraremos em contato em até 1 dia útil com a pré-análise do seu financiamento e as condições estimadas para o seu perfil.\n\nPara agilizar, tenha em mãos documentos pessoais, comprovantes de renda e, se houver, o extrato do FGTS.",
           whatsappHref:
             "https://wa.me/5519997834187?text=Ol%C3%A1%2C%20acabei%20de%20enviar%20minha%20solicita%C3%A7%C3%A3o%20de%20pr%C3%A9-aprova%C3%A7%C3%A3o%20de%20financiamento%20e%20gostaria%20de%20conversar%20agora.",
         }}
