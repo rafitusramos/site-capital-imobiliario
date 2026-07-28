@@ -4,7 +4,6 @@ import {
   formatarFaixaArea,
   formatarFaixaDormitorios,
   formatarFaixaVagas,
-  formatarFase,
   formatarPrecoAPartir,
 } from "@/lib/imoveis/formato";
 import { obterIcone } from "@/components/imoveis/icones";
@@ -21,7 +20,9 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
   const area = formatarFaixaArea(imovel.area_min, imovel.area_max);
   const dormitorios = formatarFaixaDormitorios(imovel.dormitorios_min, imovel.dormitorios_max);
   const vagas = formatarFaixaVagas(imovel.vagas_min, imovel.vagas_max);
-  const preco = formatarPrecoAPartir(imovel.valor_a_partir_de);
+  const preco = imovel.valor_sob_consulta
+    ? null
+    : formatarPrecoAPartir(imovel.valor_a_partir_de);
 
   const local = [imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
 
@@ -32,12 +33,16 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imovel.capa} alt="" loading="lazy" />
         ) : null}
-        <span className="im-badge-fase" data-fase={imovel.fase}>
-          {formatarFase(imovel.fase)}
+        <span className="im-badge-fase" data-fase={imovel.fase?.slug}>
+          {imovel.fase?.nome}
         </span>
       </div>
       <div className="im-card-corpo">
-        {local ? <span className="im-card-local">Lançamento em {local}</span> : null}
+        {local ? (
+          <span className="im-card-local">
+            {imovel.fase?.nome} em {local}
+          </span>
+        ) : null}
         <h3>{imovel.titulo}</h3>
         {imovel.descricao_breve ? <p className="im-card-resumo">{imovel.descricao_breve}</p> : null}
 
@@ -59,7 +64,9 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
           ) : null}
         </div>
 
-        {preco ? (
+        {imovel.valor_sob_consulta ? (
+          <div className="im-preco">Preço: Sob consulta</div>
+        ) : preco ? (
           <div className="im-preco">
             <small>A partir de</small>
             {preco}

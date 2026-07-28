@@ -205,7 +205,7 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
             <h3 id="leadImovelTitulo">{rotuloCta}</h3>
           </div>
           <form onSubmit={aoEnviar} noValidate>
-            <div className="bloco">
+            <div className="im-lead-bloco">
               <div className={`campo${erros.has("nome") ? " invalido" : ""}`} id="li-campo-nome">
                 <label htmlFor="li-nome">Nome completo</label>
                 <input

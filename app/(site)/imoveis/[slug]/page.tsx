@@ -4,18 +4,19 @@ import {
   getImovelBySlug,
   getImoveisPublicados,
   getImoveisRelacionados,
+  getTiposEFases,
 } from "@/lib/queries/imoveis";
 import { Carrossel } from "@/components/imoveis/Carrossel";
+import { GaleriaPlantas } from "@/components/imoveis/GaleriaPlantas";
 import { LeadImovelModal } from "@/components/imoveis/LeadImovelModal";
 import { ImovelCard } from "@/components/imoveis/ImovelCard";
 import { obterIcone } from "@/components/imoveis/icones";
 import {
+  extrairIdYoutube,
   formatarFaixaArea,
   formatarFaixaDormitorios,
   formatarFaixaVagas,
-  formatarFase,
   formatarPrecoAPartir,
-  ORDEM_FASES,
 } from "@/lib/imoveis/formato";
 import { SITE_URL } from "@/lib/site";
 
@@ -89,6 +90,10 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const relacionados = imovel.cidade
     ? await getImoveisRelacionados(imovel.id, imovel.cidade, 3)
     : [];
+  // Jornada completa do empreendimento: todas as fases ativas do banco, na
+  // ordem cadastrada — não só as "em uso" entre os imóveis publicados (essa
+  // regra vale para os chips de filtro da home, não para a timeline da LP).
+  const { fases } = await getTiposEFases();
 
   const imagensEmpreendimento = imovel.imagens.filter((img) => img.grupo === "empreendimento");
   const imagensDecorado = imovel.imagens.filter((img) => img.grupo === "decorado");
@@ -103,13 +108,26 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const area = formatarFaixaArea(imovel.area_min, imovel.area_max);
   const dormitorios = formatarFaixaDormitorios(imovel.dormitorios_min, imovel.dormitorios_max);
   const vagas = formatarFaixaVagas(imovel.vagas_min, imovel.vagas_max);
-  const precoFormatado = formatarPrecoAPartir(imovel.valor_a_partir_de);
+  // "Sob consulta" tem precedência sobre o valor: quando marcado no cadastro, o
+  // preço não aparece em lugar nenhum da página.
+  const precoFormatado = imovel.valor_sob_consulta
+    ? null
+    : formatarPrecoAPartir(imovel.valor_a_partir_de);
+  const idVideo = extrairIdYoutube(imovel.video_youtube_url);
+  const enderecoMapa = imovel.endereco || local || imovel.titulo;
 
   const IconeArea = obterIcone("area");
   const IconeDormitorio = obterIcone("dormitorio");
   const IconeVaga = obterIcone("vaga");
 
-  const indiceFaseAtual = ORDEM_FASES.indexOf(imovel.fase);
+  const indiceFaseAtual = fases.findIndex((fase) => fase.slug === imovel.fase.slug);
+
+  // Teto de preço e nº de ofertas saem das tipologias — o Search Console avisa
+  // quando um AggregateOffer traz só lowPrice.
+  const precosTipologias = imovel.tipologias
+    .map((tipologia) => tipologia.valor_a_partir_de)
+    .filter((valor): valor is number => typeof valor === "number");
+  const maiorPreco = precosTipologias.length > 0 ? Math.max(...precosTipologias) : null;
 
   const productJsonLd = {
     "@context": "https://schema.org",
@@ -118,10 +136,18 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
     description: imovel.seo_description ?? imovel.descricao_breve ?? undefined,
     image: urlAbsoluta(capa),
     brand: imovel.construtora ? { "@type": "Organization", name: imovel.construtora } : undefined,
-    offers: imovel.valor_a_partir_de
+    // Preço sob consulta não vai para o JSON-LD: anunciar um valor que a página
+    // não mostra seria inconsistente para o Google.
+    offers: imovel.valor_a_partir_de && !imovel.valor_sob_consulta
       ? {
           "@type": "AggregateOffer",
           lowPrice: imovel.valor_a_partir_de,
+          // highPrice só entra com dado real e acima do piso: um teto menor que
+          // o piso reprova o rich result.
+          ...(maiorPreco !== null && maiorPreco > imovel.valor_a_partir_de
+            ? { highPrice: maiorPreco }
+            : {}),
+          ...(imovel.tipologias.length > 0 ? { offerCount: imovel.tipologias.length } : {}),
           priceCurrency: "BRL",
           availability: "https://schema.org/InStock",
         }
@@ -156,25 +182,25 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
 
       <div className="im-lp-com-barra">
         {/* 1 + 2. Hero (capa, nome, localização, preço, CTA) e fatos rápidos */}
-        <header
-          className="hero"
-          id="topo"
-          style={
-            capa
-              ? { backgroundImage: `url(${capa})`, backgroundSize: "cover", backgroundPosition: "center" }
-              : undefined
-          }
-        >
+        <header className="hero im-hero" id="topo">
+          {capa ? (
+            /* Elemento LCP da página: <img> real (e não background-image) para o
+               browser poder priorizar o download e para aceitar srcset depois.
+               O overlay .hero::after do lp.css pinta por cima e preserva o
+               contraste do texto. */
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="im-hero-capa" src={capa} alt="" fetchPriority="high" />
+          ) : null}
           <div className="wrap">
-            <span
-              className="im-badge-fase"
-              data-fase={imovel.fase}
-              style={{ position: "static", display: "inline-block", marginBottom: 18 }}
-            >
-              {formatarFase(imovel.fase)}
+            <span className="im-badge-fase im-badge-fase--inline" data-fase={imovel.fase.slug}>
+              {imovel.fase.nome}
             </span>
             <h1 className="reveal d1">{imovel.titulo}</h1>
-            {local ? <p className="sub reveal d2">Lançamento em {local}</p> : null}
+            {local ? (
+              <p className="sub reveal d2">
+                {imovel.fase.nome} em {local}
+              </p>
+            ) : null}
 
             <div className="im-hero-fatos reveal d2">
               {area ? (
@@ -197,7 +223,9 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               ) : null}
             </div>
 
-            {precoFormatado ? (
+            {imovel.valor_sob_consulta ? (
+              <div className="im-hero-preco reveal d3">Preço: Sob consulta</div>
+            ) : precoFormatado ? (
               <div className="im-hero-preco reveal d3">
                 <small>A partir de</small>
                 {precoFormatado}
@@ -215,8 +243,27 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="projeto">
             <div className="wrap">
               <div className="eyebrow reveal">O projeto</div>
-              <h2 className="reveal d1">Sobre o empreendimento</h2>
               <p className="im-projeto reveal d2">{imovel.descricao_completa}</p>
+            </div>
+          </section>
+        ) : null}
+
+        {/* 3.1 Vídeo do empreendimento */}
+        {idVideo ? (
+          <section id="video">
+            <div className="wrap">
+              <div className="eyebrow reveal">Vídeo</div>
+              <div className="im-video reveal d2">
+                {/* O YouTube não permite escolher botões individualmente: ou a
+                    barra inteira ou nenhuma (controls=0). Estes parâmetros são
+                    o mínimo alcançável sem construir um player próprio. */}
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${idVideo}?rel=0&modestbranding=1&fs=0&disablekb=1&iv_load_policy=3`}
+                  title={`Vídeo do ${imovel.titulo}`}
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                />
+              </div>
             </div>
           </section>
         ) : null}
@@ -226,7 +273,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="galeria">
             <div className="wrap">
               <div className="eyebrow reveal">Galeria</div>
-              <h2 className="reveal d1">Conheça o empreendimento</h2>
             </div>
             <Carrossel
               imagens={imagensEmpreendimento.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
@@ -240,20 +286,18 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         <section id="fase-obra">
           <div className="wrap">
             <div className="eyebrow reveal">Fase da obra</div>
-            <h2 className="reveal d1">Onde estamos hoje</h2>
             <ol className="im-fases" aria-label="Linha do tempo da obra">
-              {ORDEM_FASES.map((fase) => {
-                const indiceFase = ORDEM_FASES.indexOf(fase);
+              {fases.map((fase, indiceFase) => {
                 const feita = indiceFase < indiceFaseAtual;
-                const atual = fase === imovel.fase;
+                const atual = fase.slug === imovel.fase.slug;
                 return (
                   <li
-                    key={fase}
+                    key={fase.id}
                     className={`im-fase${feita ? " feita" : ""}`}
                     aria-current={atual ? "step" : undefined}
                   >
-                    <span className="im-fase-marca">{ICONE_FASE[fase]}</span>
-                    <span className="im-fase-rotulo">{formatarFase(fase)}</span>
+                    <span className="im-fase-marca">{ICONE_FASE[fase.slug]}</span>
+                    <span className="im-fase-rotulo">{fase.nome}</span>
                   </li>
                 );
               })}
@@ -266,7 +310,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="lazer">
             <div className="wrap">
               <div className="eyebrow reveal">Lazer e convívio</div>
-              <h2 className="reveal d1">Estrutura de lazer</h2>
               <ul className="im-lazer">
                 {diferenciaisLazer.map((item) => {
                   const Icone = obterIcone(item.icone);
@@ -286,7 +329,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="unidades">
             <div className="wrap">
               <div className="eyebrow reveal">As unidades</div>
-              <h2 className="reveal d1">Plantas pensadas para o dia a dia</h2>
               {imovel.descricao_unidades ? (
                 <p className="im-projeto reveal d2">{imovel.descricao_unidades}</p>
               ) : null}
@@ -305,10 +347,9 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="plantas">
             <div className="wrap">
               <div className="eyebrow reveal">Plantas e quadro de áreas</div>
-              <h2 className="reveal d1">Tipologias disponíveis</h2>
             </div>
             {imagensPlanta.length > 0 ? (
-              <Carrossel
+              <GaleriaPlantas
                 imagens={imagensPlanta.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
                 ariaLabel={`Plantas do ${imovel.titulo}`}
               />
@@ -346,10 +387,18 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                           </td>
                           <td data-label="Banheiros">{tipologia.banheiros ?? "—"}</td>
                           <td data-label="Vagas">{tipologia.vagas ?? "—"}</td>
+                          {/* O quadro de áreas herda a marcação do empreendimento:
+                              com "sob consulta" ligado, nenhuma tipologia mostra
+                              preço. Aqui não repete "Preço:" porque a própria
+                              coluna já se chama "A partir de". */}
                           <td data-label="A partir de">
-                            <span className="mono-num">
-                              {formatarPrecoAPartir(tipologia.valor_a_partir_de) ?? "—"}
-                            </span>
+                            {imovel.valor_sob_consulta ? (
+                              "Sob consulta"
+                            ) : (
+                              <span className="mono-num">
+                                {formatarPrecoAPartir(tipologia.valor_a_partir_de) ?? "—"}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -366,7 +415,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="diferenciais">
             <div className="wrap">
               <div className="eyebrow reveal">Diferenciais</div>
-              <h2 className="reveal d1">O que diferencia este empreendimento</h2>
               <div className="im-diferenciais">
                 {diferenciaisGerais.map((item) => {
                   const Icone = obterIcone(item.icone);
@@ -387,19 +435,32 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="localizacao">
             <div className="wrap">
               <div className="eyebrow reveal">Localização</div>
-              <h2 className="reveal d1">Onde fica</h2>
               <div className="im-localizacao">
                 {imovel.endereco ? <p className="endereco">{imovel.endereco}</p> : null}
-                <a
-                  className="cta"
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                    imovel.endereco || local || imovel.titulo,
-                  )}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Ver no Google Maps
-                </a>
+                {/* Prévia embutida sem chave de API (embed clássico do Maps). O
+                    iframe não recebe cliques; o link por cima abre o mapa cheio
+                    numa aba nova, para o visitante não perder a LP. */}
+                <div className="im-mapa">
+                  <iframe
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                      enderecoMapa,
+                    )}&z=15&output=embed`}
+                    title={`Mapa da localização do ${imovel.titulo}`}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                  />
+                  <a
+                    className="im-mapa-link"
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                      enderecoMapa,
+                    )}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Abrir a localização do ${imovel.titulo} no Google Maps, em uma nova aba`}
+                  >
+                    <span>Abrir no Google Maps</span>
+                  </a>
+                </div>
               </div>
             </div>
           </section>
@@ -410,8 +471,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="realizacao">
             <div className="wrap">
               <div className="eyebrow reveal">Realização</div>
-              <h2 className="reveal d1">Quem constrói</h2>
-              <div className="im-realizacao">
+              <div className="im-realizacao-centro reveal d1">
                 {imovel.construtora_logo_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={imovel.construtora_logo_url} alt={imovel.construtora} loading="lazy" />
@@ -424,10 +484,9 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
 
         {/* 12. FAQ */}
         {imovel.faqs.length > 0 ? (
-          <section id="faq" className="faq-dark">
+          <section id="faq">
             <div className="wrap">
               <div className="eyebrow reveal">Perguntas frequentes</div>
-              <h2 className="reveal d1">Tire suas dúvidas</h2>
               {imovel.faqs.map((faq) => (
                 <details key={faq.id}>
                   <summary>{faq.pergunta}</summary>
@@ -443,13 +502,18 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <div className="wrap">
             <div className="artigo-cta">
               <h3>Quer saber mais sobre o {imovel.titulo}?</h3>
-              <button
-                type="button"
-                className="cta"
-                data-abrir-lead={`Quero saber mais sobre o ${imovel.titulo}`}
-              >
-                Quero saber mais
-              </button>
+              <div className="im-cta-final-acoes">
+                <button
+                  type="button"
+                  className="cta"
+                  data-abrir-lead={`Quero saber mais sobre o ${imovel.titulo}`}
+                >
+                  Quero saber mais
+                </button>
+                <a className="cta cta-secundaria" href="/financiamento/#simulador">
+                  Simular financiamento
+                </a>
+              </div>
             </div>
           </div>
         </section>
@@ -458,7 +522,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="outros-empreendimentos">
             <div className="wrap">
               <div className="eyebrow reveal">Continue pesquisando</div>
-              <h2 className="reveal d1">Outros lançamentos em {imovel.cidade}</h2>
               <div className="im-grid">
                 {relacionados.map((relacionado) => (
                   <ImovelCard key={relacionado.id} imovel={relacionado} />
@@ -472,8 +535,8 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
       {/* Barra de CTA fixa em mobile */}
       <div className="im-barra-cta">
         <div className="preco">
-          <small>A partir de</small>
-          <strong>{precoFormatado ?? "Consulte condições"}</strong>
+          {precoFormatado ? <small>A partir de</small> : null}
+          <strong>{precoFormatado ?? "Preço: Sob consulta"}</strong>
         </div>
         <button type="button" className="cta" data-abrir-lead="Fale com um corretor agora">
           Fale conosco

@@ -1,8 +1,6 @@
 export type ProfileRole = "admin" | "corretor";
 export type PostStatus = "draft" | "published" | "archived";
 export type ImovelStatus = "ativo" | "reservado" | "vendido" | "inativo";
-export type ImovelTipo = "apartamento" | "vila" | "loteamento";
-export type ImovelFase = "pre_lancamento" | "lancamento" | "em_construcao" | "pronto";
 export type ImovelImagemGrupo = "empreendimento" | "decorado" | "planta" | "implantacao";
 export type ImovelDiferencialGrupo = "lazer" | "diferencial";
 export type LeadTipoSlug = "financiamento" | "home-equity" | "imoveis" | "consorcio";
@@ -109,16 +107,65 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["posts"]["Insert"]>;
         Relationships: [];
       };
+      // Domínio de tipos de imóvel (011_imovel_tipos_fases.sql). Normaliza a
+      // antiga coluna texto `imoveis.tipo` (com CHECK), no mesmo padrão de
+      // `categories`.
+      imovel_tipos: {
+        Row: {
+          id: string;
+          slug: string;
+          nome: string;
+          ordem: number;
+          ativo: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          nome: string;
+          ordem?: number;
+          ativo?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["imovel_tipos"]["Insert"]>;
+        Relationships: [];
+      };
+      // Domínio de fases comerciais do imóvel (011_imovel_tipos_fases.sql).
+      // Os slugs são chave no código: mapa de ícones da timeline
+      // (app/(site)/imoveis/[slug]/page.tsx) e seletores CSS
+      // [data-fase="..."] (styles/imoveis.css). Não mudar sem atualizar os dois.
+      imovel_fases: {
+        Row: {
+          id: string;
+          slug: string;
+          nome: string;
+          ordem: number;
+          ativo: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          slug: string;
+          nome: string;
+          ordem?: number;
+          ativo?: boolean;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["imovel_fases"]["Insert"]>;
+        Relationships: [];
+      };
       // Empreendimento em lançamento (007_imoveis_empreendimentos.sql).
       // As colunas de unidade avulsa de revenda (valor_venda, metragem,
-      // dormitorios…) foram substituídas por faixas *_min/*_max.
+      // dormitorios…) foram substituídas por faixas *_min/*_max. tipo_id e
+      // fase_id (011_imovel_tipos_fases.sql) substituem as antigas colunas
+      // texto `tipo`/`fase`.
       imoveis: {
         Row: {
           id: string;
           slug: string;
           titulo: string;
-          tipo: ImovelTipo;
-          fase: ImovelFase;
+          tipo_id: string;
+          fase_id: string;
           bairro: string | null;
           cidade: string | null;
           estado: string | null;
@@ -133,6 +180,7 @@ export interface Database {
           vagas_min: number | null;
           vagas_max: number | null;
           valor_a_partir_de: number | null;
+          valor_sob_consulta: boolean;
           previsao_entrega: string | null;
           construtora: string | null;
           construtora_logo_url: string | null;
@@ -154,8 +202,8 @@ export interface Database {
           id?: string;
           slug: string;
           titulo: string;
-          tipo?: ImovelTipo;
-          fase?: ImovelFase;
+          tipo_id: string;
+          fase_id: string;
           bairro?: string | null;
           cidade?: string | null;
           estado?: string | null;
@@ -170,6 +218,7 @@ export interface Database {
           vagas_min?: number | null;
           vagas_max?: number | null;
           valor_a_partir_de?: number | null;
+          valor_sob_consulta?: boolean;
           previsao_entrega?: string | null;
           construtora?: string | null;
           construtora_logo_url?: string | null;

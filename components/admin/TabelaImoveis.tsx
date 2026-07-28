@@ -4,10 +4,10 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { despublicarImovel, excluirImovel, publicarImovel } from "@/app/actions/admin-imoveis";
-import type { Database } from "@/types/database";
+import type { ImovelAdminResumo } from "@/lib/queries/admin-imoveis";
 import { formatarFase, formatarTipo } from "@/lib/imoveis/formato";
 
-type Imovel = Database["public"]["Tables"]["imoveis"]["Row"];
+type Imovel = ImovelAdminResumo;
 
 const STATUS_LABEL: Record<string, string> = {
   ativo: "Publicado",

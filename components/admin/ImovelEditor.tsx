@@ -16,14 +16,11 @@ import {
   type SalvarImovelInput,
 } from "@/app/actions/admin-imoveis";
 import { slugify } from "@/lib/blog/slugify";
+import { mascaraMoeda } from "@/lib/mascaras";
 import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
+import type { ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/lib/validations/imovel";
-import type {
-  ImovelTipo,
-  ImovelFase,
-  ImovelImagemGrupo,
-  ImovelDiferencialGrupo,
-} from "@/types/database";
+import type { ImovelImagemGrupo, ImovelDiferencialGrupo } from "@/types/database";
 import { listaDeIcones, obterIcone } from "@/components/imoveis/icones";
 
 const CAMPO =
@@ -53,6 +50,22 @@ function paraNumeroOuNull(valor: string): number | null {
   return Number.isNaN(n) ? null : n;
 }
 
+/**
+ * Campos monetários do cadastro. Diferente de `paraNumeroOuNull`, lê só os
+ * dígitos — assim o texto mascarado ("R$ 445.000") volta a ser 445000 — e
+ * devolve null quando não sobra dígito nenhum (campo apagado), em vez de 0.
+ */
+function paraMoedaOuNull(valor: string): number | null {
+  const digitos = valor.replace(/\D/g, "");
+  return digitos === "" ? null : Number(digitos);
+}
+
+/** Número do banco -> texto mascarado do input. Os preços aqui são reais inteiros. */
+function moedaParaCampo(valor: number | null | undefined): string {
+  if (valor === null || valor === undefined) return "";
+  return mascaraMoeda(String(Math.round(valor)));
+}
+
 function paraInteiro(valor: string, padrao = 0): number {
   const n = parseInt(valor, 10);
   return Number.isNaN(n) ? padrao : n;
@@ -66,8 +79,8 @@ function idTemporario(): string {
 type ValoresDados = {
   titulo: string;
   slug: string;
-  tipo: ImovelTipo;
-  fase: ImovelFase;
+  tipo_id: string;
+  fase_id: string;
   bairro: string;
   cidade: string;
   estado: string;
@@ -82,7 +95,9 @@ type ValoresDados = {
   vagas_min: string;
   vagas_max: string;
   valor_a_partir_de: string;
+  valor_sob_consulta: boolean;
   previsao_entrega: string;
+  video_youtube_url: string;
   construtora: string;
   construtora_logo_url: string;
   descricao_breve: string;
@@ -93,12 +108,26 @@ type ValoresDados = {
   ordem: string;
 };
 
-function valoresIniciaisDados(imovel: ImovelComColecoesAdmin | null): ValoresDados {
+/**
+ * Empreendimento novo (imovel === null) nasce com tipo "Apartamento" e fase
+ * "Lançamento" pré-selecionados, quando essas opções existem — o mesmo
+ * default de antes da normalização em tabela. Se a opção não existir mais
+ * (desativada), cai para a primeira da lista.
+ */
+function idPadrao(opcoes: { id: string; slug: string }[], slugPreferido: string): string {
+  return opcoes.find((opcao) => opcao.slug === slugPreferido)?.id ?? opcoes[0]?.id ?? "";
+}
+
+function valoresIniciaisDados(
+  imovel: ImovelComColecoesAdmin | null,
+  tipos: ImovelTipoOpcao[],
+  fases: ImovelFaseOpcao[],
+): ValoresDados {
   return {
     titulo: imovel?.titulo ?? "",
     slug: imovel?.slug ?? "",
-    tipo: imovel?.tipo ?? "apartamento",
-    fase: imovel?.fase ?? "lancamento",
+    tipo_id: imovel?.tipo_id ?? idPadrao(tipos, "apartamento"),
+    fase_id: imovel?.fase_id ?? idPadrao(fases, "lancamento"),
     bairro: imovel?.bairro ?? "",
     cidade: imovel?.cidade ?? "",
     estado: imovel?.estado ?? "",
@@ -112,8 +141,10 @@ function valoresIniciaisDados(imovel: ImovelComColecoesAdmin | null): ValoresDad
     banheiros_max: imovel?.banheiros_max?.toString() ?? "",
     vagas_min: imovel?.vagas_min?.toString() ?? "",
     vagas_max: imovel?.vagas_max?.toString() ?? "",
-    valor_a_partir_de: imovel?.valor_a_partir_de?.toString() ?? "",
+    valor_a_partir_de: moedaParaCampo(imovel?.valor_a_partir_de),
+    valor_sob_consulta: imovel?.valor_sob_consulta ?? false,
     previsao_entrega: imovel?.previsao_entrega ?? "",
+    video_youtube_url: imovel?.video_youtube_url ?? "",
     construtora: imovel?.construtora ?? "",
     construtora_logo_url: imovel?.construtora_logo_url ?? "",
     descricao_breve: imovel?.descricao_breve ?? "",
@@ -125,14 +156,22 @@ function valoresIniciaisDados(imovel: ImovelComColecoesAdmin | null): ValoresDad
   };
 }
 
-export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null }) {
+type ImovelEditorProps = {
+  imovel: ImovelComColecoesAdmin | null;
+  tipos: ImovelTipoOpcao[];
+  fases: ImovelFaseOpcao[];
+};
+
+export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   const router = useRouter();
   const [aba, setAba] = useState<AbaId>("dados");
 
   // -----------------------------------------------------------------
   // Aba 1 — Dados gerais
   // -----------------------------------------------------------------
-  const [valoresDados, setValoresDados] = useState<ValoresDados>(() => valoresIniciaisDados(imovel));
+  const [valoresDados, setValoresDados] = useState<ValoresDados>(() =>
+    valoresIniciaisDados(imovel, tipos, fases),
+  );
   const [slugTocado, setSlugTocado] = useState(Boolean(imovel));
   const [confirmaSlug, setConfirmaSlug] = useState(false);
   const [enviandoDados, setEnviandoDados] = useState<
@@ -174,8 +213,8 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
       id: imovel?.id,
       titulo: valoresDados.titulo,
       slug: valoresDados.slug,
-      tipo: valoresDados.tipo,
-      fase: valoresDados.fase,
+      tipo_id: valoresDados.tipo_id,
+      fase_id: valoresDados.fase_id,
       bairro: valoresDados.bairro,
       cidade: valoresDados.cidade,
       estado: valoresDados.estado,
@@ -189,8 +228,10 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
       banheiros_max: paraNumeroOuNull(valoresDados.banheiros_max),
       vagas_min: paraNumeroOuNull(valoresDados.vagas_min),
       vagas_max: paraNumeroOuNull(valoresDados.vagas_max),
-      valor_a_partir_de: paraNumeroOuNull(valoresDados.valor_a_partir_de),
+      valor_a_partir_de: paraMoedaOuNull(valoresDados.valor_a_partir_de),
+      valor_sob_consulta: valoresDados.valor_sob_consulta,
       previsao_entrega: valoresDados.previsao_entrega,
+      video_youtube_url: valoresDados.video_youtube_url,
       construtora: valoresDados.construtora,
       construtora_logo_url: valoresDados.construtora_logo_url,
       descricao_breve: valoresDados.descricao_breve,
@@ -592,13 +633,15 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   </label>
                   <select
                     id="tipo"
-                    value={valoresDados.tipo}
-                    onChange={(e) => setCampoDados("tipo", e.target.value as ImovelTipo)}
+                    value={valoresDados.tipo_id}
+                    onChange={(e) => setCampoDados("tipo_id", e.target.value)}
                     className={CAMPO}
                   >
-                    <option value="apartamento">Apartamento</option>
-                    <option value="vila">Vila de casas</option>
-                    <option value="loteamento">Loteamento</option>
+                    {tipos.map((tipo) => (
+                      <option key={tipo.id} value={tipo.id}>
+                        {tipo.nome}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -607,14 +650,15 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   </label>
                   <select
                     id="fase"
-                    value={valoresDados.fase}
-                    onChange={(e) => setCampoDados("fase", e.target.value as ImovelFase)}
+                    value={valoresDados.fase_id}
+                    onChange={(e) => setCampoDados("fase_id", e.target.value)}
                     className={CAMPO}
                   >
-                    <option value="pre_lancamento">Pré-lançamento</option>
-                    <option value="lancamento">Lançamento</option>
-                    <option value="em_construcao">Em construção</option>
-                    <option value="pronto">Pronto para morar</option>
+                    {fases.map((fase) => (
+                      <option key={fase.id} value={fase.id}>
+                        {fase.nome}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -754,10 +798,21 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   </label>
                   <input
                     id="valor_a_partir_de"
+                    inputMode="numeric"
+                    placeholder="R$ 445.000"
                     value={valoresDados.valor_a_partir_de}
-                    onChange={(e) => setCampoDados("valor_a_partir_de", e.target.value)}
-                    className={CAMPO}
+                    onChange={(e) => setCampoDados("valor_a_partir_de", mascaraMoeda(e.target.value))}
+                    disabled={valoresDados.valor_sob_consulta}
+                    className={`${CAMPO} disabled:bg-neutral-100 disabled:text-neutral-400`}
                   />
+                  <label className="-mt-2 mb-4 flex items-center gap-2 text-sm text-[var(--abissal)]">
+                    <input
+                      type="checkbox"
+                      checked={valoresDados.valor_sob_consulta}
+                      onChange={(e) => setCampoDados("valor_sob_consulta", e.target.checked)}
+                    />
+                    Sob consulta (não exibe o valor na página)
+                  </label>
                 </div>
                 <div>
                   <label className={LABEL} htmlFor="previsao_entrega">
@@ -772,6 +827,17 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   />
                 </div>
               </div>
+
+              <label className={LABEL} htmlFor="video_youtube_url">
+                Vídeo do YouTube (opcional)
+              </label>
+              <input
+                id="video_youtube_url"
+                placeholder="https://www.youtube.com/watch?v=..."
+                value={valoresDados.video_youtube_url}
+                onChange={(e) => setCampoDados("video_youtube_url", e.target.value)}
+                className={CAMPO}
+              />
 
               <label className={LABEL} htmlFor="ordem">
                 Ordem no índice (menor aparece primeiro)
@@ -1068,11 +1134,12 @@ export function ImovelEditor({ imovel }: { imovel: ImovelComColecoesAdmin | null
                   />
                   <input
                     aria-label="Valor a partir de"
-                    placeholder="Valor a partir de"
-                    value={tipologia.valor_a_partir_de ?? ""}
+                    placeholder="R$ 445.000"
+                    inputMode="numeric"
+                    value={moedaParaCampo(tipologia.valor_a_partir_de)}
                     onChange={(e) =>
                       atualizarTipologia(tipologia.chaveLocal, {
-                        valor_a_partir_de: paraNumeroOuNull(e.target.value),
+                        valor_a_partir_de: paraMoedaOuNull(e.target.value),
                       })
                     }
                     className={`${CAMPO_INLINE} sm:col-span-2`}
