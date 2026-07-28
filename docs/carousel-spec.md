@@ -133,18 +133,30 @@ Container com `overflow-hidden` e padding lateral para revelar o *peek* dos vizi
 
 Implementado em `components/imoveis/Carrossel.tsx`, para as galerias das landing pages de
 empreendimentos (`app/(site)/imoveis/[slug]/page.tsx`). Mantém o comportamento essencial deste
-spec (Embla `loop:true`/`align:"center"`/`dragFree:false`, foco central via `scrollProgress()` +
-`scrollSnapList()` escrevendo `--escala`/`--opacidade`, peek lateral, setas, teclado ← →, clique
-no slide lateral centraliza), com os seguintes desvios conscientes por causa do design system e
-das restrições do repo (ver `CLAUDE.md`):
+spec (Embla `align:"center"`/`dragFree:false`, foco central, peek lateral, setas, teclado ← →,
+clique no slide lateral centraliza), com os seguintes desvios conscientes por causa do design
+system e das restrições do repo (ver `CLAUDE.md`):
 
+- **Sem loop infinito** (`loop:false`, ao contrário do `loop:true` deste spec). Medido no
+  navegador: com poucos slides e pouca folga entre a largura do viewport e a soma dos slides
+  (ex.: 649px de viewport para 777px de slides, só 128px de sobra), `loop:true` faz o Embla
+  travar a rolagem por completo — o `transform` do trilho nunca muda e nenhum aviso aparece no
+  console. Abandonado por decisão do Rafael; as setas nas pontas ficam desabilitadas
+  (`canScrollPrev()`/`canScrollNext()`) em vez de dar loop.
+- **`containScroll:false`**, também por causa do item acima: sem loop, `containScroll` no padrão
+  do Embla trava a rolagem nas pontas e impede o primeiro/último slide de centralizar. Com
+  `false`, todo slide consegue chegar ao centro (sobra espaço vazio nas bordas quando necessário).
+- **Escala discreta via classe, não tween contínuo do Embla**: o cálculo original por
+  `scrollProgress()` + `scrollSnapList()` (fator `0.52 × nº de snaps`) dava escala/opacidade
+  erradas com poucos slides (ex.: os dois slides de uma galeria de 2 fotos recebiam a mesma escala
+  ampliada). No lugar, o componente aplica a classe `.ativo` só no slide selecionado
+  (`--escala`/`--opacidade`/`--z` e a lógica de tween foram removidas).
 - **Paleta e tipografia do site**, não o teal `#096164` da referência: `--jade`/`--bronze`/
   `--abissal`/`--areia`/`--marfim` e `var(--display)`/`var(--sans)` (que já mapeiam para Libre
   Caslon Display e Archivo via `next/font` em `app/(site)/layout.tsx`), em vez de Libre Caslon +
   Archivo "direto" e da paleta de referência.
 - **CSS em arquivo próprio (`styles/imoveis.css`)**, não classes Tailwind — o projeto não usa
-  Tailwind nas páginas públicas (só no admin); os valores dinâmicos de escala/opacidade continuam
-  via CSS vars inline, exatamente como o spec pede.
+  Tailwind nas páginas públicas (só no admin).
 - **`<img>` simples com `aspect-ratio` fixo em CSS**, não `next/image` — o restante do codebase
   usa `<img>` puro (`components/blog/post-card.tsx`, `app/(site)/blog/[slug]/page.tsx`) e
   `next.config.ts` não declara `images.remotePatterns` para o domínio do Supabase Storage. A
@@ -152,3 +164,6 @@ das restrições do repo (ver `CLAUDE.md`):
 - **Sem plugin de autoplay** (`embla-carousel-autoplay` não foi instalado e não deve ser
   adicionado): autoplay numa galeria de imóvel atrapalha a leitura das fotos e conflita com
   `prefers-reduced-motion` — decisão consciente, não uma omissão.
+- **Galeria de uma única foto não usa Embla**: com 1 imagem não há o que rolar; o componente
+  renderiza um `<figure className="im-carrossel-unica">` simples, sem setas e sem região de
+  carrossel.

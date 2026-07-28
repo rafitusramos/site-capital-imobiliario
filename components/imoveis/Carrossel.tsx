@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 
 export type ImagemCarrossel = { url: string; ambiente: string | null };
@@ -18,37 +18,64 @@ type CarrosselProps = {
   aoAmpliar?: (indice: number) => void;
 };
 
-// Fator de intensidade do efeito de foco central — mesma constante do
-// exemplo oficial "Tween Scale" do Embla, ajustado ao número de slides.
-const FATOR_BASE = 0.52;
-// A imagem central aparece 50% maior que as vizinhas: laterais no tamanho
-// natural do slide, central ampliada por cima delas (daí o z-index no tween).
-const ESCALA_LATERAL = 1;
-const ESCALA_CENTRAL = 1.5;
-const OPACIDADE_MIN = 0.65;
-
 // `duration` do Embla é expresso na escala interna dele, não em ms: 25 é o
 // padrão da lib e 0 faz o deslocamento ser instantâneo.
 const DURACAO_PADRAO = 25;
 const DURACAO_SEM_MOVIMENTO = 0;
 
-function dentroDoIntervalo(valor: number, min: number, max: number) {
-  return Math.min(Math.max(valor, min), max);
+/**
+ * Carrossel com efeito de foco central (docs/carousel-spec.md), adaptado à
+ * paleta e tipografia do site: Embla `align:"center"`, `dragFree:false`,
+ * sem plugin de autoplay (autoplay em galeria de imóvel atrapalha e
+ * conflita com prefers-reduced-motion — desvio consciente do spec original).
+ *
+ * Componente fino: só decide entre a foto única (sem Embla) e o carrossel de
+ * verdade. Os hooks do Embla vivem em `CarrosselMultiplo` para nunca ficarem
+ * depois de um return condicional.
+ */
+export function Carrossel({ imagens, ariaLabel, primeiraEager = false, aoAmpliar }: CarrosselProps) {
+  if (imagens.length === 0) return null;
+
+  if (imagens.length === 1) {
+    const [imagem] = imagens;
+    return (
+      <figure className="im-carrossel-unica">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imagem.url}
+          alt={imagem.ambiente ?? ""}
+          decoding="async"
+          fetchPriority={primeiraEager ? "high" : "low"}
+        />
+        {imagem.ambiente ? <figcaption>{imagem.ambiente}</figcaption> : null}
+      </figure>
+    );
+  }
+
+  return (
+    <CarrosselMultiplo
+      imagens={imagens}
+      ariaLabel={ariaLabel}
+      primeiraEager={primeiraEager}
+      aoAmpliar={aoAmpliar}
+    />
+  );
 }
 
 /**
- * Carrossel com efeito de foco central (docs/carousel-spec.md), adaptado à
- * paleta e tipografia do site: Embla `loop:true`, `align:"center"`,
- * `dragFree:false`, sem plugin de autoplay (autoplay em galeria de imóvel
- * atrapalha e conflita com prefers-reduced-motion — desvio consciente do
- * spec original).
+ * O carrossel de verdade (2+ imagens), com Embla.
+ *
+ * `loop:false` e `containScroll:false`: medido no navegador que, com poucos
+ * slides e pouca folga de viewport (ex.: 649px de viewport para 777px de
+ * slides), `loop:true` faz o Embla travar a rolagem por completo — o
+ * `transform` do trilho nunca muda e nenhum aviso aparece no console. O
+ * Rafael autorizou abrir mão do loop infinito do spec original
+ * (docs/carousel-spec.md) para resolver. Sem `containScroll`, todo slide
+ * — inclusive o primeiro e o último — consegue chegar ao centro do
+ * viewport, sobrando espaço vazio nas bordas quando necessário (comportamento
+ * desejado, não um bug).
  */
-export function Carrossel({
-  imagens,
-  ariaLabel,
-  primeiraEager = false,
-  aoAmpliar,
-}: CarrosselProps) {
+function CarrosselMultiplo({ imagens, ariaLabel, primeiraEager, aoAmpliar }: CarrosselProps) {
   // O CSS já desliga a transição de escala/opacidade dos slides, mas o
   // deslocamento do próprio Embla continuaria animado — daí zerar `duration`.
   // Começa `false` para o servidor e o cliente renderizarem igual; o valor real
@@ -64,94 +91,38 @@ export function Carrossel({
   }, []);
 
   const [emblaRef, emblaApi] = useEmblaCarousel({
-    loop: true,
+    loop: false,
     align: "center",
     dragFree: false,
+    containScroll: false,
     duration: reduzirMovimento ? DURACAO_SEM_MOVIMENTO : DURACAO_PADRAO,
   });
 
-  const fatorTween = useRef(0);
-  const nosSlide = useRef<HTMLElement[]>([]);
   const [indiceSelecionado, setIndiceSelecionado] = useState(0);
-
-  const definirFatorTween = useCallback(() => {
-    if (!emblaApi) return;
-    fatorTween.current = FATOR_BASE * emblaApi.scrollSnapList().length;
-  }, [emblaApi]);
-
-  const aplicarTween = useCallback(
-    (api: NonNullable<typeof emblaApi>, nomeEvento?: string) => {
-      const engine = api.internalEngine();
-      const progressoScroll = api.scrollProgress();
-      const slidesNaTela = api.slidesInView();
-      const ehEventoScroll = nomeEvento === "scroll";
-
-      api.scrollSnapList().forEach((snap, indiceSnap) => {
-        let diferenca = snap - progressoScroll;
-        const slidesNoSnap = engine.slideRegistry[indiceSnap] ?? [];
-
-        slidesNoSnap.forEach((indiceSlide) => {
-          if (ehEventoScroll && !slidesNaTela.includes(indiceSlide)) return;
-
-          if (engine.options.loop) {
-            engine.slideLooper.loopPoints.forEach((ponto) => {
-              const alvo = ponto.target();
-              if (indiceSlide === ponto.index && alvo !== 0) {
-                const sinal = Math.sign(alvo);
-                if (sinal === -1) diferenca = snap - (1 + progressoScroll);
-                if (sinal === 1) diferenca = snap + (1 - progressoScroll);
-              }
-            });
-          }
-
-          const valorTween = 1 - Math.abs(diferenca * fatorTween.current);
-          const proporcao = dentroDoIntervalo(valorTween, 0, 1);
-          const escala = ESCALA_LATERAL + (ESCALA_CENTRAL - ESCALA_LATERAL) * proporcao;
-          const opacidade = OPACIDADE_MIN + (1 - OPACIDADE_MIN) * proporcao;
-
-          const no = nosSlide.current[indiceSlide];
-          if (no) {
-            no.style.setProperty("--escala", escala.toFixed(4));
-            no.style.setProperty("--opacidade", opacidade.toFixed(4));
-            // Empilha o slide em foco acima dos vizinhos, senão a imagem
-            // ampliada passaria por baixo deles.
-            no.style.setProperty("--z", String(Math.round(proporcao * 10)));
-          }
-        });
-      });
-    },
-    [],
-  );
+  // Sem loop, as setas nas pontas ficam mortas — desabilitadas via estado em
+  // vez de escondidas, para o teclado/leitor de tela também saber que
+  // chegaram no fim.
+  const [podeVoltar, setPodeVoltar] = useState(false);
+  const [podeAvancar, setPodeAvancar] = useState(false);
 
   useEffect(() => {
     if (!emblaApi) return;
 
-    const aoReiniciar = () => {
-      nosSlide.current = emblaApi.slideNodes();
-      definirFatorTween();
-      aplicarTween(emblaApi);
+    const aoAtualizar = () => {
+      setIndiceSelecionado(emblaApi.selectedScrollSnap());
+      setPodeVoltar(emblaApi.canScrollPrev());
+      setPodeAvancar(emblaApi.canScrollNext());
     };
-    const aoRolar = () => aplicarTween(emblaApi, "scroll");
-    const aoFocarSlide = () => aplicarTween(emblaApi);
-    const aoSelecionar = () => setIndiceSelecionado(emblaApi.selectedScrollSnap());
-    aoSelecionar();
-    emblaApi.on("select", aoSelecionar);
+    aoAtualizar();
 
-    nosSlide.current = emblaApi.slideNodes();
-    definirFatorTween();
-    aplicarTween(emblaApi);
-
-    emblaApi.on("reInit", aoReiniciar);
-    emblaApi.on("scroll", aoRolar);
-    emblaApi.on("slideFocus", aoFocarSlide);
+    emblaApi.on("select", aoAtualizar);
+    emblaApi.on("reInit", aoAtualizar);
 
     return () => {
-      emblaApi.off("reInit", aoReiniciar);
-      emblaApi.off("scroll", aoRolar);
-      emblaApi.off("slideFocus", aoFocarSlide);
-      emblaApi.off("select", aoSelecionar);
+      emblaApi.off("select", aoAtualizar);
+      emblaApi.off("reInit", aoAtualizar);
     };
-  }, [emblaApi, definirFatorTween, aplicarTween]);
+  }, [emblaApi]);
 
   const aoTeclar = useCallback(
     (e: React.KeyboardEvent) => {
@@ -167,8 +138,6 @@ export function Carrossel({
     [emblaApi],
   );
 
-  if (imagens.length === 0) return null;
-
   return (
     <div
       className="im-carrossel"
@@ -182,9 +151,8 @@ export function Carrossel({
         <div className="im-carrossel-trilho">
           {imagens.map((imagem, indice) => (
             <div
-              className="im-carrossel-slide"
+              className={`im-carrossel-slide${indice === indiceSelecionado ? " ativo" : ""}`}
               key={`${imagem.url}-${indice}`}
-              style={{ "--escala": 1, "--opacidade": 1, "--z": 0 } as React.CSSProperties}
             >
               {/* tabIndex -1 nos slides: centralizar por clique é conveniência de
                   mouse redundante (as setas e o ← → na região fazem o mesmo), e
@@ -229,6 +197,7 @@ export function Carrossel({
         className="im-carrossel-seta im-carrossel-seta-prev"
         aria-label="Imagem anterior"
         onClick={() => emblaApi?.scrollPrev()}
+        disabled={!podeVoltar}
       >
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M12.5 4.5 6 10l6.5 5.5" />
@@ -239,6 +208,7 @@ export function Carrossel({
         className="im-carrossel-seta im-carrossel-seta-next"
         aria-label="Próxima imagem"
         onClick={() => emblaApi?.scrollNext()}
+        disabled={!podeAvancar}
       >
         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M7.5 4.5 14 10l-6.5 5.5" />

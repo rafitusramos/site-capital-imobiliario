@@ -136,11 +136,13 @@
   /* Base menor que a original: a central cresce 1.5x sobre as vizinhas e
      precisa caber na área útil do viewport. */
   flex:0 0 60%;min-width:0;padding:0 8px;
-  transform:scale(var(--escala,1));opacity:var(--opacidade,1);
-  z-index:var(--z,0);
-  transition:transform .3s ease-out,opacity .3s ease-out;
-  will-change:transform,opacity;
+  transform:scale(1);opacity:.65;z-index:0;
+  transition:transform .35s ease-out,opacity .35s ease-out;
 }
+/* Escala discreta do slide selecionado (via classe, não mais tween contínuo
+   do Embla): com poucos slides o cálculo por progresso de scroll dava
+   escala/opacidade erradas — ver comentário de CarrosselMultiplo. */
+.im-carrossel-slide.ativo{transform:scale(1.5);opacity:1;z-index:2;}
 @media(min-width:768px){.im-carrossel-slide{flex-basis:50%;}}
 @media(min-width:1024px){.im-carrossel-slide{flex-basis:40%;}}
 @media(prefers-reduced-motion:reduce){.im-carrossel-slide{transition:none;}}
@@ -163,9 +165,26 @@
 }
 .im-carrossel-seta svg{width:18px;height:18px;}
 .im-carrossel-seta:hover{background:var(--jade);color:var(--branco);}
+/* Sem loop, as pontas do carrossel desabilitam a seta correspondente em vez
+   de deixá-la clicável e inerte. */
+.im-carrossel-seta:disabled{opacity:.35;cursor:not-allowed;}
+.im-carrossel-seta:disabled:hover{background:var(--branco);color:var(--abissal);}
 .im-carrossel-seta-prev{left:2px;}
 .im-carrossel-seta-next{right:2px;}
 @media(min-width:768px){.im-carrossel-seta-prev{left:12px;} .im-carrossel-seta-next{right:12px;}}
+
+/* Foto única: sem Embla nem setas, só a imagem centralizada — mesma largura
+   e sombra do slide ativo dos carrosséis de verdade, para não destoar. */
+.im-carrossel-unica{
+  max-width:min(640px,90%);margin:var(--s5) auto;text-align:center;
+}
+.im-carrossel-unica img{
+  display:block;width:100%;aspect-ratio:4/3;object-fit:cover;
+  border-radius:8px;box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
+}
+.im-carrossel-unica figcaption{
+  margin-top:10px;font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:#7a807c;
+}
 
 /* ---------------------------------------------------------------------
    LANDING PAGE DO EMPREENDIMENTO
@@ -180,6 +199,11 @@
 
 /* Seções da LP: 24px de respiro vertical (sobrescreve os 36px do lp.css). */
 .im-lp-com-barra section{padding:24px 0;}
+
+/* .eyebrow do lp.css é 12px e é compartilhado com blog e LPs de crédito —
+   aqui, sem o <h2> de cada seção, o eyebrow vira o único rótulo visível e
+   precisa de mais peso. Override escopado à LP do imóvel, sem tocar lp.css. */
+.im-lp-com-barra .eyebrow{font-size:14px;}
 
 .im-hero-fatos{display:flex;flex-wrap:wrap;gap:22px;margin-top:var(--s4);}
 .im-hero-fatos .im-fato{display:flex;align-items:center;gap:8px;font-family:var(--sans);font-size:14px;color:rgba(252,250,244,.9);}
