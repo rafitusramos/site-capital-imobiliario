@@ -31,7 +31,7 @@
 /* ---------------------------------------------------------------------
    ÍNDICE /imoveis/ — filtro e grid de cards
    --------------------------------------------------------------------- */
-.im-filtros-secao{padding:24px 0;background:var(--marfim);}
+.im-filtros-secao{padding:0;background:var(--marfim);}
 
 /* Os três blocos (chips de fase, selects, chips de tipo) ficam centralizados
    horizontalmente. `.blog-filtro` vem de styles/blog.css (compartilhado com
@@ -47,7 +47,7 @@
   font-size:12px;border-radius:12px;min-height:32px;padding:6px 18px;
 }
 
-.im-filtros-selects{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:var(--s4);}
+.im-filtros-selects{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-bottom:var(--s3);}
 .im-filtro-campo{display:flex;flex-direction:column;gap:6px;}
 .im-filtro-campo label{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#5b615d;}
 .im-filtro-campo select{
@@ -66,7 +66,11 @@
 .im-limpar-filtros:hover:not(:disabled){border-color:rgba(10,36,28,.4);}
 .im-limpar-filtros:disabled{opacity:.5;cursor:not-allowed;}
 
-.im-filtros{display:flex;flex-direction:column;gap:14px;margin-bottom:var(--s5);}
+.im-filtros{display:flex;flex-direction:column;gap:14px;margin-bottom:var(--s3);}
+
+/* Sem o padding padrão de 36px de `section` (lp.css): a lista encosta nos
+   filtros com respiro curto, próprio da vertical de imóveis. */
+.im-lista-secao{padding:16px 0;}
 
 .im-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
 @media(max-width:900px){.im-grid{grid-template-columns:repeat(2,1fr);}}
