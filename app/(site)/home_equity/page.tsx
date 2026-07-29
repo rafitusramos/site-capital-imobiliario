@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SimuladorHomeEquity } from "@/components/home-equity/SimuladorHomeEquity";
 import { SITE_URL } from "@/lib/site";
+import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 
 const TITULO = "Home Equity em Vinhedo e Região — Crédito com Garantia de Imóvel | Rafael Teixeira";
 const DESCRICAO =
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     description:
       "Capital de longo prazo a uma fração do custo do crédito empresarial, sem vender o patrimônio que você levou décadas para construir. Análise independente multibanco.",
     url: "/home_equity/",
-    images: ["/images/background.jpg"],
+    images: [IMAGEM_OG_PADRAO],
     locale: "pt_BR",
   },
   twitter: {
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     title: "Home Equity em Vinhedo e Região — crédito com garantia de imóvel",
     description:
       "Capital de longo prazo a uma fração do custo do crédito empresarial, sem se descapitalizar. Análise independente multibanco.",
-    images: ["/images/background.jpg"],
+    images: [OG_IMAGEM_PADRAO],
   },
 };
 

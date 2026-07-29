@@ -10,9 +10,13 @@ Praça principal: Vinhedo/SP e região (Valinhos, Louveira, Jundiaí, Campinas, 
 - Deploy: Vercel
 
 ## Estado atual
-Site estático. O blog é renderizado client-side a partir de `window.BLOG_POSTS`
-em posts.js, gerado por `npm run blog:gerar` a partir de content/blog/*.md.
-Estamos migrando o blog para Supabase com renderização no servidor.
+Migração concluída: o site roda em Next.js com renderização no servidor, e blog
+e imóveis vêm do Supabase. O admin em `/admin` faz o CRUD dos dois. O pipeline
+estático antigo (`dist/`, `window.BLOG_POSTS`, `tools/blog/*`, scripts `blog:*`)
+não existe mais. Os markdowns em `content/blog/` ficaram como referência
+histórica do texto migrado — não são mais fonte de renderização.
+
+Suíte de testes em Vitest: `npm test`. Ver README.md para a organização.
 
 ## Design
 Direção: "Minimalismo Exagerado". Paleta preto quente + bronze-dourado.
@@ -23,8 +27,9 @@ Variáveis CSS existentes: --jade, --bronze, --abissal.
 Financiamento, Home Equity, Consórcio, Imóveis.
 
 ## Documentos de referência
-- `docs/carousel-spec.md`: usar sempre que for criada uma página com galeria de imagens
-  (ex.: futura página de imóveis).
+- `docs/carousel-spec.md`: usar sempre que for criada uma página com galeria de imagens.
+- `docs/modelo-artigo.md`: formato de frontmatter aceito pela importação de `.md`
+  no admin. É contrato de código (`lib/blog/frontmatter.ts`), não doc solta.
 
 ## Como trabalhar comigo neste projeto
 

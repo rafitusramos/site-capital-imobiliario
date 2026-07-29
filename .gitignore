@@ -17,3 +17,13 @@ next-env.d.ts
 
 # env files
 .env*.local
+
+# Skills instaladas pelo `npx skills`. Os arquivos ficam em /.agents/ e o
+# instalador cria em .claude/skills/ um symlink de caminho ABSOLUTO, que só
+# resolve nesta máquina — versionar não replica em outro clone. Quem é fonte
+# da verdade é o skills-lock.json (fonte + hash): depois de clonar, rode
+# `npx skills add` para reinstalar as mesmas versões.
+# A skill `tdd` é exceção: seus arquivos estão versionados de verdade em
+# .claude/skills/tdd/, então continua rastreada.
+/.agents/
+/.claude/skills/ui-ux-pro-max

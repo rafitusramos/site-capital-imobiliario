@@ -28,7 +28,9 @@ const libreCaslonText = Libre_Caslon_Text({
 
 const archivo = Archivo({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  // 700 entra por causa do H3 do artigo (styles/blog.css), que é bold. Sem
+  // esse peso carregado o navegador sintetizaria um falso-negrito.
+  weight: ["400", "500", "600", "700"],
   variable: "--sans",
 });
 

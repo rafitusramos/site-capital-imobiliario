@@ -1,8 +1,8 @@
 /**
- * Porta fiel de dist/assets/js/financeiro.js — mesmos algoritmos, mesmos
- * números de referência já verificados em tests/financeiro.test.js.
- * Funções puras, sem I/O — usadas pelo simulador (client) e pela
- * validação de CPF em lib/validations/lead.ts (server).
+ * Funções puras, sem I/O — usadas pelos simuladores (client) e pela validação
+ * de CPF/telefone em lib/validations/lead.ts (server). Os números de referência
+ * conferidos contra produção estão travados em tests/unidade/financeiro.test.ts;
+ * qualquer mudança de fórmula aqui tem que passar por lá.
  */
 
 export function digitos(valor: unknown): number {

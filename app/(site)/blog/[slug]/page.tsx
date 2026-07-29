@@ -7,9 +7,10 @@ import {
   getPublishedPosts,
   getRelatedPosts,
 } from "@/lib/queries/posts";
-import { ctaDoArtigo, formatarData } from "@/lib/blog/blog";
+import { ctaDoArtigo, dividirConteudo, formatarData } from "@/lib/blog/blog";
 import { PostCard } from "@/components/blog/post-card";
 import { SITE_URL } from "@/lib/site";
+import { imagemOg, SITE_NOME } from "@/lib/og";
 
 export const revalidate = 3600;
 
@@ -29,10 +30,32 @@ export async function generateMetadata({
   const post = await getPostBySlug(slug);
   if (!post) return {};
 
+  const titulo = post.seo_title ?? post.title;
+  const descricao = post.seo_description ?? post.excerpt ?? undefined;
+  const imagem = imagemOg(post.cover_image, post.title);
+
   return {
-    title: post.seo_title ?? post.title,
-    description: post.seo_description ?? post.excerpt ?? undefined,
+    title: titulo,
+    description: descricao,
     alternates: post.canonical_url ? { canonical: post.canonical_url } : undefined,
+    openGraph: {
+      type: "article",
+      siteName: SITE_NOME,
+      title: titulo,
+      description: descricao,
+      url: `/blog/${post.slug}/`,
+      images: [imagem],
+      locale: "pt_BR",
+      publishedTime: post.published_at ?? undefined,
+      modifiedTime: post.updated_at,
+      authors: ["Rafael Teixeira"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: titulo,
+      description: descricao,
+      images: [imagem.url],
+    },
   };
 }
 
@@ -43,6 +66,7 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
 
   const categoriaNome = post.categoria?.name ?? null;
   const cta = ctaDoArtigo(categoriaNome);
+  const { primeiroParagrafo, restante } = dividirConteudo(post.content);
 
   const relacionados = post.category_id
     ? await getRelatedPosts(post.id, post.category_id, 3)
@@ -77,17 +101,26 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
           </div>
           <h1>{post.title}</h1>
 
-          {post.cover_image ? (
-            <figure className="artigo-imagem">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={post.cover_image} alt={post.title} loading="lazy" />
-            </figure>
-          ) : null}
-
+          {/* Ordem: H1, primeiro parágrafo, capa e só então o restante. */}
           <div className="artigo-texto">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {post.content}
-            </ReactMarkdown>
+            {primeiroParagrafo ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {primeiroParagrafo}
+              </ReactMarkdown>
+            ) : null}
+
+            {post.cover_image ? (
+              <figure className="artigo-imagem">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={post.cover_image} alt={post.title} loading="lazy" />
+              </figure>
+            ) : null}
+
+            {restante ? (
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {restante}
+              </ReactMarkdown>
+            ) : null}
           </div>
 
           <div className="artigo-cta">
@@ -104,7 +137,6 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
       {relacionados.length > 0 ? (
         <section id="relacionados" className="wrap relacionados">
           <div className="eyebrow">Continue lendo</div>
-          <h2>Mais sobre {categoriaNome}</h2>
           <div className="post-grade">
             {relacionados.map((relacionado) => (
               <PostCard

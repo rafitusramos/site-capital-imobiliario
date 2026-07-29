@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SimuladorFinanciamento } from "@/components/financiamento/SimuladorFinanciamento";
 import { SITE_URL } from "@/lib/site";
+import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 
 const TITULO = "Financiamento imobiliário multibanco — Rafael Teixeira · Capital Imobiliário";
 const DESCRICAO =
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     description:
       "O imóvel você escolhe. O financiamento, a gente disputa banco a banco. Cotação multibanco, comparação por CET e acompanhamento até as chaves.",
     url: "/financiamento/",
-    images: ["/images/background.jpg"],
+    images: [IMAGEM_OG_PADRAO],
     locale: "pt_BR",
   },
   twitter: {
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     title: "Financiamento imobiliário multibanco — a taxa certa vale R$ 200 mil",
     description:
       "Cotação em múltiplos bancos, comparação por Custo Efetivo Total e acompanhamento da pré-aprovação ao registro.",
-    images: ["/images/background.jpg"],
+    images: [OG_IMAGEM_PADRAO],
   },
 };
 

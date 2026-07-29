@@ -5,6 +5,7 @@ import {
   getImoveisPublicados,
   getImoveisRelacionados,
   getTiposEFases,
+  type ImovelCompleto,
 } from "@/lib/queries/imoveis";
 import { Carrossel } from "@/components/imoveis/Carrossel";
 import { GaleriaPlantas } from "@/components/imoveis/GaleriaPlantas";
@@ -19,6 +20,7 @@ import {
   formatarPrecoAPartir,
 } from "@/lib/imoveis/formato";
 import { SITE_URL } from "@/lib/site";
+import { imagemOg, SITE_NOME } from "@/lib/og";
 
 export const revalidate = 3600;
 
@@ -65,6 +67,16 @@ function urlAbsoluta(url: string | null | undefined): string | undefined {
   return url.startsWith("http") ? url : `${SITE_URL}${url}`;
 }
 
+/** Capa do hero: primeira imagem do empreendimento, ou a primeira de todas. */
+function capaDoImovel(imovel: ImovelCompleto): string | null {
+  return (
+    imovel.imagens.find((imagem) => imagem.grupo === "empreendimento")?.url ??
+    imovel.imagens[0]?.url ??
+    null
+  );
+}
+
+
 export async function generateStaticParams() {
   const imoveis = await getImoveisPublicados();
   return imoveis.map((imovel) => ({ slug: imovel.slug }));
@@ -75,10 +87,30 @@ export async function generateMetadata({ params }: PaginaImovelProps): Promise<M
   const imovel = await getImovelBySlug(slug);
   if (!imovel) return {};
 
+  const titulo = imovel.seo_title ?? imovel.titulo;
+  const descricao = imovel.seo_description ?? imovel.descricao_breve ?? undefined;
+  const caminho = `/imoveis/${imovel.slug}/`;
+  const imagem = imagemOg(capaDoImovel(imovel), imovel.titulo);
+
   return {
-    title: imovel.seo_title ?? imovel.titulo,
-    description: imovel.seo_description ?? imovel.descricao_breve ?? undefined,
-    alternates: { canonical: `/imoveis/${imovel.slug}/` },
+    title: titulo,
+    description: descricao,
+    alternates: { canonical: caminho },
+    openGraph: {
+      type: "website",
+      siteName: SITE_NOME,
+      title: titulo,
+      description: descricao,
+      url: caminho,
+      images: [imagem],
+      locale: "pt_BR",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: titulo,
+      description: descricao,
+      images: [imagem.url],
+    },
   };
 }
 
@@ -102,7 +134,8 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const diferenciaisLazer = imovel.diferenciais.filter((d) => d.grupo === "lazer");
   const diferenciaisGerais = imovel.diferenciais.filter((d) => d.grupo === "diferencial");
 
-  const capa = imagensEmpreendimento[0]?.url ?? imovel.imagens[0]?.url ?? null;
+  // Mesma capa que vai para o og:image, para o preview do link bater com o hero.
+  const capa = capaDoImovel(imovel);
   const local = [imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
 
   const area = formatarFaixaArea(imovel.area_min, imovel.area_max);

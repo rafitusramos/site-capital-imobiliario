@@ -14,7 +14,7 @@
   body::before{content:"";position:fixed;inset:0;z-index:-1;background:#0A241C url('/images/background.jpg') center center / cover no-repeat;background-attachment:fixed;opacity:.7;}
   a,button,summary,input,select{touch-action:manipulation;}
   :focus-visible{outline:3px solid var(--bronze);outline-offset:3px;}
-  .wrap{max-width:960px;margin:0 auto;padding:0 24px;}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 24px;}
   section{padding:36px 0;background:var(--marfim);}
   .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:var(--s4);color:var(--jade);}
   .eyebrow::before{content:"";width:9px;height:9px;background:var(--jade);flex:none;}

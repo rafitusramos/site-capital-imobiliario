@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/styles/sobre.css";
 import { SITE_URL } from "@/lib/site";
+import { IMAGEM_OG_PADRAO } from "@/lib/og";
 
 const TITULO = "Sobre — Rafael Teixeira · Capital Imobiliário";
 const DESCRICAO =
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     description:
       "Corretor de imóveis e correspondente bancário especializado em crédito com garantia de imóvel, financiamento SBPE e consórcio.",
     url: "/sobre/",
-    images: ["/images/background.jpg"],
+    images: [IMAGEM_OG_PADRAO],
     locale: "pt_BR",
   },
 };
