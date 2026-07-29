@@ -170,6 +170,10 @@
   .marca-footer .nome{color:var(--branco);}
   .marca-footer .nome small{color:var(--areia);}
   .footer-email{margin-bottom:var(--s4);font-family:var(--mono);font-size:12.5px;color:var(--branco);letter-spacing:.02em;}
+  .footer-legal{display:flex;align-items:center;gap:10px;margin-bottom:var(--s4);font-family:var(--mono);font-size:12.5px;letter-spacing:.02em;}
+  .footer-legal a{color:var(--areia);text-decoration:none;display:inline-flex;align-items:center;min-height:44px;}
+  .footer-legal a:hover,.footer-legal a:focus-visible{color:var(--branco);text-decoration:underline;}
+  .footer-legal span{color:var(--areia);}
   .footer-disclaimer{color:var(--areia);}
 
   /* ===== REVEAL ON SCROLL — deslize horizontal + para cima com fade ===== */
@@ -284,7 +288,14 @@
   .btn-voltar.visivel{display:inline-flex;align-items:center;}
   .btn-voltar:hover{border-color:var(--jade);color:var(--jade);background:rgba(31,107,78,.06);transform:translateY(-1px);}
   .form-nav .cta{flex:1;margin:0;}
-  .lgpd-form{font-size:11px;color:#6b706c;padding:0 26px 14px;flex:none;line-height:1.5;}
+  .consentimento{padding:4px 26px 14px;flex:none;}
+  /* Padding vertical do label (11px + 11px) somado à altura do checkbox (22px)
+     fecha em 44px — a área clicável inteira é o <label>, não só o glifo. */
+  .consentimento label{display:flex;align-items:flex-start;gap:10px;padding:11px 0;cursor:pointer;}
+  .consentimento input[type=checkbox]{flex:none;width:22px;height:22px;margin:0;accent-color:var(--jade);cursor:pointer;}
+  .consentimento span{font-size:11.5px;color:#6b706c;line-height:1.5;}
+  .consentimento span a{color:var(--jade);text-decoration:underline;text-underline-offset:2px;}
+  .consentimento .msg-erro{margin:0 0 4px;}
 
   .sucesso{display:none;text-align:left;padding:30px 26px calc(30px + env(safe-area-inset-bottom));}
   .sucesso .lote-ok{width:44px;height:44px;background:var(--jade);position:relative;margin-bottom:var(--s3);}
@@ -296,7 +307,7 @@
   .sucesso-acoes .cta{margin:0;flex:1;width:auto;}
   .btn-sucesso-voltar{flex:0 0 30%;display:inline-flex;align-items:center;justify-content:center;background:#6b706c;color:var(--branco);font-family:var(--sans);font-weight:600;font-size:14px;min-height:48px;border:none;border-radius:4px;cursor:pointer;transition:background .18s ease,transform .18s ease;}
   .btn-sucesso-voltar:hover{background:#575c58;transform:translateY(-1px);}
-  .painel.enviado .form-head,.painel.enviado .trilho-wrap,.painel.enviado .form-nav,.painel.enviado .lgpd-form{display:none;}
+  .painel.enviado .form-head,.painel.enviado .trilho-wrap,.painel.enviado .form-nav,.painel.enviado .consentimento{display:none;}
   .painel.enviado .sucesso{display:block;}
   /* Compacta o modal em telas baixas para os botões nunca cortarem */
   @media(max-height:720px){
@@ -308,7 +319,9 @@
     .campo input,.campo select{min-height:44px;padding:10px 14px;}
     .form-nav{padding:12px 24px calc(12px + env(safe-area-inset-bottom));}
     .form-nav .cta,.btn-voltar{min-height:44px;}
-    .lgpd-form{padding:0 24px 10px;font-size:10px;}
+    .consentimento{padding:0 24px 10px;}
+    .consentimento label{padding:8px 0;}
+    .consentimento span{font-size:10.5px;}
   }
   @media(max-height:600px){
     .form-head{padding:14px 24px 10px;}
@@ -316,7 +329,12 @@
     .progresso{margin-top:10px;}
     .campo{margin-bottom:10px;}
     .campo label{margin-bottom:4px;}
-    .lgpd-form{display:none;}
+    /* Não some com o consentimento aqui como acontecia com o antigo aviso
+       passivo (.lgpd-form): agora é um checkbox obrigatório, só encolhe. */
+    .consentimento{padding:0 24px 6px;}
+    .consentimento label{padding:6px 0;gap:8px;}
+    .consentimento input[type=checkbox]{width:18px;height:18px;}
+    .consentimento span{font-size:10px;}
   }
 
 /* ===== NAV EM ÁRVORE: Soluções de Crédito ===== */
