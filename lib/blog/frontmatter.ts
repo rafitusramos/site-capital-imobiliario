@@ -1,7 +1,7 @@
-// Parser mínimo de frontmatter para o modelo em docs/modelo-artigo.md — porta a
-// mesma ideia de tools/blog/frontmatter.js (CommonJS, fora do build do Next)
-// para TypeScript. Formato: bloco delimitado por linhas "---", pares
-// "chave: valor" simples (uma linha por campo, sem aninhamento).
+// Parser mínimo de frontmatter para o modelo em docs/modelo-artigo.md, que é o
+// formato aceito pela importação de .md no admin. Formato: bloco delimitado por
+// linhas "---", pares "chave: valor" simples (uma linha por campo, sem
+// aninhamento).
 
 export interface ArtigoFrontmatter {
   dados: Record<string, string>;

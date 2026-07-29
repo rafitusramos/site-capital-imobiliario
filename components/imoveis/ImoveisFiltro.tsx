@@ -239,7 +239,7 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
         </div>
       </section>
 
-      <section>
+      <section className="im-lista-secao">
         <div className="wrap">
           {filtrados.length > 0 ? (
             <div className="im-grid">

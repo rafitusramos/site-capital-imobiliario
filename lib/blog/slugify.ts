@@ -1,5 +1,5 @@
-// Mesma lógica de tools/blog/slugify.js (pipeline legado, CommonJS), portada
-// para TypeScript/ESM para uso no editor do admin.
+// Deriva o slug do título no editor do admin. O slug é a base do SEO do blog:
+// uma vez publicado, ele não muda mais (ver CLAUDE.md).
 export function slugify(texto: string): string {
   return texto
     .normalize("NFD")
