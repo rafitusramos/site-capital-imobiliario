@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/styles/home.css";
 import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
+import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 
 const TITULO = "Crédito imobiliário estruturado — Rafael Teixeira · Capital Imobiliário";
 const DESCRICAO =
@@ -17,7 +18,7 @@ export const metadata: Metadata = {
     description:
       "Financiamento imobiliário e home equity com a mesma lógica: bancos disputando a sua operação e a recomendação partindo do menor crédito que resolve.",
     url: "/",
-    images: ["/images/background.jpg"],
+    images: [IMAGEM_OG_PADRAO],
     locale: "pt_BR",
   },
   twitter: {
@@ -25,7 +26,7 @@ export const metadata: Metadata = {
     title: "Crédito imobiliário estruturado — cotação multibanco",
     description:
       "Financiamento imobiliário e home equity com cotação em múltiplos bancos e comparação pelo custo efetivo total.",
-    images: ["/images/background.jpg"],
+    images: [OG_IMAGEM_PADRAO],
   },
 };
 

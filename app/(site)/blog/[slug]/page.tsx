@@ -10,6 +10,7 @@ import {
 import { ctaDoArtigo, dividirConteudo, formatarData } from "@/lib/blog/blog";
 import { PostCard } from "@/components/blog/post-card";
 import { SITE_URL } from "@/lib/site";
+import { imagemOg, SITE_NOME } from "@/lib/og";
 
 export const revalidate = 3600;
 
@@ -29,10 +30,32 @@ export async function generateMetadata({
   const post = await getPostBySlug(slug);
   if (!post) return {};
 
+  const titulo = post.seo_title ?? post.title;
+  const descricao = post.seo_description ?? post.excerpt ?? undefined;
+  const imagem = imagemOg(post.cover_image, post.title);
+
   return {
-    title: post.seo_title ?? post.title,
-    description: post.seo_description ?? post.excerpt ?? undefined,
+    title: titulo,
+    description: descricao,
     alternates: post.canonical_url ? { canonical: post.canonical_url } : undefined,
+    openGraph: {
+      type: "article",
+      siteName: SITE_NOME,
+      title: titulo,
+      description: descricao,
+      url: `/blog/${post.slug}/`,
+      images: [imagem],
+      locale: "pt_BR",
+      publishedTime: post.published_at ?? undefined,
+      modifiedTime: post.updated_at,
+      authors: ["Rafael Teixeira"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: titulo,
+      description: descricao,
+      images: [imagem.url],
+    },
   };
 }
 
