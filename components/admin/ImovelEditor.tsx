@@ -20,8 +20,9 @@ import { mascaraMoeda } from "@/lib/mascaras";
 import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
 import type { ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/lib/validations/imovel";
-import type { ImovelImagemGrupo, ImovelDiferencialGrupo } from "@/types/database";
+import type { ImovelDiferencialGrupo } from "@/types/database";
 import { listaDeIcones, obterIcone } from "@/components/imoveis/icones";
+import { GaleriaImovel } from "@/components/admin/GaleriaImovel";
 
 const CAMPO =
   "mb-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
@@ -315,58 +316,23 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
     (imovel?.imagens ?? []).map((img) => ({
       id: img.id,
       url: img.url,
-      ambiente: img.ambiente,
+      // A coluna é nullable, mas imagemSchema reprova null em `ambiente` —
+      // normaliza na entrada, senão salvar uma galeria que veio do banco com
+      // ambiente vazio falha com "Dados inválidos.".
+      ambiente: img.ambiente ?? "",
       grupo: img.grupo,
       ordem: img.ordem,
       destaque: img.destaque,
     })),
   );
-  const [enviandoImagem, setEnviandoImagem] = useState(false);
+  const [galeriaAlterada, setGaleriaAlterada] = useState(false);
   const [enviandoGaleria, setEnviandoGaleria] = useState(false);
   const [erroGaleria, setErroGaleria] = useState<string | null>(null);
   const [mensagemGaleria, setMensagemGaleria] = useState<string | null>(null);
 
-  async function aoSelecionarImagem(e: ChangeEvent<HTMLInputElement>) {
-    const arquivo = e.target.files?.[0];
-    if (!arquivo || !imovel) return;
-    setErroGaleria(null);
-    setEnviandoImagem(true);
-    const formData = new FormData();
-    formData.append("arquivo", arquivo);
-    const resultado = await uploadImagemImovel(formData);
-    setEnviandoImagem(false);
-    e.target.value = "";
-    if (!resultado.sucesso || !resultado.url) {
-      setErroGaleria(resultado.erro ?? "Não foi possível enviar a imagem.");
-      return;
-    }
-    setImagens((atual) => [
-      ...atual,
-      {
-        url: resultado.url as string,
-        ambiente: "",
-        grupo: "empreendimento",
-        ordem: atual.length,
-        destaque: atual.length === 0,
-      },
-    ]);
-  }
-
-  function atualizarImagem(indice: number, campos: Partial<ImagemInput>) {
-    setImagens((atual) =>
-      atual.map((item, i) => {
-        if (i !== indice) {
-          // só uma imagem pode ser a capa (destaque)
-          if (campos.destaque === true) return { ...item, destaque: false };
-          return item;
-        }
-        return { ...item, ...campos };
-      }),
-    );
-  }
-
-  function removerImagem(indice: number) {
-    setImagens((atual) => atual.filter((_, i) => i !== indice));
+  function aoMudarGaleria(novasImagens: ImagemInput[]) {
+    setImagens(novasImagens);
+    setGaleriaAlterada(true);
   }
 
   async function salvarGaleria() {
@@ -381,6 +347,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
       return;
     }
     router.refresh();
+    setGaleriaAlterada(false);
     setMensagemGaleria("Galeria salva.");
   }
 
@@ -986,85 +953,24 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
 
       {aba === "galeria" && imovel ? (
         <div>
-          <label className={LABEL} htmlFor="nova-imagem">
-            Enviar nova imagem
-          </label>
-          <input
-            id="nova-imagem"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            onChange={aoSelecionarImagem}
-            disabled={enviandoImagem}
-            className="mb-4 block w-full text-sm"
-          />
+          <GaleriaImovel imagens={imagens} onChange={aoMudarGaleria} />
 
-          <div className="mb-4 space-y-3">
-            {imagens.map((imagem, indice) => (
-              <div
-                key={imagem.id ?? `nova-${indice}`}
-                className="grid grid-cols-1 items-center gap-2 rounded-md border border-neutral-200 p-3 sm:grid-cols-[80px_1.5fr_1fr_80px_90px_auto]"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={imagem.url} alt="" className="h-14 w-20 rounded object-cover" />
-                <input
-                  aria-label="Ambiente"
-                  placeholder="Ambiente (ex.: Fachada)"
-                  value={imagem.ambiente ?? ""}
-                  onChange={(e) => atualizarImagem(indice, { ambiente: e.target.value })}
-                  className={CAMPO_INLINE}
-                />
-                <select
-                  aria-label="Grupo"
-                  value={imagem.grupo}
-                  onChange={(e) => atualizarImagem(indice, { grupo: e.target.value as ImovelImagemGrupo })}
-                  className={CAMPO_INLINE}
-                >
-                  <option value="empreendimento">Empreendimento</option>
-                  <option value="decorado">Decorado</option>
-                  <option value="planta">Planta</option>
-                  <option value="implantacao">Implantação</option>
-                </select>
-                <input
-                  aria-label="Ordem"
-                  type="text"
-                  inputMode="numeric"
-                  value={imagem.ordem}
-                  onChange={(e) => atualizarImagem(indice, { ordem: paraInteiro(e.target.value) })}
-                  className={CAMPO_INLINE}
-                />
-                <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--abissal)]">
-                  <input
-                    type="checkbox"
-                    checked={imagem.destaque}
-                    onChange={(e) => atualizarImagem(indice, { destaque: e.target.checked })}
-                  />
-                  Capa
-                </label>
-                <button
-                  type="button"
-                  onClick={() => removerImagem(indice)}
-                  className="text-sm font-semibold text-[var(--erro)] hover:underline"
-                >
-                  Remover
-                </button>
-              </div>
-            ))}
-            {imagens.length === 0 ? (
-              <p className="text-sm text-neutral-500">Nenhuma imagem ainda.</p>
+          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-black/10 pt-4">
+            <button
+              type="button"
+              disabled={enviandoGaleria}
+              onClick={salvarGaleria}
+              className={BOTAO_PRIMARIO}
+            >
+              {enviandoGaleria ? "Salvando…" : "Salvar galeria"}
+            </button>
+            {galeriaAlterada ? (
+              <span className="text-xs text-neutral-500">Há alterações não salvas.</span>
             ) : null}
           </div>
 
-          {erroGaleria ? <p className="mb-3 text-sm text-[var(--erro)]">{erroGaleria}</p> : null}
-          {mensagemGaleria ? <p className="mb-3 text-sm text-[var(--jade)]">{mensagemGaleria}</p> : null}
-
-          <button
-            type="button"
-            disabled={enviandoGaleria}
-            onClick={salvarGaleria}
-            className={BOTAO_PRIMARIO}
-          >
-            {enviandoGaleria ? "Salvando…" : "Salvar galeria"}
-          </button>
+          {erroGaleria ? <p className="mt-3 text-sm text-[var(--erro)]">{erroGaleria}</p> : null}
+          {mensagemGaleria ? <p className="mt-3 text-sm text-[var(--jade)]">{mensagemGaleria}</p> : null}
         </div>
       ) : null}
 

@@ -1,9 +1,8 @@
 /**
- * Porta das máscaras de input de dist/assets/js/modal-form.js (objeto
- * MASCARAS). Cada função recebe o valor bruto atual do input (o que o
- * usuário acabou de digitar, com ou sem máscara anterior) e devolve o
- * valor já formatado — mesmo comportamento do original: descarta a
- * formatação anterior e reconstrói a partir dos dígitos.
+ * Máscaras de input dos formulários. Cada função recebe o valor bruto atual do
+ * input (o que o usuário acabou de digitar, com ou sem máscara anterior) e
+ * devolve o valor já formatado: descarta a formatação anterior e reconstrói a
+ * partir dos dígitos.
  */
 
 export function mascaraMoeda(valorAtual: string): string {
