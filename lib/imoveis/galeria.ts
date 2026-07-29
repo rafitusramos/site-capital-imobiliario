@@ -29,12 +29,11 @@ export const GRUPOS_GALERIA: { id: ImovelImagemGrupo; nome: string; descricao: s
     nome: "Plantas",
     descricao: "Plantas baixas das tipologias.",
   },
-  {
-    id: "implantacao",
-    nome: "Implantação",
-    descricao: "Vista aérea e mapa de implantação do empreendimento.",
-  },
 ];
+// `implantacao` continua válido no banco (check constraint da migration 007) e
+// no tipo, mas saiu da lista: a página pública nunca renderizou esse grupo, e
+// cadastrar imagem que ninguém vê só gera trabalho perdido. Para trazer de
+// volta, basta reinserir aqui — e fazer a página pública consumir o grupo.
 
 /**
  * Genérico em `T` (sempre um subtipo de `ImagemInput`) para servir tanto o
@@ -71,7 +70,17 @@ export function agruparImagens<T extends ImagemInput>(imagens: T[]): GaleriaAgru
  */
 export function achatarGaleria<T extends ImagemInput>(grupos: GaleriaAgrupada<T>): T[] {
   const achatada: T[] = [];
-  for (const { id: grupoId } of GRUPOS_GALERIA) {
+  const exibidos = GRUPOS_GALERIA.map((g) => g.id);
+
+  // Grupos fora de GRUPOS_GALERIA (hoje só `implantacao`) não têm seção na tela,
+  // mas precisam sair daqui mesmo assim: `salvarImagens` reconcilia a coleção
+  // inteira e apaga do banco tudo que não vier nesta lista. Omiti-los faria o
+  // primeiro "Salvar galeria" destruir a imagem em silêncio.
+  const naoExibidos = (Object.keys(grupos) as ImovelImagemGrupo[]).filter(
+    (id) => !exibidos.includes(id),
+  );
+
+  for (const grupoId of [...exibidos, ...naoExibidos]) {
     grupos[grupoId].forEach((imagem, indice) => {
       achatada.push({
         ...imagem,

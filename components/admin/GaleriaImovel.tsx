@@ -41,11 +41,10 @@ const TIPOS_AUTORIZADOS = new Set(["image/jpeg", "image/png", "image/webp", "ima
 const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024;
 
 /** Frase de convite exibida enquanto o grupo não tem nenhuma imagem. */
-const CONVITE_VAZIO: Record<ImovelImagemGrupo, string> = {
+const CONVITE_VAZIO: Partial<Record<ImovelImagemGrupo, string>> = {
   empreendimento: "Envie as primeiras fotos da fachada e das áreas comuns.",
   decorado: "Envie as primeiras fotos do decorado.",
   planta: "Envie as primeiras plantas baixas.",
-  implantacao: "Envie a primeira foto da implantação.",
 };
 
 /** `ImagemInput` com uma chave local estável, para dar `id` ao dnd-kit mesmo

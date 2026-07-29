@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import {
+  GRUPOS_GALERIA,
   agruparImagens,
   achatarGaleria,
   moverDentroDoGrupo,
@@ -313,5 +314,30 @@ describe("contrato com imagensFormSchema", () => {
 
     const comVazio = [{ url: "a.jpg", ambiente: "", grupo: "empreendimento", ordem: 0, destaque: true }];
     expect(imagensFormSchema.safeParse(comVazio).success).toBe(true);
+  });
+});
+
+describe("grupo fora de GRUPOS_GALERIA", () => {
+  test("implantacao não tem mais seção na tela", () => {
+    expect(GRUPOS_GALERIA.map((g) => g.id)).toEqual(["empreendimento", "decorado", "planta"]);
+  });
+
+  test("mas uma imagem em implantacao sobrevive ao achatarGaleria", () => {
+    // salvarImagens reconcilia a coleção inteira: o que não sai daqui é
+    // APAGADO do banco. Se achatarGaleria pulasse os grupos sem seção, o
+    // primeiro "Salvar galeria" destruiria a imagem sem avisar ninguém.
+    const grupos = grupoVazio();
+    grupos.empreendimento = [imagem({ url: "fachada.jpg", grupo: "empreendimento" })];
+    grupos.implantacao = [imagem({ url: "aerea.jpg", grupo: "implantacao", ambiente: "Implantação" })];
+
+    const achatada = achatarGaleria(grupos);
+
+    expect(achatada.map((i) => i.url)).toEqual(["fachada.jpg", "aerea.jpg"]);
+    expect(achatada.find((i) => i.url === "aerea.jpg")).toMatchObject({
+      grupo: "implantacao",
+      ambiente: "Implantação",
+      ordem: 0,
+      destaque: false,
+    });
   });
 });
