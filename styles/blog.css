@@ -111,6 +111,21 @@
 .artigo-texto strong{font-weight:600;}
 .artigo-texto a{color:var(--jade);text-decoration:underline;text-underline-offset:2px;}
 .artigo-texto hr{border:none;border-top:1px solid rgba(10,36,28,.15);margin:30px 0;}
+
+/* Tabelas vindas do markdown. Não têm classe, e o preflight do Tailwind zera
+   padding e bordas — chegavam aqui sem estilo algum e encolhidas ao conteúdo.
+   Ocupam a largura da coluna de texto, com a primeira e a última célula
+   alinhadas às margens do parágrafo para a tabela casar com o texto. */
+.artigo-texto table{width:100%;border-collapse:collapse;margin:24px 0 28px;}
+.artigo-texto th{
+  font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--jade);text-align:left;
+  padding:0 14px 10px;border-bottom:1px solid rgba(10,36,28,.25);
+}
+.artigo-texto td{padding:13px 14px;border-bottom:1px solid rgba(10,36,28,.12);vertical-align:top;}
+.artigo-texto th:first-child,.artigo-texto td:first-child{padding-left:0;}
+.artigo-texto th:last-child,.artigo-texto td:last-child{padding-right:0;}
+.artigo-texto tbody tr:last-child td{border-bottom:none;}
 .artigo-texto em{color:#5b615d;font-size:14.5px;}
 
 .artigo-cta{background:var(--abissal);border-radius:8px;padding:36px 32px;text-align:center;margin:44px 0;}
