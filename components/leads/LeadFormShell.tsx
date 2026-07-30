@@ -12,6 +12,7 @@ import { criarLead } from "@/app/actions/leads";
 import type { LeadTipo } from "@/lib/validations/lead";
 import { capturarUtm } from "@/lib/utm";
 import { TEXTO_CONSENTIMENTO } from "@/lib/legal";
+import { rastrear } from "@/lib/analytics/eventos";
 
 export type ValoresFormulario = Record<string, string | boolean>;
 
@@ -92,6 +93,7 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
         setConsentimento(false);
         setErroConsentimento(false);
         setAberto(true);
+        rastrear({ nome: "formulario_iniciado", tipo });
       },
     }));
 
@@ -200,6 +202,7 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
 
         if (resultado.sucesso) {
           setEnviado(true);
+          rastrear({ nome: "lead_enviado", tipo });
         } else {
           setErroEnvio(resultado.erro ?? "Não foi possível enviar. Tente novamente.");
         }
@@ -339,7 +342,11 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
               <button type="button" className="btn-sucesso-voltar" onClick={fechar}>
                 Voltar
               </button>
-              <a className="cta" href={textoSucesso.whatsappHref}>
+              <a
+                className="cta"
+                href={textoSucesso.whatsappHref}
+                onClick={() => rastrear({ nome: "whatsapp_clicado", contexto: `sucesso-${tipo}` })}
+              >
                 Entrar em contato agora
               </a>
             </div>

@@ -16,6 +16,7 @@ import {
   type ValoresFormulario,
 } from "@/components/leads/LeadFormShell";
 import { TAXAS_PADRAO } from "@/lib/queries/parametros";
+import { rastrear } from "@/lib/analytics/eventos";
 
 const LTV = 0.6;
 
@@ -68,6 +69,14 @@ export function SimuladorHomeEquity({
   const [valorImovelSim, setValorImovelSim] = useState("R$ 1.000.000");
   const [prazoMeses, setPrazoMeses] = useState(240);
   const modalRef = useRef<LeadFormShellHandle>(null);
+  // "simulador_usado" dispara uma única vez por sessão de uso — não a cada
+  // movimento de slider, o que inundaria a cota de eventos.
+  const usoRastreadoRef = useRef(false);
+  const marcarUsoDoSimulador = () => {
+    if (usoRastreadoRef.current) return;
+    usoRastreadoRef.current = true;
+    rastrear({ nome: "simulador_usado", pagina: "home-equity" });
+  };
 
   const { creditoNum, parcelaNum } = useMemo(() => {
     const valorNum = digitos(valorImovelSim);
@@ -123,7 +132,10 @@ export function SimuladorHomeEquity({
                   type="text"
                   inputMode="numeric"
                   value={valorImovelSim}
-                  onChange={(e) => setValorImovelSim(mascaraMoeda(e.target.value))}
+                  onChange={(e) => {
+                    marcarUsoDoSimulador();
+                    setValorImovelSim(mascaraMoeda(e.target.value));
+                  }}
                   aria-label="Valor estimado do imóvel"
                 />
                 <div className="sim-slider-wrap">
@@ -140,7 +152,10 @@ export function SimuladorHomeEquity({
                     max={240}
                     step={6}
                     value={prazoMeses}
-                    onChange={(e) => setPrazoMeses(Number(e.target.value))}
+                    onChange={(e) => {
+                      marcarUsoDoSimulador();
+                      setPrazoMeses(Number(e.target.value));
+                    }}
                     aria-label="Prazo em meses"
                   />
                   <div className="sim-faixa">
