@@ -11,6 +11,7 @@ import {
 import { criarLead } from "@/app/actions/leads";
 import type { LeadTipo } from "@/lib/validations/lead";
 import { capturarUtm } from "@/lib/utm";
+import { TEXTO_CONSENTIMENTO } from "@/lib/legal";
 
 export type ValoresFormulario = Record<string, string | boolean>;
 
@@ -68,6 +69,8 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
     const [enviando, setEnviando] = useState(false);
     const [enviado, setEnviado] = useState(false);
     const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+    const [consentimento, setConsentimento] = useState(false);
+    const [erroConsentimento, setErroConsentimento] = useState(false);
 
     const painelRef = useRef<HTMLDivElement>(null);
     const ultimoFocoRef = useRef<HTMLElement | null>(null);
@@ -84,6 +87,10 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
         setErros(new Set());
         setEnviado(false);
         setErroEnvio(null);
+        // Consentimento é manifestação livre e inequívoca a cada envio — nunca
+        // vem pré-marcado nem sobrevive de uma abertura anterior do modal.
+        setConsentimento(false);
+        setErroConsentimento(false);
         setAberto(true);
       },
     }));
@@ -173,6 +180,11 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
     const aoEnviar = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!validarEtapa(passo)) return;
+      if (!consentimento) {
+        setErroConsentimento(true);
+        return;
+      }
+      setErroConsentimento(false);
 
       setEnviando(true);
       setErroEnvio(null);
@@ -183,6 +195,7 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
           paginaUrl: window.location.href,
           utm: capturarUtm(),
           honeypot,
+          consentimentoLgpd: consentimento,
         });
 
         if (resultado.sucesso) {
@@ -267,6 +280,36 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
               </p>
             )}
 
+            <div className="consentimento">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={consentimento}
+                  onChange={(e) => {
+                    setConsentimento(e.target.checked);
+                    if (e.target.checked) setErroConsentimento(false);
+                  }}
+                  aria-describedby={erroConsentimento ? "consentimentoErro" : undefined}
+                />
+                <span>
+                  {TEXTO_CONSENTIMENTO} Li e concordo com os{" "}
+                  <a href="/termos-de-uso/" target="_blank" rel="noopener">
+                    Termos de Uso
+                  </a>{" "}
+                  e a{" "}
+                  <a href="/politica-de-privacidade/" target="_blank" rel="noopener">
+                    Política de Privacidade
+                  </a>
+                  .
+                </span>
+              </label>
+              {erroConsentimento && (
+                <p className="msg-erro" id="consentimentoErro" role="alert" style={{ display: "block" }}>
+                  Marque a autorização para enviar sua solicitação.
+                </p>
+              )}
+            </div>
+
             <div className="form-nav">
               <button
                 className={`btn-voltar${passo > 0 ? " visivel" : ""}`}
@@ -285,11 +328,6 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
                 </button>
               )}
             </div>
-            <p className="lgpd-form">
-              Ao enviar, você autoriza o uso destes dados — inclusive CPF — exclusivamente para
-              a pré-qualificação e análise de crédito solicitada, sem compartilhamento com
-              terceiros sem seu consentimento (LGPD, Lei 13.709/2018).
-            </p>
           </form>
           <div className="sucesso">
             <div className="lote-ok" aria-hidden="true" />

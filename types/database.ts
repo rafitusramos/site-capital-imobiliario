@@ -578,6 +578,28 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["lead_status_historico"]["Insert"]>;
         Relationships: [];
       };
+      // Taxas dos simuladores públicos (013_parametros_simulador.sql).
+      // Tabela singleton (uma linha só, id = 1) editável em /admin/parametros.
+      // As taxas são gravadas em decimal (0.115), não percentual (11.5) —
+      // ver lib/parametros/taxa.ts para a conversão usada pelo formulário.
+      parametros_simulador: {
+        Row: {
+          id: number;
+          financiamento_taxa_anual: number;
+          home_equity_taxa_mensal: number;
+          updated_at: string;
+          atualizado_por: string | null;
+        };
+        Insert: {
+          id?: number;
+          financiamento_taxa_anual: number;
+          home_equity_taxa_mensal: number;
+          updated_at?: string;
+          atualizado_por?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["parametros_simulador"]["Insert"]>;
+        Relationships: [];
+      };
       lead_interacoes: {
         Row: {
           id: string;

@@ -44,6 +44,16 @@ function IconeChevron({ className }: { className?: string }) {
   );
 }
 
+function IconeTaxas({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M4 15.5 15.5 4" />
+      <circle cx="6.25" cy="6.25" r="2.25" />
+      <circle cx="13.75" cy="13.75" r="2.25" />
+    </svg>
+  );
+}
+
 const ITENS: {
   label: string;
   href: string | null;
@@ -52,6 +62,7 @@ const ITENS: {
   { label: "CRM", href: null, icone: IconeCRM },
   { label: "Cadastro de Artigos", href: "/admin/posts", icone: IconeArtigos },
   { label: "Cadastro de Imóveis", href: "/admin/imoveis", icone: IconeImoveis },
+  { label: "Taxas dos Simuladores", href: "/admin/parametros", icone: IconeTaxas },
 ];
 
 export function SidebarAdmin() {

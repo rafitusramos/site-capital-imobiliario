@@ -6,6 +6,7 @@ import {
   brl,
   taxaMensal,
   parcelaInicialSAC,
+  parcelaPrice,
   cpfValido,
   telefoneValido,
 } from "@/lib/financeiro";
@@ -15,8 +16,8 @@ import {
   type LeadFormShellHandle,
   type ValoresFormulario,
 } from "@/components/leads/LeadFormShell";
+import { TAXAS_PADRAO } from "@/lib/queries/parametros";
 
-const TAXA_ANUAL = 0.115;
 const COMPROMETIMENTO = 0.3;
 
 function campoClasse(erros: Set<string>, id: string): string {
@@ -67,29 +68,48 @@ function validarCampo(campo: string, valores: ValoresFormulario): boolean {
   }
 }
 
-export function SimuladorFinanciamento() {
+// taxaAnual tem default de propósito: se a página esquecer de passar a prop
+// (ou a leitura do banco falhar antes de chegar aqui), o simulador continua
+// funcionando com a taxa de referência em vez de zerar a taxa e distorcer a
+// parcela calculada.
+export function SimuladorFinanciamento({
+  taxaAnual = TAXAS_PADRAO.financiamentoTaxaAnual,
+}: {
+  taxaAnual?: number;
+}) {
   const [valorImovelSim, setValorImovelSim] = useState("R$ 1.000.000");
   const [percentualEntrada, setPercentualEntrada] = useState(20);
   const [prazoMeses, setPrazoMeses] = useState(420);
+  const [ehSac, setEhSac] = useState(true);
   const modalRef = useRef<LeadFormShellHandle>(null);
   const refFgtsSim = useRef<HTMLButtonElement>(null);
   const refFgtsNao = useRef<HTMLButtonElement>(null);
+  const refSac = useRef<HTMLButtonElement>(null);
+  const refPrice = useRef<HTMLButtonElement>(null);
 
   const { entradaNum, creditoNum, parcelaNum, rendaSugerida } = useMemo(() => {
     const valorNum = digitos(valorImovelSim);
     const entrada = Math.round((valorNum * percentualEntrada) / 100);
     const credito = Math.max(valorNum - entrada, 0);
-    const parcela = Math.round(parcelaInicialSAC(credito, taxaMensal(TAXA_ANUAL), prazoMeses));
+    const parcela = Math.round(
+      ehSac
+        ? parcelaInicialSAC(credito, taxaMensal(taxaAnual), prazoMeses)
+        : parcelaPrice(credito, taxaMensal(taxaAnual), prazoMeses),
+    );
     const renda = Math.round(parcela / COMPROMETIMENTO / 100) * 100;
     return { entradaNum: entrada, creditoNum: credito, parcelaNum: parcela, rendaSugerida: renda };
-  }, [valorImovelSim, percentualEntrada, prazoMeses]);
+  }, [valorImovelSim, percentualEntrada, prazoMeses, ehSac, taxaAnual]);
 
   const montarDados = (valores: ValoresFormulario) => {
     const valorImovel = digitos(valores.valorImovel);
     const entradaDisponivel = digitos(valores.entradaDisponivel);
     const valorCredito = Math.max(valorImovel - entradaDisponivel, 0);
     const percentual = valorImovel > 0 ? Math.round((entradaDisponivel / valorImovel) * 100) : 0;
-    const parcelaEstimada = Math.round(parcelaInicialSAC(valorCredito, taxaMensal(TAXA_ANUAL), prazoMeses));
+    const parcelaEstimada = Math.round(
+      ehSac
+        ? parcelaInicialSAC(valorCredito, taxaMensal(taxaAnual), prazoMeses)
+        : parcelaPrice(valorCredito, taxaMensal(taxaAnual), prazoMeses),
+    );
 
     return {
       nome: valores.nome,
@@ -120,12 +140,53 @@ export function SimuladorFinanciamento() {
           <h2 className="reveal">Monte seu financiamento</h2>
           <p className="intro reveal">
             Informe o valor do imóvel e ajuste a entrada e o prazo. Você vê na hora o valor
-            financiado, a parcela inicial estimada e a renda familiar sugerida para a operação.
+            financiado, a parcela estimada e a renda familiar sugerida para a operação.
           </p>
           <div className="sim-card reveal">
             <div className="sim-grid">
               <div className="sim-entrada">
-                <label htmlFor="sim-valor">Valor do imóvel</label>
+                <div className="sim-entrada-topo">
+                  <label htmlFor="sim-valor">Valor do imóvel</label>
+                  <div
+                    className="segmentado segmentado-compacto"
+                    role="radiogroup"
+                    aria-label="Sistema de amortização"
+                    onKeyDown={(e) =>
+                      aoTeclarSegmentado(e, ehSac, setEhSac, {
+                        simRef: refSac,
+                        naoRef: refPrice,
+                      })
+                    }
+                  >
+                    <span
+                      className="segmentado-pill"
+                      aria-hidden="true"
+                      style={{ transform: ehSac ? "translateX(0%)" : "translateX(100%)" }}
+                    />
+                    <button
+                      type="button"
+                      ref={refSac}
+                      role="radio"
+                      aria-checked={ehSac}
+                      tabIndex={ehSac ? 0 : -1}
+                      className="segmentado-opcao"
+                      onClick={() => setEhSac(true)}
+                    >
+                      SAC
+                    </button>
+                    <button
+                      type="button"
+                      ref={refPrice}
+                      role="radio"
+                      aria-checked={!ehSac}
+                      tabIndex={!ehSac ? 0 : -1}
+                      className="segmentado-opcao"
+                      onClick={() => setEhSac(false)}
+                    >
+                      PRICE
+                    </button>
+                  </div>
+                </div>
                 <input
                   id="sim-valor"
                   type="text"
@@ -193,14 +254,16 @@ export function SimuladorFinanciamento() {
                   </div>
                 </div>
                 <div className="sim-res">
-                  <div className="rot">Parcela inicial aproximada</div>
+                  <div className="rot">
+                    {ehSac ? "Parcela inicial aproximada" : "Parcela fixa aproximada"}
+                  </div>
                   <div className="num">
                     {brl(parcelaNum)}
                     <span style={{ fontSize: ".5em" }}>/mês</span>
                   </div>
                   <div className="sub">
-                    SAC em {prazoMeses} meses · renda familiar sugerida a partir de{" "}
-                    {brl(rendaSugerida)}
+                    {ehSac ? "SAC" : "PRICE"} em {prazoMeses} meses · renda familiar sugerida a
+                    partir de {brl(rendaSugerida)}
                   </div>
                 </div>
                 <div className="sim-cta">
@@ -221,12 +284,14 @@ export function SimuladorFinanciamento() {
             </div>
           </div>
           <p className="sim-nota reveal">
-            Estimativa automática para fins de orientação, sem valor de proposta. A parcela usa o
-            sistema de amortização SAC (parcela inicial, decrescente ao longo do contrato) com
-            taxa de referência de mercado para SBPE, sem TR, seguros obrigatórios e tarifas — o
-            valor efetivo varia conforme instituição, prazo e análise de crédito. A renda sugerida
-            considera comprometimento de até 30% com a parcela. Não constitui oferta de crédito.
-            Crédito sujeito a aprovação.
+            Estimativa automática para fins de orientação, sem valor de proposta. A parcela usa{" "}
+            {ehSac
+              ? "o sistema de amortização SAC (parcela inicial, decrescente ao longo do contrato)"
+              : "a Tabela PRICE (parcela fixa do início ao fim do contrato)"}{" "}
+            com taxa de referência de mercado para SBPE, sem TR, seguros obrigatórios e tarifas —
+            o valor efetivo varia conforme instituição, prazo e análise de crédito. A renda
+            sugerida considera comprometimento de até 30% com a parcela. Não constitui oferta de
+            crédito. Crédito sujeito a aprovação.
           </p>
         </div>
       </section>
