@@ -278,13 +278,40 @@ export default function PoliticaDePrivacidadePage() {
                 <span className="num">11.</span>Cookies e rastreamento
               </h2>
               <p>
-                O site público <strong>não usa cookies de rastreamento</strong>, não roda Google
-                Analytics, Meta Pixel nem qualquer ferramenta de perfilamento de terceiros. Os
-                vídeos incorporados nas páginas usam o domínio youtube-nocookie.com, justamente
-                para não carregar cookies do YouTube. Cookies existem apenas na área
-                administrativa restrita, e servem unicamente para manter a sessão de quem
-                administra o site. É por isso que este site não exibe banner de cookies — não há
-                rastreamento para consentir.
+                O site público usa cookies e identificadores de navegador de três ferramentas de
+                terceiros:
+              </p>
+              <ul>
+                <li>
+                  <strong>Google Analytics 4</strong>, para entender o tráfego do site — de onde
+                  vêm os visitantes e como usam as páginas;
+                </li>
+                <li>
+                  <strong>Google Ads</strong>, para medir o resultado das campanhas publicitárias
+                  que fazemos no Google;
+                </li>
+                <li>
+                  <strong>Meta Pixel</strong>, para medir o resultado das campanhas publicitárias
+                  que fazemos no Instagram e no Facebook.
+                </li>
+              </ul>
+              <p>
+                Essas ferramentas são carregadas assim que você acessa o site — elas não esperam
+                uma ação sua para começar a funcionar. Por isso, logo na primeira visita, este
+                site exibe um banner onde você pode <strong>recusar o rastreamento</strong> a
+                qualquer momento; ao recusar, essas três ferramentas param de coletar dados sobre
+                a sua navegação. Você pode mudar de ideia depois também: o link{" "}
+                <strong>&ldquo;Cookies e privacidade&rdquo;</strong>, no rodapé de todas as
+                páginas, reabre o banner para você revisar a sua escolha.
+              </p>
+              <p>
+                Os vídeos incorporados nas páginas usam o domínio youtube-nocookie.com, justamente
+                para não carregar cookies do YouTube.
+              </p>
+              <p>
+                Cookies também existem na área administrativa restrita, mas ali servem apenas
+                para manter a sessão de quem administra o site — não têm nenhuma relação com as
+                ferramentas de análise e publicidade citadas acima.
               </p>
             </section>
 

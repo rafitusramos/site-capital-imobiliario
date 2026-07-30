@@ -175,8 +175,22 @@
   .footer-legal{display:flex;align-items:center;gap:10px;margin-bottom:var(--s4);font-family:var(--mono);font-size:12.5px;letter-spacing:.02em;}
   .footer-legal a{color:var(--areia);text-decoration:none;display:inline-flex;align-items:center;min-height:44px;}
   .footer-legal a:hover,.footer-legal a:focus-visible{color:var(--branco);text-decoration:underline;}
+  .footer-legal button{background:none;border:none;padding:0;font:inherit;color:var(--areia);text-decoration:none;display:inline-flex;align-items:center;min-height:44px;cursor:pointer;}
+  .footer-legal button:hover,.footer-legal button:focus-visible{color:var(--branco);text-decoration:underline;}
   .footer-legal span{color:var(--areia);}
   .footer-disclaimer{color:var(--areia);}
+
+  /* ===== BANNER DE CONSENTIMENTO (cookies/analytics) ===== */
+  .consentimento-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:110;max-width:440px;margin:0 auto;background:var(--branco);border-top:3px solid var(--bronze);border-radius:4px;box-shadow:0 -10px 40px -12px rgba(0,0,0,.35),0 10px 30px -12px rgba(10,36,28,.25);padding:22px 24px;animation:consentimento-entrar .4s cubic-bezier(.22,1,.36,1);}
+  @media(min-width:640px){.consentimento-banner{left:24px;right:auto;bottom:24px;}}
+  @keyframes consentimento-entrar{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+  @media(prefers-reduced-motion:reduce){.consentimento-banner{animation:none;}}
+  .consentimento-texto{font-family:var(--sans);font-size:13.5px;line-height:1.6;color:#3d423e;margin-bottom:16px;}
+  .consentimento-texto a{color:var(--jade);text-decoration:underline;}
+  .consentimento-acoes{display:flex;gap:10px;flex-wrap:wrap;}
+  .consentimento-acoes .cta{padding:0 22px;min-height:44px;font-size:13.5px;flex:1;box-shadow:none;}
+  .consentimento-recusar{background:none;border:1px solid rgba(10,36,28,.28);color:var(--abissal);font-family:var(--sans);font-weight:600;font-size:13.5px;padding:0 20px;min-height:44px;border-radius:4px;cursor:pointer;flex:1;transition:border-color .18s ease,color .18s ease,background .18s ease;}
+  .consentimento-recusar:hover{border-color:var(--jade);color:var(--jade);background:rgba(31,107,78,.06);}
 
   /* ===== REVEAL ON SCROLL — deslize horizontal + para cima com fade ===== */
   .reveal{opacity:1;transform:none;}
