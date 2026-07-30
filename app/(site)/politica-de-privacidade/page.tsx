@@ -151,8 +151,9 @@ export default function PoliticaDePrivacidadePage() {
               <ul>
                 <li>
                   <strong>Consentimento (inciso I):</strong> para a pré-qualificação de crédito e
-                  o encaminhamento aos bancos parceiros, incluindo o tratamento do CPF. É este o
-                  texto que você marca no formulário antes de enviar:
+                  o encaminhamento às instituições financeiras parceiras. O consentimento abrange
+                  os dados que você informa no formulário, incluindo o CPF quando você opta por
+                  informá-lo. O texto que você marca antes de enviar é este:
                   <p className="legal-cita">&ldquo;{TEXTO_CONSENTIMENTO}&rdquo;</p>
                 </li>
                 <li>

@@ -96,6 +96,8 @@
   .sim-entrada{padding:32px 30px;border-right:1px solid rgba(10,36,28,.10);}
   @media(max-width:720px){.sim-entrada{border-right:none;border-bottom:1px solid rgba(10,36,28,.10);}}
   .sim-entrada label{display:block;font-family:var(--sans);font-weight:600;font-size:13px;color:var(--abissal);margin-bottom:8px;}
+  .sim-entrada-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;flex-wrap:wrap;}
+  .sim-entrada-topo label{margin-bottom:0;}
   .sim-entrada .dica{font-weight:400;color:#7a807b;font-size:11.5px;}
   .sim-entrada input[type=text]{width:100%;min-height:52px;padding:12px 16px;font-family:var(--mono);font-size:20px;color:var(--abissal);background:var(--marfim);border:1px solid rgba(10,36,28,.25);border-radius:4px;margin-bottom:var(--s4);}
   .sim-entrada input[type=text]:focus{outline:2px solid var(--jade);border-color:var(--jade);}
@@ -248,7 +250,7 @@
   .campo{margin-bottom:var(--s3);}
   .campo label{display:block;font-family:var(--sans);font-weight:600;font-size:13px;color:var(--abissal);margin-bottom:6px;}
   .campo .dica{font-weight:400;color:#7a807b;font-size:11.5px;}
-  .campo input,.campo select{width:100%;min-height:48px;padding:12px 14px;font-family:var(--sans);font-size:15px;color:var(--tinta);background:var(--marfim);border:1px solid rgba(10,36,28,.25);border-radius:4px;appearance:none;}
+  .campo input,.campo select{width:100%;min-height:36px;padding:6px 12px;font-family:var(--sans);font-size:15px;color:var(--tinta);background:var(--marfim);border:1px solid rgba(10,36,28,.25);border-radius:4px;appearance:none;}
   .campo select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%230A241C' stroke-width='1.6' fill='none'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;}
   .campo input:focus,.campo select:focus{outline:2px solid var(--jade);outline-offset:0;border-color:var(--jade);}
   .campo .msg-erro{display:none;font-size:12px;color:var(--erro);margin-top:5px;}
@@ -282,6 +284,14 @@
   .segmentado:has(:focus-visible){outline:2px solid var(--bronze);outline-offset:2px;}
   @media(prefers-reduced-motion:reduce){.segmentado-pill{transition:none;}}
   @media(max-width:780px){.segmentado-opcao{min-height:44px;}}
+  .segmentado-compacto{padding:3px;}
+  .segmentado-compacto .segmentado-pill{top:3px;left:3px;width:calc(50% - 3px);height:calc(100% - 6px);}
+  .segmentado-compacto .segmentado-opcao{padding:4px 10px;font-size:12px;min-height:28px;}
+  /* `.segmentado-compacto .segmentado-opcao` tem especificidade maior que a
+     regra de 44px acima, então venceria também no mobile e deixaria este
+     interruptor em 28px justo onde se toca com o dedo. 36px devolve conforto
+     de toque sem perder o compacto que faz ele caber ao lado do rótulo. */
+  @media(max-width:780px){.segmentado-compacto .segmentado-opcao{min-height:36px;}}
 
   .form-nav{display:flex;gap:12px;padding:16px 26px calc(20px + env(safe-area-inset-bottom));border-top:1px solid rgba(10,36,28,.12);flex:none;background:var(--branco);}
   .btn-voltar{background:none;border:1px solid rgba(10,36,28,.28);color:var(--abissal);font-family:var(--sans);font-weight:600;font-size:14px;padding:0 20px;min-height:48px;cursor:pointer;display:none;transition:border-color .18s ease,color .18s ease,background .18s ease,transform .18s ease;}
@@ -316,7 +326,9 @@
     .progresso{margin-top:12px;}
     .bloco{padding:4px 24px 12px;}
     .campo{margin-bottom:12px;}
-    .campo input,.campo select{min-height:44px;padding:10px 14px;}
+    /* Sem override de altura do campo aqui: a base já é 36px, mais compacta
+       que os 44px que esta media query usava quando a base era 48px. Repetir
+       um valor maior faria o modal CRESCER na tela baixa, o oposto da intenção. */
     .form-nav{padding:12px 24px calc(12px + env(safe-area-inset-bottom));}
     .form-nav .cta,.btn-voltar{min-height:44px;}
     .consentimento{padding:0 24px 10px;}

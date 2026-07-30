@@ -32,4 +32,4 @@ export const ATUALIZADO_EM = "29 de julho de 2026";
  * podem divergir.
  */
 export const TEXTO_CONSENTIMENTO =
-  "Autorizo o uso dos meus dados, inclusive CPF, para a pré-qualificação de crédito solicitada e o encaminhamento aos bancos e instituições financeiras parceiras.";
+  "Autorizo o uso dos meus dados, para a pré-qualificação de crédito e o encaminhamento às instituições financeiras parceiras.";
