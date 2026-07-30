@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "@/styles/home.css";
-import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 
 const TITULO = "Crédito imobiliário estruturado — Rafael Teixeira · Capital Imobiliário";
@@ -30,59 +29,9 @@ export const metadata: Metadata = {
   },
 };
 
-const negocioJsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "FinancialService",
-      "@id": `${SITE_URL}/#negocio`,
-      name: "Rafael Teixeira · Capital Imobiliário",
-      alternateName: "Capital Imobiliário",
-      url: `${SITE_URL}/`,
-      image: `${SITE_URL}/images/background.jpg`,
-      logo: `${SITE_URL}/images/background.jpg`,
-      description:
-        "Correspondente bancário especializado em crédito com garantia de imóvel (home equity), financiamento imobiliário SBPE e consórcio. Análise multibanco com recomendação do menor crédito que resolve o objetivo do cliente.",
-      telephone: "+55-19-99783-4187",
-      email: "contato@rtcapitalimobiliario.com.br",
-      priceRange: "Análise sem custo",
-      areaServed: CIDADES_ATENDIDAS.map((cidade) => ({ "@type": "City", name: cidade })),
-      founder: { "@id": `${SITE_URL}/#rafael` },
-      employee: { "@id": `${SITE_URL}/#rafael` },
-      sameAs: ["https://www.instagram.com/rafaelteixeiraimovel"],
-    },
-    {
-      "@type": "Person",
-      "@id": `${SITE_URL}/#rafael`,
-      name: "Rafael Teixeira",
-      jobTitle: "Corretor de Imóveis · Correspondente Bancário",
-      worksFor: { "@id": `${SITE_URL}/#negocio` },
-      hasCredential: [
-        {
-          "@type": "EducationalOccupationalCredential",
-          credentialCategory: "license",
-          recognizedBy: { "@type": "Organization", name: "CRECI-SP" },
-          name: "Corretor de Imóveis registrado no CRECI-SP",
-        },
-        {
-          "@type": "EducationalOccupationalCredential",
-          credentialCategory: "certificate",
-          recognizedBy: { "@type": "Organization", name: "FEBRABAN" },
-          name: "Certificação FEBRABAN em Crédito Imobiliário",
-        },
-      ],
-    },
-  ],
-};
-
 export default function HomePage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(negocioJsonLd) }}
-      />
-
       <header className="hero hero-home" id="topo">
         <div className="wrap">
           <h1 className="reveal d1">O crédito certo depende de quem disputa por você.</h1>

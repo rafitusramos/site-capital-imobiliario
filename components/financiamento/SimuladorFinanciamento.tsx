@@ -17,6 +17,7 @@ import {
   type ValoresFormulario,
 } from "@/components/leads/LeadFormShell";
 import { TAXAS_PADRAO } from "@/lib/queries/parametros";
+import { rastrear } from "@/lib/analytics/eventos";
 
 const COMPROMETIMENTO = 0.3;
 
@@ -86,6 +87,15 @@ export function SimuladorFinanciamento({
   const refFgtsNao = useRef<HTMLButtonElement>(null);
   const refSac = useRef<HTMLButtonElement>(null);
   const refPrice = useRef<HTMLButtonElement>(null);
+  // "simulador_usado" dispara uma única vez por sessão de uso — não a cada
+  // movimento de slider, o que inundaria a cota de eventos. O ref (não
+  // state) garante isso sem causar re-render extra a cada interação.
+  const usoRastreadoRef = useRef(false);
+  const marcarUsoDoSimulador = () => {
+    if (usoRastreadoRef.current) return;
+    usoRastreadoRef.current = true;
+    rastrear({ nome: "simulador_usado", pagina: "financiamento" });
+  };
 
   const { entradaNum, creditoNum, parcelaNum, rendaSugerida } = useMemo(() => {
     const valorNum = digitos(valorImovelSim);
@@ -170,7 +180,10 @@ export function SimuladorFinanciamento({
                       aria-checked={ehSac}
                       tabIndex={ehSac ? 0 : -1}
                       className="segmentado-opcao"
-                      onClick={() => setEhSac(true)}
+                      onClick={() => {
+                        marcarUsoDoSimulador();
+                        setEhSac(true);
+                      }}
                     >
                       SAC
                     </button>
@@ -181,7 +194,10 @@ export function SimuladorFinanciamento({
                       aria-checked={!ehSac}
                       tabIndex={!ehSac ? 0 : -1}
                       className="segmentado-opcao"
-                      onClick={() => setEhSac(false)}
+                      onClick={() => {
+                        marcarUsoDoSimulador();
+                        setEhSac(false);
+                      }}
                     >
                       PRICE
                     </button>
@@ -192,7 +208,10 @@ export function SimuladorFinanciamento({
                   type="text"
                   inputMode="numeric"
                   value={valorImovelSim}
-                  onChange={(e) => setValorImovelSim(mascaraMoeda(e.target.value))}
+                  onChange={(e) => {
+                    marcarUsoDoSimulador();
+                    setValorImovelSim(mascaraMoeda(e.target.value));
+                  }}
                   aria-label="Valor do imóvel"
                 />
                 <div className="sim-slider-wrap">
@@ -211,7 +230,10 @@ export function SimuladorFinanciamento({
                     max={80}
                     step={1}
                     value={percentualEntrada}
-                    onChange={(e) => setPercentualEntrada(Number(e.target.value))}
+                    onChange={(e) => {
+                      marcarUsoDoSimulador();
+                      setPercentualEntrada(Number(e.target.value));
+                    }}
                     aria-label="Percentual de entrada"
                   />
                   <div className="sim-faixa">
@@ -233,7 +255,10 @@ export function SimuladorFinanciamento({
                     max={420}
                     step={6}
                     value={prazoMeses}
-                    onChange={(e) => setPrazoMeses(Number(e.target.value))}
+                    onChange={(e) => {
+                      marcarUsoDoSimulador();
+                      setPrazoMeses(Number(e.target.value));
+                    }}
                     aria-label="Prazo em meses"
                   />
                   <div className="sim-faixa">

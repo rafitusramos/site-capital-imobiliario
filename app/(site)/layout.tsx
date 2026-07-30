@@ -9,9 +9,14 @@ import "../globals.css";
 import "../../styles/lp.css";
 import "../../styles/blog.css";
 import "../../styles/imoveis.css";
-import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
+import { SITE_URL } from "@/lib/site";
 import { SiteNav } from "@/components/nav/SiteNav";
 import { RevealOnScroll } from "@/components/efeitos/RevealOnScroll";
+import { NEGOCIO_NODE, RAFAEL_NODE } from "@/lib/seo/negocio";
+import { Tags } from "@/components/analytics/Tags";
+import { CapturaAtribuicao } from "@/components/analytics/CapturaAtribuicao";
+import { BannerConsentimento } from "@/components/consentimento/BannerConsentimento";
+import { AbrirPreferenciasCookies } from "@/components/consentimento/AbrirPreferenciasCookies";
 
 const libreCaslonDisplay = Libre_Caslon_Display({
   subsets: ["latin"],
@@ -48,12 +53,16 @@ export const metadata: Metadata = {
   },
 };
 
-const realEstateAgentJsonLd = {
+// O grafo do negócio (NEGOCIO_NODE + RAFAEL_NODE) é declarado aqui, no
+// layout raiz, e não em cada página — porque várias páginas independentes
+// (financiamento, home_equity, sobre, e agora o blog) referenciam esses
+// nós por "@id" (provider, worksFor, author, publisher). Declarando os
+// dois nós uma única vez, em toda página do site, qualquer referência a
+// "#negocio" ou "#rafael" resolve dentro do mesmo documento, em vez de
+// ficar pendurada ou duplicada. Ver lib/seo/negocio.ts.
+const negocioGraphJsonLd = {
   "@context": "https://schema.org",
-  "@type": "RealEstateAgent",
-  name: "RT Capital Imobiliário",
-  url: SITE_URL,
-  areaServed: CIDADES_ATENDIDAS.map((cidade) => `${cidade}, SP`),
+  "@graph": [NEGOCIO_NODE, RAFAEL_NODE],
 };
 
 export default function RootLayout({
@@ -69,11 +78,14 @@ export default function RootLayout({
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(realEstateAgentJsonLd),
+            __html: JSON.stringify(negocioGraphJsonLd),
           }}
         />
         <SiteNav />
         <RevealOnScroll />
+        <CapturaAtribuicao />
+        <Tags />
+        <BannerConsentimento />
 
         {children}
 
@@ -97,6 +109,8 @@ export default function RootLayout({
               <a href="/politica-de-privacidade/">Política de Privacidade</a>
               <span aria-hidden="true">·</span>
               <a href="/termos-de-uso/">Termos de Uso</a>
+              <span aria-hidden="true">·</span>
+              <AbrirPreferenciasCookies />
             </div>
             <div className="footer-disclaimer">
               Atuação como correspondente bancário na forma da Res. CMN

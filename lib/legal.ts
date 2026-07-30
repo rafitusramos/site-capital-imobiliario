@@ -24,7 +24,7 @@ export const EMAIL_LGPD = "contato@rtcapitalimobiliario.com.br";
 
 export const RETENCAO_ANOS = 5;
 
-export const ATUALIZADO_EM = "29 de julho de 2026";
+export const ATUALIZADO_EM = "30 de julho de 2026";
 
 /**
  * Frase exata do checkbox de consentimento nos formulários de lead. A

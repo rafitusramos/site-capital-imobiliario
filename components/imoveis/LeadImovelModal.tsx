@@ -13,6 +13,7 @@ import { capturarUtm } from "@/lib/utm";
 import { mascaraTelefone } from "@/lib/mascaras";
 import { telefoneValido } from "@/lib/financeiro";
 import { TEXTO_CONSENTIMENTO } from "@/lib/legal";
+import { rastrear } from "@/lib/analytics/eventos";
 
 export interface LeadImovelModalHandle {
   abrir: (rotuloCta: string) => void;
@@ -86,6 +87,7 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
       setConsentimento(false);
       setErroConsentimento(false);
       setAberto(true);
+      rastrear({ nome: "formulario_iniciado", tipo: "imoveis" });
     }, []);
 
     useImperativeHandle(ref, () => ({
@@ -189,6 +191,7 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
 
         if (resultado.sucesso) {
           setEnviado(true);
+          rastrear({ nome: "lead_enviado", tipo: "imoveis" });
         } else {
           setErroEnvio(resultado.erro ?? "Não foi possível enviar. Tente novamente.");
         }

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "@/styles/sobre.css";
-import { SITE_URL } from "@/lib/site";
 import { IMAGEM_OG_PADRAO } from "@/lib/og";
 
 const TITULO = "Sobre — Rafael Teixeira · Capital Imobiliário";
@@ -23,51 +22,9 @@ export const metadata: Metadata = {
   },
 };
 
-const rafaelJsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Person",
-      "@id": `${SITE_URL}/#rafael`,
-      name: "Rafael Teixeira",
-      jobTitle: "Corretor de Imóveis · Correspondente Bancário",
-      worksFor: { "@id": `${SITE_URL}/#negocio` },
-      hasCredential: [
-        {
-          "@type": "EducationalOccupationalCredential",
-          credentialCategory: "license",
-          recognizedBy: { "@type": "Organization", name: "CRECI-SP" },
-          name: "Corretor de Imóveis registrado no CRECI-SP",
-        },
-        {
-          "@type": "EducationalOccupationalCredential",
-          credentialCategory: "certificate",
-          recognizedBy: { "@type": "Organization", name: "FEBRABAN" },
-          name: "Certificação FEBRABAN CA-600 em Crédito Imobiliário e Consórcio",
-        },
-        {
-          "@type": "EducationalOccupationalCredential",
-          credentialCategory: "license",
-          recognizedBy: { "@type": "Organization", name: "CVM" },
-          name: "Assessor de Investimentos (AAI) sob a Resolução CVM 178",
-        },
-      ],
-      affiliation: [
-        { "@type": "Organization", name: "RE/MAX Clarity" },
-        { "@type": "Organization", name: "XP Investimentos" },
-      ],
-    },
-  ],
-};
-
 export default function SobrePage() {
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(rafaelJsonLd) }}
-      />
-
       <header className="hero hero-sobre">
         <div className="wrap">
           <div>
