@@ -16,8 +16,8 @@ import {
   type LeadFormShellHandle,
   type ValoresFormulario,
 } from "@/components/leads/LeadFormShell";
+import { TAXAS_PADRAO } from "@/lib/queries/parametros";
 
-const TAXA_ANUAL = 0.115;
 const COMPROMETIMENTO = 0.3;
 
 function campoClasse(erros: Set<string>, id: string): string {
@@ -68,7 +68,15 @@ function validarCampo(campo: string, valores: ValoresFormulario): boolean {
   }
 }
 
-export function SimuladorFinanciamento() {
+// taxaAnual tem default de propósito: se a página esquecer de passar a prop
+// (ou a leitura do banco falhar antes de chegar aqui), o simulador continua
+// funcionando com a taxa de referência em vez de zerar a taxa e distorcer a
+// parcela calculada.
+export function SimuladorFinanciamento({
+  taxaAnual = TAXAS_PADRAO.financiamentoTaxaAnual,
+}: {
+  taxaAnual?: number;
+}) {
   const [valorImovelSim, setValorImovelSim] = useState("R$ 1.000.000");
   const [percentualEntrada, setPercentualEntrada] = useState(20);
   const [prazoMeses, setPrazoMeses] = useState(420);
@@ -85,12 +93,12 @@ export function SimuladorFinanciamento() {
     const credito = Math.max(valorNum - entrada, 0);
     const parcela = Math.round(
       ehSac
-        ? parcelaInicialSAC(credito, taxaMensal(TAXA_ANUAL), prazoMeses)
-        : parcelaPrice(credito, taxaMensal(TAXA_ANUAL), prazoMeses),
+        ? parcelaInicialSAC(credito, taxaMensal(taxaAnual), prazoMeses)
+        : parcelaPrice(credito, taxaMensal(taxaAnual), prazoMeses),
     );
     const renda = Math.round(parcela / COMPROMETIMENTO / 100) * 100;
     return { entradaNum: entrada, creditoNum: credito, parcelaNum: parcela, rendaSugerida: renda };
-  }, [valorImovelSim, percentualEntrada, prazoMeses, ehSac]);
+  }, [valorImovelSim, percentualEntrada, prazoMeses, ehSac, taxaAnual]);
 
   const montarDados = (valores: ValoresFormulario) => {
     const valorImovel = digitos(valores.valorImovel);
@@ -99,8 +107,8 @@ export function SimuladorFinanciamento() {
     const percentual = valorImovel > 0 ? Math.round((entradaDisponivel / valorImovel) * 100) : 0;
     const parcelaEstimada = Math.round(
       ehSac
-        ? parcelaInicialSAC(valorCredito, taxaMensal(TAXA_ANUAL), prazoMeses)
-        : parcelaPrice(valorCredito, taxaMensal(TAXA_ANUAL), prazoMeses),
+        ? parcelaInicialSAC(valorCredito, taxaMensal(taxaAnual), prazoMeses)
+        : parcelaPrice(valorCredito, taxaMensal(taxaAnual), prazoMeses),
     );
 
     return {
