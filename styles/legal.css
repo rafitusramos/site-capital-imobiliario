@@ -1,0 +1,61 @@
+/* =====================================================================
+   PÁGINAS LEGAIS — Política de Privacidade e Termos de Uso
+   Medida de leitura restrita (68ch) e tipografia generosa: documento
+   jurídico só é lido se a página não brigar com o leitor.
+   ===================================================================== */
+
+.legal-header{padding-top:calc(var(--s7) + 8px);padding-bottom:var(--s5);background:var(--marfim);border-bottom:1px solid rgba(10,36,28,.10);}
+.legal-header .eyebrow{color:var(--jade);font-size:13px;}
+.legal-header h1{font-family:var(--display);font-weight:400;font-size:clamp(30px,5vw,44px);color:var(--abissal);line-height:1.15;max-width:20ch;}
+.legal-atualizado{font-family:var(--mono);font-size:14px;color:#5b615d;letter-spacing:.02em;margin-top:var(--s4);}
+
+/* ===== Índice ===== */
+.legal-toc{background:var(--branco);border:1px solid rgba(10,36,28,.10);border-radius:4px;padding:var(--s4) 26px var(--s5);margin-top:var(--s5);box-shadow:0 10px 30px -12px rgba(10,36,28,.14),0 2px 6px -2px rgba(10,36,28,.07);}
+.legal-toc p.legal-toc-titulo{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--jade);margin-bottom:var(--s3);}
+.legal-toc ol{list-style:none;columns:2;column-gap:28px;}
+@media(max-width:640px){.legal-toc ol{columns:1;}}
+.legal-toc li{margin-bottom:10px;break-inside:avoid;}
+.legal-toc a{font-family:var(--sans);font-size:15px;color:var(--abissal);text-decoration:none;display:flex;align-items:baseline;gap:10px;min-height:24px;}
+.legal-toc a .num{font-family:var(--mono);color:var(--bronze);flex:none;font-size:14px;}
+.legal-toc a:hover,.legal-toc a:focus-visible{color:var(--jade);text-decoration:underline;}
+
+/* ===== Corpo — medida de leitura 68ch ===== */
+.legal-body{max-width:68ch;margin:0 auto;}
+.legal-body section{padding:var(--s5) 0;border-bottom:1px solid rgba(10,36,28,.08);scroll-margin-top:88px;}
+.legal-body section:first-child{padding-top:var(--s5);}
+.legal-body section:last-child{border-bottom:none;}
+.legal-body h2{font-family:var(--display);font-weight:400;font-size:clamp(21px,3vw,26px);color:var(--abissal);margin-bottom:var(--s3);line-height:1.3;scroll-margin-top:88px;max-width:none;}
+.legal-body h2 .num{font-family:var(--mono);color:var(--bronze);margin-right:14px;font-size:.68em;vertical-align:middle;}
+.legal-body p{font-family:var(--texto);font-size:16px;line-height:1.7;color:#292d29;margin-bottom:var(--s3);}
+.legal-body p:last-child{margin-bottom:0;}
+.legal-body ul,.legal-body ol.legal-lista{padding-left:1.35em;margin-bottom:var(--s3);}
+.legal-body li{font-family:var(--texto);font-size:16px;line-height:1.7;color:#292d29;margin-bottom:10px;}
+.legal-body li:last-child{margin-bottom:0;}
+.legal-body strong{color:var(--abissal);font-weight:600;}
+.legal-body a{color:var(--jade);text-underline-offset:2px;}
+.legal-body a:hover{text-decoration-thickness:2px;}
+
+/* Citação — usada para reproduzir o texto exato do checkbox de consentimento */
+.legal-cita{font-family:var(--texto);font-style:italic;font-size:16px;line-height:1.7;border-left:3px solid var(--bronze);padding:2px 0 2px var(--s4);color:#3d423e;margin:var(--s4) 0;}
+
+/* Bloco de identificação do controlador */
+.legal-destaque{background:var(--branco);border:1px solid rgba(10,36,28,.10);border-radius:4px;padding:var(--s4) 26px;margin:var(--s4) 0;font-family:var(--mono);font-size:14px;line-height:2;color:var(--abissal);}
+.legal-destaque .rot{display:block;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);}
+
+/* Link cruzado entre as duas páginas legais */
+.legal-cross{margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid rgba(10,36,28,.12);}
+.legal-cross a{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--jade);}
+
+@media print{
+  .topbar,footer,.legal-toc,.legal-cross{display:none!important;}
+  body{background:#fff!important;color:#000!important;}
+  body::before{display:none!important;}
+  .legal-header{background:#fff!important;border-bottom:none!important;padding-top:0!important;}
+  .legal-header h1,.legal-body h2{color:#000!important;}
+  .legal-header .eyebrow{color:#000!important;}
+  .legal-body p,.legal-body li,.legal-cita,.legal-destaque,.legal-atualizado{color:#000!important;}
+  .legal-destaque{background:#fff!important;border-color:#000!important;}
+  a{color:#000!important;text-decoration:underline!important;}
+  section{padding:12px 0!important;}
+  .legal-body section{border-bottom:1px solid #999!important;}
+}

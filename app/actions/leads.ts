@@ -19,6 +19,8 @@ export interface CriarLeadInput {
   utm?: Record<string, string>;
   /** Campo honeypot — se vier preenchido, o envio é descartado silenciosamente. */
   honeypot?: string;
+  /** Autorização LGPD marcada no formulário. Validado no servidor — nunca confiar no cliente. */
+  consentimentoLgpd: boolean;
 }
 
 export interface CriarLeadResultado {
@@ -61,6 +63,7 @@ function parametrosFinanciamento(
     p_momento_compra: dados.momentoCompra,
     p_cidade: dados.cidade,
     p_estado: dados.estado,
+    p_consentimento_lgpd: true,
   };
 }
 
@@ -91,6 +94,7 @@ function parametrosHomeEquity(
     p_cep: dados.cep,
     p_numero: dados.numero,
     p_area_m2: dados.areaM2,
+    p_consentimento_lgpd: true,
   };
 }
 
@@ -115,6 +119,7 @@ function parametrosImovel(
     p_valor_entrada: dados.valorEntrada ?? null,
     p_ja_tem_aprovacao: dados.jaTemAprovacao ?? null,
     p_observacoes: dados.observacoes ?? null,
+    p_consentimento_lgpd: true,
   };
 }
 
@@ -128,6 +133,15 @@ export async function criarLead(input: CriarLeadInput): Promise<CriarLeadResulta
   // Honeypot: bot preencheu um campo que humano nenhum vê. Finge sucesso, não grava nada.
   if (input.honeypot) {
     return { sucesso: true, protocolo: "" };
+  }
+
+  // Consentimento LGPD é obrigatório para prosseguir — o cliente já bloqueia o
+  // envio sem o checkbox marcado, mas o servidor nunca confia nisso sozinho.
+  if (input.consentimentoLgpd !== true) {
+    return {
+      sucesso: false,
+      erro: "É necessário autorizar o uso dos dados para enviar a solicitação.",
+    };
   }
 
   const schema = schemaPorTipo[input.tipo];

@@ -13,6 +13,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/sobre/` },
     { url: `${SITE_URL}/blog/` },
     { url: `${SITE_URL}/imoveis/` },
+    { url: `${SITE_URL}/politica-de-privacidade/` },
+    { url: `${SITE_URL}/termos-de-uso/` },
   ];
 
   const paginasPosts: MetadataRoute.Sitemap = posts.map((post) => ({

@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { SimuladorHomeEquity } from "@/components/home-equity/SimuladorHomeEquity";
+import { obterTaxasSimulador } from "@/lib/queries/parametros";
 import { SITE_URL } from "@/lib/site";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
+
+// A página é estática por padrão; sem revalidate, a taxa lida em build time
+// ficaria congelada para sempre e uma edição em /admin/parametros nunca
+// apareceria no site (fora do revalidatePath explícito da própria action).
+export const revalidate = 3600;
 
 const TITULO = "Home Equity em Vinhedo e Região — Crédito com Garantia de Imóvel | Rafael Teixeira";
 const DESCRICAO =
@@ -55,7 +61,9 @@ const servicoJsonLd = {
   ],
 };
 
-export default function HomeEquityPage() {
+export default async function HomeEquityPage() {
+  const taxas = await obterTaxasSimulador();
+
   return (
     <>
       <script
@@ -337,7 +345,7 @@ export default function HomeEquityPage() {
         </div>
       </section>
 
-      <SimuladorHomeEquity />
+      <SimuladorHomeEquity taxaMensal={taxas.homeEquityTaxaMensal} />
 
       <section className="metodo-dark">
         <div className="wrap">

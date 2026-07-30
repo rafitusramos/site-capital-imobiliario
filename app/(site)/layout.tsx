@@ -93,6 +93,11 @@ export default function RootLayout({
               </span>
             </a>
             <div className="footer-email">contato@rtcapitalimobiliario.com.br</div>
+            <div className="footer-legal">
+              <a href="/politica-de-privacidade/">Política de Privacidade</a>
+              <span aria-hidden="true">·</span>
+              <a href="/termos-de-uso/">Termos de Uso</a>
+            </div>
             <div className="footer-disclaimer">
               Atuação como correspondente bancário na forma da Res. CMN
               4.935/2021 — este material tem caráter informativo e não

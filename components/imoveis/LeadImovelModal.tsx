@@ -12,6 +12,7 @@ import { criarLead } from "@/app/actions/leads";
 import { capturarUtm } from "@/lib/utm";
 import { mascaraTelefone } from "@/lib/mascaras";
 import { telefoneValido } from "@/lib/financeiro";
+import { TEXTO_CONSENTIMENTO } from "@/lib/legal";
 
 export interface LeadImovelModalHandle {
   abrir: (rotuloCta: string) => void;
@@ -62,6 +63,8 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
     const [enviando, setEnviando] = useState(false);
     const [enviado, setEnviado] = useState(false);
     const [erroEnvio, setErroEnvio] = useState<string | null>(null);
+    const [consentimento, setConsentimento] = useState(false);
+    const [erroConsentimento, setErroConsentimento] = useState(false);
 
     const painelRef = useRef<HTMLDivElement>(null);
     const ultimoFocoRef = useRef<HTMLElement | null>(null);
@@ -78,6 +81,10 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
       setEnviado(false);
       setErroEnvio(null);
       setHoneypot("");
+      // Consentimento é manifestação livre e inequívoca a cada envio — nunca
+      // vem pré-marcado nem sobrevive de uma abertura anterior do modal.
+      setConsentimento(false);
+      setErroConsentimento(false);
       setAberto(true);
     }, []);
 
@@ -156,6 +163,11 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
     async function aoEnviar(e: React.FormEvent) {
       e.preventDefault();
       if (!validar()) return;
+      if (!consentimento) {
+        setErroConsentimento(true);
+        return;
+      }
+      setErroConsentimento(false);
 
       setEnviando(true);
       setErroEnvio(null);
@@ -172,6 +184,7 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
           paginaUrl: window.location.href,
           utm: capturarUtm(),
           honeypot,
+          consentimentoLgpd: consentimento,
         });
 
         if (resultado.sucesso) {
@@ -262,16 +275,46 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
               </p>
             )}
 
+            <div className="consentimento">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={consentimento}
+                  onChange={(e) => {
+                    setConsentimento(e.target.checked);
+                    if (e.target.checked) setErroConsentimento(false);
+                  }}
+                  aria-describedby={erroConsentimento ? "consentimentoErroImovel" : undefined}
+                />
+                <span>
+                  {TEXTO_CONSENTIMENTO} Li e concordo com os{" "}
+                  <a href="/termos-de-uso/" target="_blank" rel="noopener">
+                    Termos de Uso
+                  </a>{" "}
+                  e a{" "}
+                  <a href="/politica-de-privacidade/" target="_blank" rel="noopener">
+                    Política de Privacidade
+                  </a>
+                  .
+                </span>
+              </label>
+              {erroConsentimento && (
+                <p
+                  className="msg-erro"
+                  id="consentimentoErroImovel"
+                  role="alert"
+                  style={{ display: "block" }}
+                >
+                  Marque a autorização para enviar sua solicitação.
+                </p>
+              )}
+            </div>
+
             <div className="form-nav">
               <button className="cta" type="submit" disabled={enviando}>
                 {enviando ? "Enviando…" : "Enviar solicitação"}
               </button>
             </div>
-            <p className="lgpd-form">
-              Ao enviar, você autoriza o uso destes dados para contato sobre este
-              empreendimento, sem compartilhamento com terceiros sem seu consentimento
-              (LGPD, Lei 13.709/2018).
-            </p>
           </form>
           <div className="sucesso">
             <div className="lote-ok" aria-hidden="true" />

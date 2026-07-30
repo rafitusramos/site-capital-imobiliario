@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import { SimuladorFinanciamento } from "@/components/financiamento/SimuladorFinanciamento";
+import { obterTaxasSimulador } from "@/lib/queries/parametros";
 import { SITE_URL } from "@/lib/site";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
+
+// A página é estática por padrão; sem revalidate, a taxa lida em build time
+// ficaria congelada para sempre e uma edição em /admin/parametros nunca
+// apareceria no site (fora do revalidatePath explícito da própria action).
+export const revalidate = 3600;
 
 const TITULO = "Financiamento imobiliário multibanco — Rafael Teixeira · Capital Imobiliário";
 const DESCRICAO =
@@ -55,7 +61,9 @@ const servicoJsonLd = {
   ],
 };
 
-export default function FinanciamentoPage() {
+export default async function FinanciamentoPage() {
+  const taxas = await obterTaxasSimulador();
+
   return (
     <>
       <script
@@ -310,7 +318,7 @@ export default function FinanciamentoPage() {
         </div>
       </section>
 
-      <SimuladorFinanciamento />
+      <SimuladorFinanciamento taxaAnual={taxas.financiamentoTaxaAnual} />
 
       <section className="metodo-dark">
         <div className="wrap">

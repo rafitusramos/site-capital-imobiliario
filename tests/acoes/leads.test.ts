@@ -83,6 +83,7 @@ describe("criarLead — honeypot", () => {
       dados: { qualquerCoisa: "lixo" },
       paginaUrl: "/financiamento",
       honeypot: "bot preencheu isso",
+      consentimentoLgpd: true,
     });
 
     expect(resultado).toEqual({ sucesso: true, protocolo: "" });
@@ -100,6 +101,7 @@ describe("criarLead — validação", () => {
       tipo: "financiamento",
       dados: { nome: "Jo" }, // nome curto, faltam campos obrigatórios
       paginaUrl: "/financiamento",
+      consentimentoLgpd: true,
     });
 
     expect(resultado).toEqual({
@@ -120,6 +122,7 @@ describe("criarLead — rate limit", () => {
       tipo: "financiamento",
       dados: dadosFinanciamento(),
       paginaUrl: "/financiamento",
+      consentimentoLgpd: true,
     });
 
     expect(resultado).toEqual({
@@ -142,6 +145,7 @@ describe("criarLead — rate limit", () => {
         tipo: "financiamento",
         dados: dadosFinanciamento(),
         paginaUrl: "/financiamento",
+        consentimentoLgpd: true,
       }),
     ).rejects.toThrow("falha ao checar rate limit");
   });
@@ -161,6 +165,7 @@ describe("criarLead — sucesso por tipo", () => {
       tipo: "financiamento",
       dados: dadosFinanciamento(),
       paginaUrl: "/financiamento",
+      consentimentoLgpd: true,
     });
 
     expect(resultado).toEqual({ sucesso: true, protocolo: "FIN-0001" });
@@ -170,6 +175,7 @@ describe("criarLead — sucesso por tipo", () => {
     expect(params.p_origem).toBe("lp-financiamento-sbpe");
     expect(params.p_telefone).toBe("19997834187");
     expect(params.p_cpf).toBeNull();
+    expect(params.p_consentimento_lgpd).toBe(true);
   });
 
   test("home-equity: chama a RPC certa com origem e telefone normalizados", async () => {
@@ -185,6 +191,7 @@ describe("criarLead — sucesso por tipo", () => {
       tipo: "home-equity",
       dados: dadosHomeEquity(),
       paginaUrl: "/home_equity",
+      consentimentoLgpd: true,
     });
 
     expect(resultado).toEqual({ sucesso: true, protocolo: "HE-0001" });
@@ -194,6 +201,7 @@ describe("criarLead — sucesso por tipo", () => {
     expect(params.p_origem).toBe("lp-home-equity");
     expect(params.p_telefone).toBe("19997834187");
     expect(params.p_cpf).toBeNull();
+    expect(params.p_consentimento_lgpd).toBe(true);
   });
 
   test("imóvel: chama a RPC certa com origem e telefone normalizados", async () => {
@@ -209,6 +217,7 @@ describe("criarLead — sucesso por tipo", () => {
       tipo: "imoveis",
       dados: dadosImovel(),
       paginaUrl: "/imoveis/residencial-x",
+      consentimentoLgpd: true,
     });
 
     expect(resultado).toEqual({ sucesso: true, protocolo: "IMV-0001" });
@@ -218,12 +227,18 @@ describe("criarLead — sucesso por tipo", () => {
     expect(params.p_origem).toBe("lp-imovel");
     expect(params.p_telefone).toBe("19997834187");
     expect(params.p_cpf).toBeNull();
+    expect(params.p_consentimento_lgpd).toBe(true);
   });
 });
 
 describe("criarLead — IP", () => {
   function montarInput(): CriarLeadInput {
-    return { tipo: "financiamento", dados: dadosFinanciamento(), paginaUrl: "/financiamento" };
+    return {
+      tipo: "financiamento",
+      dados: dadosFinanciamento(),
+      paginaUrl: "/financiamento",
+      consentimentoLgpd: true,
+    };
   }
 
   function programarSucesso(falso: ReturnType<typeof criarSupabaseFalso>) {
@@ -281,7 +296,12 @@ describe("criarLead — RPC de criação com problema", () => {
     });
 
     await expect(
-      criarLead({ tipo: "financiamento", dados: dadosFinanciamento(), paginaUrl: "/financiamento" }),
+      criarLead({
+        tipo: "financiamento",
+        dados: dadosFinanciamento(),
+        paginaUrl: "/financiamento",
+        consentimentoLgpd: true,
+      }),
     ).rejects.toThrow("constraint violation");
   });
 
@@ -292,7 +312,12 @@ describe("criarLead — RPC de criação com problema", () => {
     falso.programarRpc("criar_lead_financiamento", { data: null, error: null });
 
     await expect(
-      criarLead({ tipo: "financiamento", dados: dadosFinanciamento(), paginaUrl: "/financiamento" }),
+      criarLead({
+        tipo: "financiamento",
+        dados: dadosFinanciamento(),
+        paginaUrl: "/financiamento",
+        consentimentoLgpd: true,
+      }),
     ).rejects.toThrow("RPC de criação de lead não retornou dados.");
   });
 });
@@ -307,9 +332,97 @@ describe("criarLead — UTM", () => {
       error: null,
     });
 
-    await criarLead({ tipo: "financiamento", dados: dadosFinanciamento(), paginaUrl: "/financiamento" });
+    await criarLead({
+      tipo: "financiamento",
+      dados: dadosFinanciamento(),
+      paginaUrl: "/financiamento",
+      consentimentoLgpd: true,
+    });
 
     const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_financiamento");
     expect((chamada!.params as Record<string, unknown>).p_utm).toEqual({});
+  });
+});
+
+describe("criarLead — consentimento LGPD", () => {
+  test("sem consentimento devolve erro e não chama nenhuma RPC (nem a de rate limit)", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+
+    const resultado = await criarLead({
+      tipo: "financiamento",
+      dados: dadosFinanciamento(),
+      paginaUrl: "/financiamento",
+      consentimentoLgpd: false,
+    });
+
+    expect(resultado).toEqual({
+      sucesso: false,
+      erro: "É necessário autorizar o uso dos dados para enviar a solicitação.",
+    });
+    expect(falso.chamadasRpc).toEqual([]);
+  });
+
+  test("com consentimento e dados válidos, a RPC de criação recebe p_consentimento_lgpd: true — financiamento", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    falso.programarRpc("registrar_tentativa_lead", { data: true, error: null });
+    falso.programarRpc("criar_lead_financiamento", {
+      data: { id: "lead-1", protocolo: "FIN-0001" },
+      error: null,
+    });
+
+    const resultado = await criarLead({
+      tipo: "financiamento",
+      dados: dadosFinanciamento(),
+      paginaUrl: "/financiamento",
+      consentimentoLgpd: true,
+    });
+
+    expect(resultado.sucesso).toBe(true);
+    const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_financiamento");
+    expect((chamada!.params as Record<string, unknown>).p_consentimento_lgpd).toBe(true);
+  });
+
+  test("com consentimento e dados válidos, a RPC de criação recebe p_consentimento_lgpd: true — home-equity", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    falso.programarRpc("registrar_tentativa_lead", { data: true, error: null });
+    falso.programarRpc("criar_lead_home_equity", {
+      data: { id: "lead-2", protocolo: "HE-0001" },
+      error: null,
+    });
+
+    const resultado = await criarLead({
+      tipo: "home-equity",
+      dados: dadosHomeEquity(),
+      paginaUrl: "/home_equity",
+      consentimentoLgpd: true,
+    });
+
+    expect(resultado.sucesso).toBe(true);
+    const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_home_equity");
+    expect((chamada!.params as Record<string, unknown>).p_consentimento_lgpd).toBe(true);
+  });
+
+  test("com consentimento e dados válidos, a RPC de criação recebe p_consentimento_lgpd: true — imóveis", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    falso.programarRpc("registrar_tentativa_lead", { data: true, error: null });
+    falso.programarRpc("criar_lead_imovel", {
+      data: { id: "lead-3", protocolo: "IMV-0001" },
+      error: null,
+    });
+
+    const resultado = await criarLead({
+      tipo: "imoveis",
+      dados: dadosImovel(),
+      paginaUrl: "/imoveis/residencial-x",
+      consentimentoLgpd: true,
+    });
+
+    expect(resultado.sucesso).toBe(true);
+    const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_imovel");
+    expect((chamada!.params as Record<string, unknown>).p_consentimento_lgpd).toBe(true);
   });
 });

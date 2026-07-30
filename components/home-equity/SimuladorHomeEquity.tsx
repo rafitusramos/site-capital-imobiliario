@@ -15,9 +15,9 @@ import {
   type LeadFormShellHandle,
   type ValoresFormulario,
 } from "@/components/leads/LeadFormShell";
+import { TAXAS_PADRAO } from "@/lib/queries/parametros";
 
 const LTV = 0.6;
-const TAXA_MENSAL = 0.0109;
 
 function campoClasse(erros: Set<string>, id: string): string {
   return `campo${erros.has(id) ? " invalido" : ""}`;
@@ -56,7 +56,15 @@ function validarCampo(campo: string, valores: ValoresFormulario): boolean {
   }
 }
 
-export function SimuladorHomeEquity() {
+// taxaMensal tem default de propósito: se a página esquecer de passar a
+// prop (ou a leitura do banco falhar antes de chegar aqui), o simulador
+// continua funcionando com a taxa de referência em vez de zerar a taxa e
+// distorcer a parcela calculada.
+export function SimuladorHomeEquity({
+  taxaMensal = TAXAS_PADRAO.homeEquityTaxaMensal,
+}: {
+  taxaMensal?: number;
+}) {
   const [valorImovelSim, setValorImovelSim] = useState("R$ 1.000.000");
   const [prazoMeses, setPrazoMeses] = useState(240);
   const modalRef = useRef<LeadFormShellHandle>(null);
@@ -64,15 +72,15 @@ export function SimuladorHomeEquity() {
   const { creditoNum, parcelaNum } = useMemo(() => {
     const valorNum = digitos(valorImovelSim);
     const credito = Math.round(valorNum * LTV);
-    const parcela = Math.round(parcelaPrice(credito, TAXA_MENSAL, prazoMeses));
+    const parcela = Math.round(parcelaPrice(credito, taxaMensal, prazoMeses));
     return { creditoNum: credito, parcelaNum: parcela };
-  }, [valorImovelSim, prazoMeses]);
+  }, [valorImovelSim, prazoMeses, taxaMensal]);
 
   const montarDados = (valores: ValoresFormulario) => {
     const valorImovel = digitos(valores.valorImovel);
     const imovelQuitado = Boolean(valores.imovelQuitado);
     const valorCreditoEstimado = Math.round(valorImovel * LTV);
-    const parcelaEstimada = Math.round(parcelaPrice(valorCreditoEstimado, TAXA_MENSAL, prazoMeses));
+    const parcelaEstimada = Math.round(parcelaPrice(valorCreditoEstimado, taxaMensal, prazoMeses));
 
     return {
       nome: valores.nome,
