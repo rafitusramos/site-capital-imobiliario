@@ -21,6 +21,16 @@ export type ConfirmarAcaoProps = {
   /** Estilo do botão de confirmar — "perigo" para exclusão/arquivamento, "padrao" para o resto. */
   variante?: "perigo" | "padrao";
   pendente?: boolean;
+  /**
+   * Conteúdo extra entre a descrição e os botões — ex.: o campo "digite o
+   * protocolo" da exclusão definitiva em
+   * app/admin/(protected)/crm/arquivados/page.tsx (docs/crm-spec.md §3.1:
+   * "usa ConfirmarAcao"). Opcional e sem efeito em quem já usa este
+   * componente sem passá-lo (ex.: o "arquivar" de QuadroCRM.tsx).
+   */
+  children?: React.ReactNode;
+  /** Desabilita SÓ o botão de confirmar (ex.: até o protocolo digitado bater) — `pendente` continua desabilitando os dois. */
+  confirmarDesabilitado?: boolean;
   onConfirmar: () => void;
   onCancelar: () => void;
 };
@@ -40,6 +50,8 @@ export function ConfirmarAcao({
   rotuloCancelar = "Cancelar",
   variante = "padrao",
   pendente = false,
+  children,
+  confirmarDesabilitado = false,
   onConfirmar,
   onCancelar,
 }: ConfirmarAcaoProps) {
@@ -109,9 +121,10 @@ export function ConfirmarAcao({
             <IconeFechar className="h-4 w-4" />
           </button>
         </div>
-        <p id="confirmar-acao-descricao" className="mb-5 text-sm text-neutral-600">
+        <p id="confirmar-acao-descricao" className="mb-3 text-sm text-neutral-600">
           {descricao}
         </p>
+        {children ? <div className="mb-5">{children}</div> : <div className="mb-2" />}
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -124,7 +137,7 @@ export function ConfirmarAcao({
           <button
             type="button"
             onClick={onConfirmar}
-            disabled={pendente}
+            disabled={pendente || confirmarDesabilitado}
             className={`rounded-md px-3 py-2 text-sm font-semibold text-white transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50 ${
               variante === "perigo"
                 ? "bg-[var(--erro)] hover:bg-[#722f24] focus-visible:outline-[var(--erro)]"

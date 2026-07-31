@@ -40,11 +40,11 @@ export default async function QuadroOrigemPage({ params, searchParams }: PaginaO
   if (!ORIGENS_VALIDAS.has(origem)) notFound();
   const tipo = origem as LeadTipoSlug;
 
-  // TODO(modal): `lead` é o gancho de docs/crm-spec.md §1.4 — `?lead=<id>`
-  // deve abrir o modal do lead na mesma rota. ModalLead ainda não existe
-  // (entra numa próxima etapa); por ora só lemos o searchParam e repassamos
-  // como `leadAbertoId`, sem nenhum consumidor real ainda.
-  const { lead: leadAberto } = await searchParams;
+  // `lead`/`novo` são os ganchos de docs/crm-spec.md §1.4 — `?lead=<id>`
+  // abre o modal do lead nesta mesma rota, `?novo=1` abre a criação manual
+  // (o atalho "n" do quadro já navega para lá). Os dois só viram props;
+  // quem decide se e o quê renderizar é QuadroCRM.tsx (client component).
+  const { lead: leadAberto, novo } = await searchParams;
 
   const [leads, contagensPorEtapa, dominios] = await Promise.all([
     getQuadro(tipo),
@@ -59,6 +59,7 @@ export default async function QuadroOrigemPage({ params, searchParams }: PaginaO
       contagensPorEtapa={contagensPorEtapa}
       dominios={dominios}
       leadAbertoId={leadAberto}
+      novoAberto={novo === "1"}
     />
   );
 }

@@ -27,18 +27,18 @@ import { BarraFiltros, FILTROS_INICIAIS, reducerFiltros } from "@/components/adm
 import { DialogoMotivo, type MotivoOpcao } from "@/components/admin/crm/DialogoMotivo";
 import { ConfirmarAcao } from "@/components/admin/crm/ConfirmarAcao";
 import { EstadoVazio } from "@/components/admin/crm/EstadoVazio";
+import { ModalLead } from "@/components/admin/crm/ModalLead";
+import { NovoLeadModal } from "@/components/admin/crm/NovoLeadModal";
 
 export type QuadroCRMProps = {
   tipo: LeadTipoSlug;
   leadsIniciais: LeadQuadroCRM[];
   contagensPorEtapa: ContagemEtapaCRM[];
   dominios: DominiosCRM;
-  /**
-   * Gancho do modal de edição (docs/crm-spec.md §1.4): id lido de `?lead=<id>`
-   * em `[origem]/page.tsx`. Sem consumidor ainda — ModalLead entra numa
-   * próxima etapa; ver TODO no fim deste componente.
-   */
+  /** Gancho do modal de edição (docs/crm-spec.md §1.4): id lido de `?lead=<id>` em `[origem]/page.tsx`. */
   leadAbertoId?: string;
+  /** `?novo=1` (docs/crm-spec.md §1.4) — o atalho "n" abaixo já navega para lá. */
+  novoAberto?: boolean;
 };
 
 type AcaoMovimento = { leadId: string; novaEtapa: LeadEtapaSlug };
@@ -69,7 +69,7 @@ const detectarColisao: CollisionDetection = (args) => {
  * `leadsIniciais` sempre que a transição termina sem uma mutação real ter
  * acontecido (falha, ou diálogo de motivo cancelado).
  */
-export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, leadAbertoId }: QuadroCRMProps) {
+export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, leadAbertoId, novoAberto }: QuadroCRMProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { mostrarToast } = useToast();
@@ -113,7 +113,10 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
   // vezes quando um deles está aberto.
   useEffect(() => {
     function aoTeclar(e: KeyboardEvent) {
-      if (alvoEditavel(e.target) || dialogoMotivo || confirmarArquivar !== null) return;
+      // Também não dispara com um modal aberto (ModalLead/NovoLeadModal já
+      // têm o próprio foco preso — "n" pressionado num botão do modal, fora
+      // de um campo, não pode abrir um SEGUNDO modal por cima).
+      if (alvoEditavel(e.target) || dialogoMotivo || confirmarArquivar !== null || leadAbertoId || novoAberto) return;
       if (e.key === "/") {
         e.preventDefault();
         refBusca.current?.focus();
@@ -124,7 +127,7 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     }
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
-  }, [router, pathname, dialogoMotivo, confirmarArquivar]);
+  }, [router, pathname, dialogoMotivo, confirmarArquivar, leadAbertoId, novoAberto]);
 
   const tagsCatalogo = useMemo<Record<string, TagCatalogo>>(() => {
     const mapa: Record<string, TagCatalogo> = {};
@@ -230,6 +233,11 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     router.push(`${pathname}?lead=${id}`);
   }
 
+  /** Fecha ModalLead/NovoLeadModal limpando `?lead=`/`?novo=1` da URL (docs/crm-spec.md §1.4). */
+  function fecharModal() {
+    router.push(pathname);
+  }
+
   async function confirmarArquivamento() {
     if (!confirmarArquivar) return;
     setArquivando(true);
@@ -257,8 +265,11 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
           variante="quadro"
           mensagem="Nenhum lead nesta origem ainda. Crie um lead manualmente para começar."
         />
-        {/* TODO(modal): ModalLead entra aqui quando existir, controlado por
-            `leadAbertoId` (docs/crm-spec.md §1.4). */}
+        {leadAbertoId ? <ModalLead key={leadAbertoId} leadId={leadAbertoId} dominios={dominios} onFechar={fecharModal} /> : null}
+        {/* `!leadAbertoId` evita os dois modais empilhados se a URL tiver
+            `?lead=` e `?novo=1` ao mesmo tempo (não deveria acontecer pela UI
+            normal, mas nada impede alguém editar a URL à mão). */}
+        {novoAberto && !leadAbertoId ? <NovoLeadModal tipo={tipo} dominios={dominios} onFechar={fecharModal} /> : null}
       </div>
     );
   }
@@ -331,9 +342,8 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
         onCancelar={() => setConfirmarArquivar(null)}
       />
 
-      {/* TODO(modal): quando ModalLead existir, renderizar aqui a partir de
-          `leadAbertoId` (docs/crm-spec.md §1.4) — id vindo de ?lead=<id> na
-          URL, já lido em [origem]/page.tsx e repassado como prop. */}
+      {leadAbertoId ? <ModalLead key={leadAbertoId} leadId={leadAbertoId} dominios={dominios} onFechar={fecharModal} /> : null}
+      {novoAberto ? <NovoLeadModal tipo={tipo} dominios={dominios} onFechar={fecharModal} /> : null}
     </div>
   );
 }
