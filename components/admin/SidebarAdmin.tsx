@@ -59,7 +59,7 @@ const ITENS: {
   href: string | null;
   icone: ComponentType<{ className?: string }>;
 }[] = [
-  { label: "CRM", href: null, icone: IconeCRM },
+  { label: "CRM", href: "/admin/crm", icone: IconeCRM },
   { label: "Cadastro de Artigos", href: "/admin/posts", icone: IconeArtigos },
   { label: "Cadastro de Imóveis", href: "/admin/imoveis", icone: IconeImoveis },
   { label: "Taxas dos Simuladores", href: "/admin/parametros", icone: IconeTaxas },
