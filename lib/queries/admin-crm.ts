@@ -219,7 +219,12 @@ export type LeadArquivado = LeadRow & {
   corretor: Pick<Database["public"]["Tables"]["profiles"]["Row"], "full_name"> | null;
 };
 
-const SELECT_ARQUIVADO = "*, tipoInfo:lead_tipos(slug, label), corretor:profiles(full_name)";
+// `profiles` precisa do nome da FK explícito: `leads` tem DUAS colunas
+// apontando para `profiles` — `corretor_id` (migration 002) e `arquivado_por`
+// (migration 014) — e o PostgREST recusa o embed ambíguo com PGRST201 em vez
+// de escolher uma. Sem `!leads_corretor_id_fkey`, a tela inteira quebra.
+const SELECT_ARQUIVADO =
+  "*, tipoInfo:lead_tipos(slug, label), corretor:profiles!leads_corretor_id_fkey(full_name)";
 
 /**
  * Leads arquivados — a `vw_leads_crm` filtra `arquivado_em is null`

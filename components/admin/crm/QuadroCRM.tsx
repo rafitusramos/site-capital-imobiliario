@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState, useTransition, useOptimistic } from "react";
+import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   DndContext,
@@ -258,9 +259,30 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     }
   }
 
+  /**
+   * Entrada visível da criação manual (docs/crm-spec.md §1.4). O atalho "n"
+   * acima leva ao mesmo `?novo=1`, mas atalho não é interface descobrível:
+   * sem este botão, a aba Consórcio — que nasce vazia por decisão travada #2
+   * — não tinha como sair do zero por quem não conhece o atalho. `Link` e não
+   * `router.push` para o alvo continuar sendo uma URL de verdade (abrir em
+   * outra aba, copiar o endereço).
+   */
+  const botaoNovoLead = (
+    <div className="mb-4 flex justify-end">
+      <Link
+        href={`${pathname}?novo=1`}
+        title="Atalho: n"
+        className="rounded-md bg-[var(--jade)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#175840] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)]"
+      >
+        + Novo lead
+      </Link>
+    </div>
+  );
+
   if (leadsIniciais.length === 0) {
     return (
       <div>
+        {botaoNovoLead}
         <EstadoVazio
           variante="quadro"
           mensagem="Nenhum lead nesta origem ainda. Crie um lead manualmente para começar."
@@ -276,6 +298,8 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
 
   return (
     <div>
+      {botaoNovoLead}
+
       <BarraFiltros
         ref={refBusca}
         filtros={filtros}
