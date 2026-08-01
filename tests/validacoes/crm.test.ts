@@ -5,10 +5,12 @@ import {
   criarLeadFinanciamentoSchema,
   criarLeadHomeEquitySchema,
   criarLeadImovelSchema,
+  criarTagSchema,
   definirTagsSchema,
   lembreteNovoSchema,
   lembreteReagendarSchema,
   leadComumSchema,
+  moverLeadBaseSchema,
   novaInteracaoSchema,
   schemaAtualizarLeadPorTipo,
   schemaCriarLeadPorTipo,
@@ -172,6 +174,46 @@ describe("schemaCriarLeadPorTipo / schemaAtualizarLeadPorTipo", () => {
   });
 });
 
+/**
+ * Regressão do arraste de card. `updatedAt` é o único campo de data do módulo
+ * que NÃO nasce de `toISOString()` no cliente: ele é relido de
+ * `vw_leads_crm.updated_at`, e o PostgREST serializa `timestamptz` com
+ * deslocamento, não com "Z". Nenhum teste passava `updatedAt` até aqui, então
+ * o schema recusava o formato real do banco — e todo arraste morria com
+ * "Invalid ISO datetime" — sem a suíte acusar nada.
+ */
+describe("moverLeadBaseSchema — formato de updatedAt", () => {
+  const base = { leadId: "550e8400-e29b-41d4-a716-446655440000", etapa: "simulacao" };
+
+  test("aceita timestamptz do PostgREST, com deslocamento", () => {
+    // Valor real lido de vw_leads_crm neste projeto.
+    expect(moverLeadBaseSchema.safeParse({ ...base, updatedAt: "2026-08-01T03:32:23.139576+00:00" }).success).toBe(true);
+    expect(moverLeadBaseSchema.safeParse({ ...base, updatedAt: "2026-07-31T11:32:11.123456-03:00" }).success).toBe(true);
+  });
+
+  test("continua aceitando a forma com Z", () => {
+    expect(moverLeadBaseSchema.safeParse({ ...base, updatedAt: "2026-08-01T03:32:23.139Z" }).success).toBe(true);
+  });
+
+  test("sem fuso nenhum continua reprovando", () => {
+    expect(moverLeadBaseSchema.safeParse({ ...base, updatedAt: "2026-08-01T03:32:23.139576" }).success).toBe(false);
+  });
+
+  test("updatedAt continua opcional", () => {
+    expect(moverLeadBaseSchema.safeParse(base).success).toBe(true);
+  });
+
+  test("o pipeline completo aceita o mesmo formato", () => {
+    // schemaMoverLead estende moverLeadBaseSchema — é ele que o formulário
+    // usa, então precisa aceitar exatamente o mesmo valor do banco.
+    const parsed = schemaMoverLead("financiamento").safeParse({
+      ...base,
+      updatedAt: "2026-08-01T03:32:23.139576+00:00",
+    });
+    expect(parsed.success).toBe(true);
+  });
+});
+
 describe("schemaMoverLead — motivo obrigatório", () => {
   test("mover para etapa que não exige motivo passa sem motivo", () => {
     const schema = schemaMoverLead("financiamento");
@@ -332,6 +374,26 @@ describe("definirTagsSchema", () => {
 
   test("lista vazia é permitida (remover todas as tags)", () => {
     expect(definirTagsSchema.safeParse({ leadId, tags: [] }).success).toBe(true);
+  });
+});
+
+describe("criarTagSchema", () => {
+  test("nome curto demais (1 caractere) reprova", () => {
+    expect(criarTagSchema.safeParse({ label: "a" }).success).toBe(false);
+  });
+
+  test("nome longo demais (25 caracteres) reprova", () => {
+    expect(criarTagSchema.safeParse({ label: "a".repeat(25) }).success).toBe(false);
+  });
+
+  test("nome válido, com espaços nas pontas removidos", () => {
+    const parsed = criarTagSchema.safeParse({ label: "  Urgente  " });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) expect(parsed.data.label).toBe("Urgente");
+  });
+
+  test("nome no limite de 24 caracteres passa", () => {
+    expect(criarTagSchema.safeParse({ label: "a".repeat(24) }).success).toBe(true);
   });
 });
 

@@ -145,6 +145,12 @@ export const IconeAlerta = criarIcone(
 
 export const IconeChevronBaixo = criarIcone(<path d="M4.5 7.5 10 13l5.5-5.5" />);
 
+// Botões de mover etapa do PainelComum.tsx: a seta na ponta do botão aponta
+// para o sentido do movimento — direita para avançar, esquerda para
+// retroceder/reabrir.
+export const IconeSetaDireita = criarIcone(<path d="M4 10h12M11 5l5 5-5 5" />);
+export const IconeSetaEsquerda = criarIcone(<path d="M16 10H4M9 5l-5 5 5 5" />);
+
 /** Catálogo por slug — casa com `crm_interacao_tipos.icone` (banco). */
 export const ICONES_INTERACAO: Record<string, ComponentType<IconeProps>> = {
   ligacao: IconeTelefone,

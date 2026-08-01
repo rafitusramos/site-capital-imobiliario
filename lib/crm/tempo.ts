@@ -23,3 +23,21 @@ export function estadoDaEtapa(diasNaEtapa: number, slaDias: number | null): Esta
   if (diasNaEtapa <= slaDias * 2) return "atencao";
   return "parado";
 }
+
+/**
+ * "13/07/2026 14:32", sempre no fuso de São Paulo — mesma régua de
+ * lib/crm/lembretes.ts. Movida de PainelComum.tsx para cá (este já é o
+ * módulo de tempo do CRM) porque ModalLead.tsx passou a precisar dela
+ * também, no cabeçalho do modal.
+ */
+export function formatarData(iso: string): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(iso));
+}

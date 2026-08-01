@@ -31,7 +31,7 @@ export function AbasOrigem({ contagens }: { contagens: ContagemAbaCRM[] }) {
   const contagemPorTipo = new Map(contagens.map((c) => [c.tipo, c.total]));
 
   return (
-    <nav aria-label="Origem dos leads" className="mb-6 border-b border-black/10">
+    <nav aria-label="Origem dos leads" className="mb-0 border-b border-black/10">
       <ul className="flex flex-wrap gap-1">
         {ORDEM_ABAS.filter((tipo) => tipo in ETAPAS_POR_TIPO).map((tipo) => {
           const href = `/admin/crm/${tipo}`;

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState, useTransition, useOptimistic } from "react";
-import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   DndContext,
@@ -259,30 +258,9 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     }
   }
 
-  /**
-   * Entrada visível da criação manual (docs/crm-spec.md §1.4). O atalho "n"
-   * acima leva ao mesmo `?novo=1`, mas atalho não é interface descobrível:
-   * sem este botão, a aba Consórcio — que nasce vazia por decisão travada #2
-   * — não tinha como sair do zero por quem não conhece o atalho. `Link` e não
-   * `router.push` para o alvo continuar sendo uma URL de verdade (abrir em
-   * outra aba, copiar o endereço).
-   */
-  const botaoNovoLead = (
-    <div className="mb-4 flex justify-end">
-      <Link
-        href={`${pathname}?novo=1`}
-        title="Atalho: n"
-        className="rounded-md bg-[var(--jade)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#175840] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)]"
-      >
-        + Novo lead
-      </Link>
-    </div>
-  );
-
   if (leadsIniciais.length === 0) {
     return (
       <div>
-        {botaoNovoLead}
         <EstadoVazio
           variante="quadro"
           mensagem="Nenhum lead nesta origem ainda. Crie um lead manualmente para começar."
@@ -298,8 +276,6 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
 
   return (
     <div>
-      {botaoNovoLead}
-
       <BarraFiltros
         ref={refBusca}
         filtros={filtros}
@@ -308,14 +284,27 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
         tags={dominios.tags}
       />
 
+      {/* `id` explícito não é enfeite: sem ele o dnd-kit deriva o
+          `aria-describedby` dos cards de um CONTADOR DE MÓDULO
+          (`useUniqueId` em @dnd-kit/utilities), não do `useId` do React. O
+          módulo fica em cache entre requisições no servidor, enquanto no
+          cliente o contador nasce do zero e ainda é renderizado duas vezes
+          pelo StrictMode em desenvolvimento — os dois lados chegam a números
+          diferentes e o React acusa erro de hidratação. Com um id fixo, o
+          atributo é o mesmo nas duas pontas. Só existe um quadro montado por
+          vez, então o valor pode ser constante. */}
       <DndContext
+        id="crm-quadro"
         sensors={sensores}
         collisionDetection={detectarColisao}
         onDragStart={aoIniciarArraste}
         onDragEnd={aoTerminarArraste}
         onDragCancel={() => setIdAtivo(null)}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        {/* w-full: prende este container à largura disponível do `main`
+            (agora com min-w-0 em app/admin/(protected)/layout.tsx) — é ele
+            quem deve rolar na horizontal, não a página inteira. */}
+        <div className="flex w-full gap-4 overflow-x-auto pb-4">
           {colunas.map(({ etapa, leads }) => (
             <ColunaEtapa
               key={etapa.slug}
@@ -334,10 +323,11 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
 
         <DragOverlay>
           {leadAtivo ? (
-            <div className="w-[288px]">
+            <div className="w-[224px]">
               <CardLead
                 lead={leadAtivo}
                 arrastavel={false}
+                fantasma
                 tagsCatalogo={tagsCatalogo}
                 onEditar={() => {}}
                 onArquivar={() => {}}

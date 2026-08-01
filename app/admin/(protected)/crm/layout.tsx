@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { getContagensPorAba } from "@/lib/queries/admin-crm";
 import { AbasOrigem } from "@/components/admin/crm/AbasOrigem";
+import { AcoesCabecalhoCRM } from "@/components/admin/crm/AcoesCabecalhoCRM";
 
 export const metadata: Metadata = { title: "CRM · Admin" };
 
@@ -20,15 +20,7 @@ export default async function CRMLayout({ children }: Readonly<{ children: React
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-lg font-semibold text-[var(--abissal)]">CRM</h1>
-        {/* Ponte para a lixeira do CRM (docs/crm-spec.md §1.4) — "a lixeira
-            arquiva" (decisão travada #3): é daqui que se restaura ou exclui
-            de vez. */}
-        <Link
-          href="/admin/crm/arquivados"
-          className="text-sm font-medium text-neutral-500 transition hover:text-[var(--abissal)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)]"
-        >
-          Arquivados
-        </Link>
+        <AcoesCabecalhoCRM />
       </div>
       <AbasOrigem contagens={contagens} />
       {children}

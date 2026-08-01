@@ -54,7 +54,7 @@ export function ColunaEtapa({
   return (
     <div
       ref={setNodeRef}
-      className={`flex w-[304px] flex-none flex-col rounded-lg border transition-colors motion-reduce:transition-none ${
+      className={`flex w-[240px] flex-none flex-col rounded-lg border transition-colors motion-reduce:transition-none ${
         isOver ? "border-[var(--jade)] bg-[var(--jade)]/5" : "border-black/5 bg-black/[0.02]"
       }`}
     >
@@ -66,7 +66,7 @@ export function ColunaEtapa({
           <span className="flex-none text-xs text-neutral-500 [font-family:var(--mono),monospace]">{total}</span>
         </div>
         <div className="mt-0.5 flex items-baseline justify-between gap-2">
-          <span className="text-sm text-neutral-600 [font-family:var(--mono),monospace]">{formatarMoeda(soma)}</span>
+          <span className="text-sm text-neutral-600 [font-family:var(--geologica),sans-serif]">{formatarMoeda(soma)}</span>
           {parados > 0 ? (
             <span className="flex-none text-[11px] font-medium text-[var(--erro)]">
               {parados} {parados === 1 ? "parado" : "parados"}

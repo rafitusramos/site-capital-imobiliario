@@ -1,10 +1,13 @@
 import { describe, expect, test } from "vitest";
 import {
   ETAPAS_POR_TIPO,
+  etapaAnterior,
   etapaInicial,
   etapaPorSlug,
+  etapaProxima,
   etapasDoTipo,
   exigeMotivo,
+  sequenciaLinear,
 } from "@/lib/crm/etapas";
 import type { LeadTipoSlug } from "@/types/database";
 
@@ -134,5 +137,72 @@ describe("etapaPorSlug", () => {
 
   test("devolve a etapa quando pertence ao pipeline", () => {
     expect(etapaPorSlug("imoveis", "visita")?.label).toBe("Visita");
+  });
+});
+
+// item 8 dos ajustes de CRM: bloco "Etapa" do PainelComum.tsx.
+describe("sequenciaLinear", () => {
+  test.each(TODOS_OS_TIPOS)("pipeline '%s' exclui etapas finais não-ganho da sequência", (tipo) => {
+    const slugs = sequenciaLinear(tipo).map((e) => e.slug);
+    expect(slugs).not.toContain("perdido");
+    expect(slugs).not.toContain("nao-qualificado");
+  });
+
+  test("imóveis: sequência linear termina em 'ganho', sem 'perdido'/'nao-qualificado' no meio", () => {
+    expect(sequenciaLinear("imoveis").map((e) => e.slug)).toEqual([
+      "criado",
+      "qualificacao",
+      "visita",
+      "proposta",
+      "contrato",
+      "ganho",
+    ]);
+  });
+
+  test.each(TODOS_OS_TIPOS)("sequência linear de '%s' preserva a ordem de etapasDoTipo", (tipo) => {
+    const linear = sequenciaLinear(tipo).map((e) => e.slug);
+    const completa = etapasDoTipo(tipo)
+      .map((e) => e.slug)
+      .filter((slug) => linear.includes(slug));
+    expect(linear).toEqual(completa);
+  });
+});
+
+describe("etapaAnterior / etapaProxima", () => {
+  test.each(TODOS_OS_TIPOS)("'%s': etapaAnterior('criado') é undefined (primeira etapa)", (tipo) => {
+    expect(etapaAnterior(tipo, "criado")).toBeUndefined();
+  });
+
+  test.each(TODOS_OS_TIPOS)("'%s': etapaProxima('ganho') é undefined — nunca 'perdido'", (tipo) => {
+    expect(etapaProxima(tipo, "ganho")).toBeUndefined();
+  });
+
+  test.each(TODOS_OS_TIPOS)("'%s': etapaAnterior('perdido') é undefined — fora da sequência linear", (tipo) => {
+    if (etapaPorSlug(tipo, "perdido")) {
+      expect(etapaAnterior(tipo, "perdido")).toBeUndefined();
+    }
+  });
+
+  test.each(TODOS_OS_TIPOS)("'%s': etapaProxima('perdido') é undefined — fora da sequência linear", (tipo) => {
+    if (etapaPorSlug(tipo, "perdido")) {
+      expect(etapaProxima(tipo, "perdido")).toBeUndefined();
+    }
+  });
+
+  test("imóveis: etapaAnterior('nao-qualificado') e etapaProxima('nao-qualificado') são undefined", () => {
+    expect(etapaAnterior("imoveis", "nao-qualificado")).toBeUndefined();
+    expect(etapaProxima("imoveis", "nao-qualificado")).toBeUndefined();
+  });
+
+  test("financiamento: etapaAnterior/etapaProxima andam um passo de cada vez na sequência linear", () => {
+    expect(etapaAnterior("financiamento", "pre-aprovacao")?.slug).toBe("simulacao");
+    expect(etapaProxima("financiamento", "pre-aprovacao")?.slug).toBe("vistoria");
+    expect(etapaProxima("financiamento", "contrato")?.slug).toBe("ganho");
+    expect(etapaAnterior("financiamento", "contrato")?.slug).toBe("vistoria");
+  });
+
+  test("etapa que não existe no pipeline: etapaAnterior/etapaProxima são undefined (não é erro)", () => {
+    expect(etapaAnterior("consorcio", "vistoria")).toBeUndefined();
+    expect(etapaProxima("consorcio", "vistoria")).toBeUndefined();
   });
 });

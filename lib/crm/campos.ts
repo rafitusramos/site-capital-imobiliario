@@ -21,6 +21,18 @@ export type CampoCRM = {
   // ex.: LTV. Nunca é campo gravável — quando presente, o renderer usa isto
   // em vez de um input, mesmo que somenteLeitura não esteja marcado.
   calculado?: (dados: Record<string, unknown>) => string;
+  /**
+   * Onde o campo é renderizado no modal do lead. "lead" = bloco "Dados do
+   * lead" (coluna da esquerda), salvo junto com nome/telefone/e-mail pelo
+   * botão "Salvar dados do lead". Ausente = painel "Origem" (coluna da
+   * direita), que é só leitura: o que veio do formulário do site.
+   *
+   * Invariante: todo campo editável (nem somenteLeitura, nem calculado)
+   * precisa de `bloco: "lead"` — o painel da direita não tem mais botão de
+   * salvar, então um campo editável esquecido lá seria impossível de gravar.
+   * tests/unidade/crm-campos.test.ts trava isso.
+   */
+  bloco?: "lead";
 };
 
 /**
@@ -103,9 +115,11 @@ export const CAMPOS_POR_ORIGEM: Record<LeadTipoSlug, CampoCRM[]> = {
     },
     { chave: "cidade", label: "Cidade", tipo: "texto", fonte: "coluna", somenteLeitura: true },
     { chave: "estado", label: "UF", tipo: "texto", fonte: "coluna", somenteLeitura: true },
-    // Não vêm do RPC: preenchidos pelo corretor depois da simulação.
-    { chave: "banco_simulado", label: "Banco simulado", tipo: "texto", fonte: "coluna" },
-    { chave: "primeiro_imovel", label: "Primeiro imóvel", tipo: "booleano", fonte: "coluna" },
+    // Não vêm do RPC: preenchidos pelo corretor depois da simulação. Por
+    // isso ficam no bloco "lead" (item 10 dos ajustes de CRM) — o corretor
+    // negocia e grava junto com nome/telefone/e-mail, numa chamada só.
+    { chave: "banco_simulado", label: "Banco simulado", tipo: "texto", fonte: "coluna", bloco: "lead" },
+    { chave: "primeiro_imovel", label: "Primeiro imóvel", tipo: "booleano", fonte: "coluna", bloco: "lead" },
   ],
 
   "home-equity": [
@@ -183,12 +197,15 @@ export const CAMPOS_POR_ORIGEM: Record<LeadTipoSlug, CampoCRM[]> = {
     { chave: "cep", label: "CEP", tipo: "texto", fonte: "coluna", somenteLeitura: true },
     { chave: "numero", label: "Número", tipo: "texto", fonte: "coluna", somenteLeitura: true },
     { chave: "area_m2", label: "Área (m²)", tipo: "numero", fonte: "coluna", somenteLeitura: true },
-    // Não vêm do RPC: só existem depois que o corretor negocia com o cliente.
+    // Não vêm do RPC: só existem depois que o corretor negocia com o
+    // cliente. Bloco "lead" (item 10 dos ajustes de CRM): negociados e
+    // gravados junto com nome/telefone/e-mail.
     {
       chave: "pessoa",
       label: "Pessoa",
       tipo: "select",
       fonte: "coluna",
+      bloco: "lead",
       opcoes: [
         { valor: "fisica", label: "Física" },
         { valor: "juridica", label: "Jurídica" },
@@ -199,30 +216,28 @@ export const CAMPOS_POR_ORIGEM: Record<LeadTipoSlug, CampoCRM[]> = {
       label: "Crédito desejado (negociado)",
       tipo: "moeda",
       fonte: "coluna",
+      bloco: "lead",
       ajuda: "Valor que o cliente efetivamente quer levar — pode diferir do estimado pelo simulador.",
     },
-    {
-      chave: "situacao_imovel",
-      label: "Situação do imóvel",
-      tipo: "select",
-      fonte: "coluna",
-      opcoes: [
-        { valor: "quitado", label: "Quitado" },
-        { valor: "financiado", label: "Financiado" },
-        { valor: "alienado", label: "Alienado" },
-        { valor: "inventario", label: "Inventário" },
-      ],
-    },
+    // "Situação do imóvel" saiu da interface (item 5 dos ajustes de CRM,
+    // rodada 2): a coluna `situacao_imovel` continua no banco com os dados
+    // antigos preservados, mas não é mais escrita nem lida por aqui — o
+    // equivalente já vem de `imovel_quitado` (do simulador), e o detalhe fino
+    // vai para as interações do lead.
     // Loan-to-Value: nunca é coluna (docs/crm-spec.md §2.3) — calculado aqui
     // a partir de valor_credito_desejado / valor_imovel_garantia
     // (lib/crm/calculos.ts), para não correr o risco de o valor gravado
-    // discordar das duas parcelas que o originam.
+    // discordar das duas parcelas que o originam. `somenteLeitura` +
+    // `calculado`, mas acompanha o crédito desejado que o alimenta no bloco
+    // "lead" — sem isso o corretor digitaria o valor num painel e leria o
+    // LTV no outro.
     {
       chave: "ltv",
       label: "LTV",
       tipo: "percentual",
       fonte: "coluna",
       somenteLeitura: true,
+      bloco: "lead",
       ajuda: "Loan-to-Value: crédito desejado sobre valor do imóvel em garantia.",
       calculado: (dados) => {
         const desejado = Number(dados.valor_credito_desejado ?? 0);
@@ -275,39 +290,44 @@ export const CAMPOS_POR_ORIGEM: Record<LeadTipoSlug, CampoCRM[]> = {
     },
     { chave: "observacoes", label: "Observações do formulário", tipo: "textarea", fonte: "coluna", somenteLeitura: true },
     // Não vêm do RPC: preenchidos pelo corretor ao qualificar o interesse.
-    { chave: "imovel_desejado", label: "Imóvel desejado (fora do catálogo)", tipo: "texto", fonte: "coluna" },
-    { chave: "orcamento_max", label: "Orçamento máximo", tipo: "moeda", fonte: "coluna" },
-    { chave: "cidade_preferida", label: "Cidade preferida", tipo: "texto", fonte: "coluna" },
-    { chave: "dormitorios_min", label: "Dormitórios (mín.)", tipo: "numero", fonte: "coluna" },
-    { chave: "tipo_imovel", label: "Tipo de imóvel", tipo: "texto", fonte: "coluna" },
+    // Bloco "lead" (item 10 dos ajustes de CRM).
+    { chave: "imovel_desejado", label: "Imóvel desejado (fora do catálogo)", tipo: "texto", fonte: "coluna", bloco: "lead" },
+    { chave: "orcamento_max", label: "Orçamento máximo", tipo: "moeda", fonte: "coluna", bloco: "lead" },
+    { chave: "cidade_preferida", label: "Cidade preferida", tipo: "texto", fonte: "coluna", bloco: "lead" },
+    { chave: "dormitorios_min", label: "Dormitórios (mín.)", tipo: "numero", fonte: "coluna", bloco: "lead" },
+    { chave: "tipo_imovel", label: "Tipo de imóvel", tipo: "texto", fonte: "coluna", bloco: "lead" },
   ],
 
   // Sem RPC de captação (não há formulário de consórcio no site — decisão
   // travada #2): todo lead nasce de criação manual, então nada é
-  // somenteLeitura aqui.
+  // somenteLeitura aqui. Sem formulário do site, não existe nada "vindo da
+  // origem" para o painel da direita mostrar — por isso TODOS os campos vão
+  // para o bloco "lead" (item 10 dos ajustes de CRM).
   consorcio: [
-    { chave: "valor_carta", label: "Valor da carta", tipo: "moeda", fonte: "coluna" },
-    { chave: "prazo_meses", label: "Prazo (meses)", tipo: "numero", fonte: "coluna" },
-    { chave: "parcela_estimada", label: "Parcela estimada", tipo: "moeda", fonte: "coluna" },
-    { chave: "objetivo", label: "Objetivo", tipo: "texto", fonte: "coluna" },
-    { chave: "ja_possui_consorcio", label: "Já possui consórcio", tipo: "booleano", fonte: "coluna" },
+    { chave: "valor_carta", label: "Valor da carta", tipo: "moeda", fonte: "coluna", bloco: "lead" },
+    { chave: "prazo_meses", label: "Prazo (meses)", tipo: "numero", fonte: "coluna", bloco: "lead" },
+    { chave: "parcela_estimada", label: "Parcela estimada", tipo: "moeda", fonte: "coluna", bloco: "lead" },
+    { chave: "objetivo", label: "Objetivo", tipo: "texto", fonte: "coluna", bloco: "lead" },
+    { chave: "ja_possui_consorcio", label: "Já possui consórcio", tipo: "booleano", fonte: "coluna", bloco: "lead" },
     {
       chave: "segmento",
       label: "Segmento",
       tipo: "select",
       fonte: "coluna",
+      bloco: "lead",
       opcoes: [
         { valor: "imovel", label: "Imóvel" },
         { valor: "veiculo", label: "Veículo" },
         { valor: "servicos", label: "Serviços" },
       ],
     },
-    { chave: "grupo", label: "Grupo", tipo: "texto", fonte: "coluna" },
+    { chave: "grupo", label: "Grupo", tipo: "texto", fonte: "coluna", bloco: "lead" },
     {
       chave: "contemplacao",
       label: "Contemplação",
       tipo: "select",
       fonte: "coluna",
+      bloco: "lead",
       opcoes: [
         { valor: "nao-contemplado", label: "Não contemplado" },
         { valor: "em-lance", label: "Em lance" },

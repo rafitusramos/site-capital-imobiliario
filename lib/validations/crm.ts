@@ -172,7 +172,14 @@ export const moverLeadBaseSchema = z.object({
   motivoObs: z.string().optional(),
   // Concorrência otimista (docs/crm-spec.md §5, caso de borda 3): viaja para
   // o RPC mover_lead_crm comparar contra leads.updated_at.
-  updatedAt: z.string().datetime().optional(),
+  //
+  // `offset: true` é obrigatório aqui, ao contrário dos `agendadoPara` abaixo:
+  // este valor NÃO é produzido por `toISOString()` no cliente — ele vem do
+  // banco, relido de `vw_leads_crm.updated_at`, e o PostgREST serializa
+  // `timestamptz` com deslocamento ("2026-08-01T03:32:23.139576+00:00"), não
+  // com o sufixo "Z". Sem `offset: true`, o zod só aceita a forma com "Z" e
+  // reprova TODO arraste de card com "Invalid ISO datetime".
+  updatedAt: z.string().datetime({ offset: true }).optional(),
 });
 
 /**
@@ -263,6 +270,14 @@ export const novaInteracaoSchema = z.object({
 export const definirTagsSchema = z.object({
   leadId: z.string().uuid(),
   tags: z.array(z.string().trim().min(1)).max(8, "Máximo de 8 tags por lead."),
+});
+
+// Criar tag nova no catálogo compartilhado `crm_tags` (item 6 dos ajustes de
+// CRM, rodada 2). Teto de 24 caracteres: é um chip, não um campo de texto
+// livre — o mesmo espírito do teto de 200/5000 em novaInteracaoSchema, só
+// que bem mais apertado porque o rótulo precisa caber num rounded-full.
+export const criarTagSchema = z.object({
+  label: z.string().trim().min(2, "A tag precisa de pelo menos 2 caracteres.").max(24, "Máximo de 24 caracteres."),
 });
 
 // ---- Atribuição de responsável ----

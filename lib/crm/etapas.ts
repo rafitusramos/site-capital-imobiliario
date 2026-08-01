@@ -144,3 +144,30 @@ export function etapaPorSlug(tipo: LeadTipoSlug, slug: LeadEtapaSlug): EtapaCRM 
 export function exigeMotivo(tipo: LeadTipoSlug, slug: LeadEtapaSlug): boolean {
   return etapaPorSlug(tipo, slug)?.exigeMotivo ?? false;
 }
+
+/**
+ * Etapas do pipeline em sequência de avanço (bloco "Etapa" do PainelComum.tsx).
+ * "Perdido" e "Não Qualificado" estão no fim do array de `etapasDoTipo`, mas
+ * não são o passo seguinte de "Ganho" — avançar por índice cru mandaria um
+ * lead ganho para perdido. Etapas finais não-ganho ficam de fora daqui; têm
+ * botões próprios (um por etapa), derivados separadamente.
+ */
+export function sequenciaLinear(tipo: LeadTipoSlug): EtapaCRM[] {
+  return etapasDoTipo(tipo).filter((etapa) => !etapa.isFinal || etapa.isGanho);
+}
+
+/** Etapa imediatamente anterior a `atual` em `sequenciaLinear`; `undefined` quando `atual` é a primeira ou não está na sequência (lead perdido/não qualificado). */
+export function etapaAnterior(tipo: LeadTipoSlug, atual: LeadEtapaSlug): EtapaCRM | undefined {
+  const sequencia = sequenciaLinear(tipo);
+  const indice = sequencia.findIndex((etapa) => etapa.slug === atual);
+  if (indice <= 0) return undefined;
+  return sequencia[indice - 1];
+}
+
+/** Etapa imediatamente seguinte a `atual` em `sequenciaLinear`; `undefined` quando `atual` é a última (ex.: "ganho") ou não está na sequência. */
+export function etapaProxima(tipo: LeadTipoSlug, atual: LeadEtapaSlug): EtapaCRM | undefined {
+  const sequencia = sequenciaLinear(tipo);
+  const indice = sequencia.findIndex((etapa) => etapa.slug === atual);
+  if (indice === -1 || indice === sequencia.length - 1) return undefined;
+  return sequencia[indice + 1];
+}

@@ -2,25 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { carregarDetalheLead, type DetalheLeadCarregado } from "@/components/admin/crm/carregar-lead";
-import { moverLead, type AcaoResultado } from "@/app/actions/admin-crm";
+import { atualizarLead, moverLead, type AcaoResultado } from "@/app/actions/admin-crm";
 import { etapaPorSlug } from "@/lib/crm/etapas";
+import { formatarData } from "@/lib/crm/tempo";
 import { useToast } from "@/lib/admin/toast";
 import { IconeFechar } from "@/components/admin/crm/icones";
-import { PainelComum } from "@/components/admin/crm/PainelComum";
-import { PainelOrigem } from "@/components/admin/crm/PainelOrigem";
-import { LinhaDoTempo } from "@/components/admin/crm/LinhaDoTempo";
-import { NovaInteracao } from "@/components/admin/crm/NovaInteracao";
-import { ListaLembretes } from "@/components/admin/crm/ListaLembretes";
+import { CorpoModalLead } from "@/components/admin/crm/CorpoModalLead";
 import { DialogoMotivo, type MotivoOpcao } from "@/components/admin/crm/DialogoMotivo";
 import type { DominiosCRM } from "@/lib/queries/admin-crm";
-import type { LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
-
-const LABEL_ORIGEM: Record<LeadTipoSlug, string> = {
-  financiamento: "Financiamento",
-  "home-equity": "Home Equity",
-  imoveis: "Imóveis",
-  consorcio: "Consórcio",
-};
+import type { LeadEtapaSlug } from "@/types/database";
 
 function elementosFocaveis(container: HTMLElement): HTMLElement[] {
   return Array.from(
@@ -60,9 +50,11 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
   const [erroCarregar, setErroCarregar] = useState<string | null>(null);
   const [dialogoMotivo, setDialogoMotivo] = useState<EstadoDialogoMotivo | null>(null);
   const [movendoEtapa, setMovendoEtapa] = useState(false);
+  const [nome, setNome] = useState("");
 
   const painelRef = useRef<HTMLDivElement>(null);
   const ultimoFocoRef = useRef<HTMLElement | null>(null);
+  const nomeRef = useRef<HTMLInputElement>(null);
 
   // `carregarDetalheLead` (server action) pode rejeitar — `getLead`/`getTimeline`/
   // `getLembretes` (lib/queries/admin-crm.ts) fazem `if (error) throw error`.
@@ -82,6 +74,14 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
       setErroCarregar("Não foi possível carregar o lead. Tente novamente.");
     }
   }, [leadId]);
+
+  // Semeia o campo de nome do cabeçalho só quando o valor vindo do banco
+  // muda (primeira carga e depois de cada `recarregar()`) — o próprio input
+  // é quem controla o valor enquanto o operador digita, este efeito nunca
+  // deve pisar em cima de uma edição em andamento.
+  useEffect(() => {
+    if (detalhe) setNome(detalhe.lead.nome);
+  }, [detalhe?.lead.nome]);
 
   useEffect(() => {
     let cancelado = false;
@@ -110,6 +110,12 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
 
     function aoTeclar(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // Escape no campo de nome desfaz a edição em vez de fechar o modal
+        // (aoTeclarNome, abaixo). Tem de ser decidido AQUI: este listener é
+        // nativo e está no `document`, o mesmo nó onde o Next monta a raiz do
+        // React — `stopPropagation()` no evento sintético do input não impede
+        // um listener irmão do mesmo nó de disparar.
+        if (e.target === nomeRef.current) return;
         e.preventDefault();
         onFechar();
         return;
@@ -180,11 +186,30 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
   }
 
   const motivos: MotivoOpcao[] = dominios.motivosPerda.map((m) => ({ slug: m.slug, label: m.label }));
-  // DetalheOrigemLead["dados"] é um union de Rows específicas (lead_financiamento
-  // | lead_home_equity | ...) — PainelOrigem.tsx é deliberadamente genérico
-  // sobre a origem, então recebe como Record indexável por `chave` de
-  // lib/crm/campos.ts (a estrutura de fato é compatível; só o tipo estático não).
-  const dadosOrigem = detalhe ? (detalhe.detalhe.dados as unknown as Record<string, unknown> | null) : null;
+
+  /** onBlur do input de nome (item 6 dos ajustes de CRM): valida, salva, ou desfaz — nunca deixa o cabeçalho exibir um nome que não está no banco. */
+  async function salvarNome() {
+    if (!detalhe) return;
+    const valor = nome.trim();
+    if (valor === detalhe.lead.nome) return; // sem mudança real: não gasta uma mutação à toa
+    if (valor.length < 3) {
+      mostrarToast("erro", "Informe o nome completo.");
+      setNome(detalhe.lead.nome);
+      return;
+    }
+    await executarAcao(atualizarLead({ leadId, tipo: detalhe.lead.tipo, comum: { nome: valor } }), "Nome atualizado.");
+  }
+
+  /** Enter salva (mesmo caminho do blur); Escape desfaz a edição — quem impede o Escape daqui de também fechar o modal é o handler global, que ignora o evento quando o alvo é este input. */
+  function aoTeclarNome(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.currentTarget.blur();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setNome(detalhe?.lead.nome ?? "");
+    }
+  }
 
   return (
     <div
@@ -194,16 +219,45 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
         if (e.target === e.currentTarget) onFechar();
       }}
     >
-      <div ref={painelRef} role="dialog" aria-modal="true" aria-labelledby="modal-lead-titulo" className="w-full max-w-4xl rounded-lg bg-white shadow-xl">
-        <div className="flex items-center justify-between gap-3 border-b border-black/5 px-5 py-4">
-          <h2 id="modal-lead-titulo" className="text-base font-semibold text-[var(--abissal)]">
-            {detalhe ? detalhe.lead.nome : "Carregando lead…"}
-          </h2>
+      <div
+        ref={painelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={detalhe ? `Lead ${detalhe.lead.nome}` : "Carregando lead"}
+        className="w-full max-w-4xl rounded-lg bg-white shadow-xl"
+      >
+        <div className="flex items-center gap-3 border-b border-black/5 px-5 py-4">
+          <div className="min-w-0 flex-1">
+            {detalhe ? (
+              <input
+                ref={nomeRef}
+                type="text"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                onBlur={salvarNome}
+                onKeyDown={aoTeclarNome}
+                aria-label="Nome do lead"
+                className="w-full min-w-0 rounded-md border border-transparent bg-transparent px-2 py-1 text-base font-semibold text-[var(--abissal)] transition hover:border-neutral-300 focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]"
+              />
+            ) : (
+              <p className="px-2 py-1 text-base font-semibold text-[var(--abissal)]">Carregando lead…</p>
+            )}
+          </div>
+
+          {detalhe ? (
+            <div className="flex-none text-right leading-tight">
+              <span className="block text-xs font-medium text-neutral-500 [font-family:var(--mono),monospace]">
+                {detalhe.lead.protocolo}
+              </span>
+              <span className="block text-[11px] text-neutral-400">Criado em {formatarData(detalhe.lead.created_at)}</span>
+            </div>
+          ) : null}
+
           <button
             type="button"
             onClick={onFechar}
             aria-label="Fechar"
-            className="rounded-md p-1.5 text-neutral-400 transition hover:bg-black/5 hover:text-neutral-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--jade)]"
+            className="flex-none rounded-md p-1.5 text-neutral-400 transition hover:bg-black/5 hover:text-neutral-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--jade)]"
           >
             <IconeFechar className="h-5 w-5" />
           </button>
@@ -217,30 +271,14 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
               {erroCarregar}
             </p>
           ) : detalhe ? (
-            <div className="space-y-8">
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                <PainelComum
-                  lead={detalhe.lead}
-                  tags={detalhe.tags}
-                  origemLabel={LABEL_ORIGEM[detalhe.lead.tipo]}
-                  dominios={dominios}
-                  onMudarEtapa={mudarEtapa}
-                  etapaPendente={movendoEtapa}
-                  executarAcao={executarAcao}
-                />
-                <PainelOrigem tipo={detalhe.lead.tipo} dados={dadosOrigem} leadId={leadId} executarAcao={executarAcao} />
-              </div>
-
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                <ListaLembretes lembretes={detalhe.lembretes} executarAcao={executarAcao} />
-                <NovaInteracao leadId={leadId} tiposInteracao={dominios.tiposInteracao} executarAcao={executarAcao} />
-              </div>
-
-              <div>
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">Linha do tempo</h3>
-                <LinhaDoTempo itens={detalhe.timeline} />
-              </div>
-            </div>
+            <CorpoModalLead
+              detalhe={detalhe}
+              dominios={dominios}
+              leadId={leadId}
+              executarAcao={executarAcao}
+              onMudarEtapa={mudarEtapa}
+              etapaPendente={movendoEtapa}
+            />
           ) : null}
         </div>
       </div>

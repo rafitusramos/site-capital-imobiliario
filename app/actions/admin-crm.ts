@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { etapaInicial } from "@/lib/crm/etapas";
+import { slugify } from "@/lib/blog/slugify";
 import {
   atribuirResponsavelSchema,
   atualizarLeadComumSchema,
@@ -11,6 +12,7 @@ import {
   criarLeadFinanciamentoSchema,
   criarLeadHomeEquitySchema,
   criarLeadImovelSchema,
+  criarTagSchema,
   definirTagsSchema,
   lembreteReagendarSchema,
   moverLeadBaseSchema,
@@ -128,7 +130,11 @@ function camposHomeEquity(d: DadosHomeEquity) {
     cep: d.cep ?? null,
     numero: d.numero ?? null,
     area_m2: d.areaM2 ?? null,
-    situacao_imovel: d.situacaoImovel ?? null,
+    // situacao_imovel NÃO entra mais aqui (item 5 dos ajustes de CRM, rodada
+    // 2): a coluna continua no banco com os dados antigos, mas a interface
+    // parou de gravar nela — incluir `situacao_imovel: d.situacaoImovel ??
+    // null` voltaria a apagar o valor existente a cada salvamento, já que
+    // este objeto substitui TODAS as chaves do upsert.
   };
 }
 
@@ -708,6 +714,74 @@ export async function definirTags(leadId: string, tags: string[]): Promise<AcaoR
 
   revalidarQuadro();
   return { sucesso: true };
+}
+
+// ---------------------------------------------------------------------------
+// criarTag
+// ---------------------------------------------------------------------------
+
+export interface CriarTagResultado extends AcaoResultado {
+  tag?: { slug: string; label: string; cor: string };
+}
+
+/**
+ * Cria uma tag nova no catálogo compartilhado `crm_tags` (item 6 dos ajustes
+ * de CRM, rodada 2 — primeira interface de criação; até aqui o catálogo só
+ * crescia por SQL Editor). `lead_tags.tag_slug` é FK para `crm_tags.slug`
+ * (016), então não existe tag solta por lead: toda tag nova entra aqui e
+ * passa a valer para todos os leads.
+ *
+ * RLS `crm_tags_admin_write` (017) restringe a escrita a admin
+ * (`eh_admin()`) — um corretor recebe a violação de RLS do Postgres (código
+ * 42501) direto do insert, sem checagem de papel no cliente: o banco é a
+ * autoridade, mesmo padrão do resto deste arquivo.
+ */
+export async function criarTag(label: string): Promise<CriarTagResultado> {
+  const { supabase, user } = await usuarioAutenticado();
+  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+
+  const parsed = criarTagSchema.safeParse({ label });
+  if (!parsed.success) {
+    return { sucesso: false, erro: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+
+  const slug = slugify(parsed.data.label);
+  if (!slug) return { sucesso: false, erro: "Use letras ou números no nome da tag." };
+
+  // Sem `.order()`/`.limit()` de propósito: o cliente Supabase falso dos
+  // testes (tests/apoio/supabase-falso.ts) só simula
+  // select/insert/update/delete encadeados com `eq`/`in`, e o catálogo de
+  // tags é pequeno o bastante para calcular o maior `ordem` em memória.
+  const { data: existentes, error: erroSelect } = await supabase.from("crm_tags").select("slug, label, cor, ordem");
+  if (erroSelect) return { sucesso: false, erro: "Não foi possível verificar as tags existentes." };
+
+  // Slug já existente não é erro: o operador digitando "Urgente" quando
+  // "urgente" já está no catálogo quer a tag que já existe, não uma
+  // duplicata rejeitada pela PK de crm_tags.
+  const existente = existentes?.find((t) => t.slug === slug);
+  if (existente) {
+    return { sucesso: true, tag: { slug: existente.slug, label: existente.label, cor: existente.cor } };
+  }
+
+  const maiorOrdem = existentes && existentes.length > 0 ? Math.max(...existentes.map((t) => t.ordem)) : 0;
+
+  const { data: nova, error: erroInsert } = await supabase
+    .from("crm_tags")
+    .insert({ slug, label: parsed.data.label, ordem: maiorOrdem + 1 })
+    .select("slug, label, cor")
+    .single();
+
+  if (erroInsert) {
+    // 42501 é o código padrão do Postgres para violação de RLS (não uma
+    // exceção customizada como `raise exception 'CODIGO'` — crm_tags_admin_write
+    // é uma policy declarativa comum, sem função de trigger por trás).
+    if (erroInsert.code === "42501") return { sucesso: false, erro: "Só administradores podem criar tags novas." };
+    return { sucesso: false, erro: "Não foi possível criar a tag." };
+  }
+  if (!nova) return { sucesso: false, erro: "Não foi possível criar a tag." };
+
+  revalidarQuadro();
+  return { sucesso: true, tag: { slug: nova.slug, label: nova.label, cor: nova.cor } };
 }
 
 // ---------------------------------------------------------------------------

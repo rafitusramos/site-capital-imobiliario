@@ -41,7 +41,12 @@ export default async function AdminProtectedLayout({
         </header>
         <div className="flex flex-1">
           <SidebarAdmin />
-          <main className="flex-1 bg-[var(--marfim)] px-6 py-8">{children}</main>
+          {/* min-w-0: item de flex não encolhe abaixo da largura intrínseca
+              do conteúdo por padrão (min-width: auto) — sem isto, uma página
+              com conteúdo largo (ex.: o quadro do CRM) estica o `main`
+              inteiro e a rolagem horizontal vaza para a página toda, em vez
+              de ficar confinada à área que de fato precisa rolar. */}
+          <main className="min-w-0 flex-1 bg-[var(--marfim)] px-6 py-8">{children}</main>
         </div>
       </div>
     </ToasterProvider>

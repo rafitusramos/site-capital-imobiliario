@@ -88,7 +88,7 @@ export const BarraFiltros = forwardRef<HTMLInputElement, BarraFiltrosProps>(func
   refBusca,
 ) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="my-2 flex flex-wrap items-center gap-2">
       <label className="relative">
         <span className="sr-only">Buscar por nome, e-mail, telefone ou protocolo</span>
         <IconeBusca className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />

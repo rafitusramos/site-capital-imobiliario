@@ -13,6 +13,7 @@ import {
   atualizarLead,
   concluirLembrete,
   criarLead,
+  criarTag,
   definirTags,
   excluirLead,
   moverLead,
@@ -51,6 +52,7 @@ describe("sessão expirada", () => {
     ["alternarFavorito", () => alternarFavorito(LEAD_1)],
     ["definirTags", () => definirTags(LEAD_1, [])],
     ["atribuirResponsavel", () => atribuirResponsavel(LEAD_1, null)],
+    ["criarTag", () => criarTag("Urgente")],
   ];
 
   test.each(acoes)("%s sem usuário autenticado devolve erro de sessão", async (_nome, chamar) => {
@@ -748,5 +750,87 @@ describe("atribuirResponsavel", () => {
       sucesso: false,
       erro: "Lead não encontrado ou você não tem permissão para reatribuí-lo.",
     });
+  });
+});
+
+describe("criarTag", () => {
+  test("label curto demais devolve erro sem tocar no banco", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+
+    const resultado = await criarTag("a");
+
+    expect(resultado.sucesso).toBe(false);
+    expect(falso.chamadas).toEqual([]);
+  });
+
+  test("slug já existente devolve a tag existente sem inserir", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("crm_tags", "select", {
+      data: [{ slug: "urgente", label: "Urgente", cor: "#8A3B2E", ordem: 2 }],
+      error: null,
+    });
+
+    const resultado = await criarTag("urgente");
+
+    expect(resultado).toEqual({
+      sucesso: true,
+      tag: { slug: "urgente", label: "Urgente", cor: "#8A3B2E" },
+    });
+    expect(falso.chamadas.some((c) => c.tabela === "crm_tags" && c.operacao === "insert")).toBe(false);
+  });
+
+  test("caminho feliz: cria a tag com ordem = maior ordem atual + 1 e revalida", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("crm_tags", "select", {
+      data: [{ slug: "vip", label: "VIP", cor: "#1C4633", ordem: 3 }],
+      error: null,
+    });
+    falso.programarResposta("crm_tags", "insert", {
+      data: { slug: "parceiro", label: "Parceiro", cor: "#8A6C48" },
+      error: null,
+    });
+
+    const resultado = await criarTag("Parceiro");
+
+    expect(resultado).toEqual({
+      sucesso: true,
+      tag: { slug: "parceiro", label: "Parceiro", cor: "#8A6C48" },
+    });
+    const chamadaInsert = falso.chamadas.find((c) => c.tabela === "crm_tags" && c.operacao === "insert");
+    expect(chamadaInsert).toBeDefined();
+    expect(chamadaInsert!.payload).toMatchObject({ slug: "parceiro", label: "Parceiro", ordem: 4 });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/crm/[origem]", "page");
+  });
+
+  test("catálogo vazio: primeira tag nasce com ordem 1", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("crm_tags", "select", { data: [], error: null });
+    falso.programarResposta("crm_tags", "insert", {
+      data: { slug: "prioridade", label: "Prioridade", cor: "#8A6C48" },
+      error: null,
+    });
+
+    await criarTag("Prioridade");
+
+    const chamadaInsert = falso.chamadas.find((c) => c.tabela === "crm_tags" && c.operacao === "insert");
+    expect(chamadaInsert!.payload).toMatchObject({ ordem: 1 });
+  });
+
+  test("RLS barra corretor não-admin: erro 42501 vira mensagem clara", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "corretor-1" });
+    falso.programarResposta("crm_tags", "select", { data: [], error: null });
+    falso.programarResposta("crm_tags", "insert", {
+      data: null,
+      error: { message: "new row violates row-level security policy for table \"crm_tags\"", code: "42501" },
+    });
+
+    const resultado = await criarTag("Nova tag");
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Só administradores podem criar tags novas." });
   });
 });
