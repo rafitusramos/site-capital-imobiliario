@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ADMIN_HOME_COM_BARRA } from "@/lib/admin/rotas";
 
 const LOGIN_PATH = "/admin/login";
 
@@ -43,7 +44,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && ehLogin) {
     const url = request.nextUrl.clone();
-    url.pathname = "/admin/posts/";
+    url.pathname = ADMIN_HOME_COM_BARRA;
     return NextResponse.redirect(url);
   }
 

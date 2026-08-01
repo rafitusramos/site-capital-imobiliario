@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Marca } from "@/components/admin/Marca";
+import { ADMIN_HOME } from "@/lib/admin/rotas";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function AdminLoginPage() {
       return;
     }
 
-    router.replace("/admin/posts");
+    router.replace(ADMIN_HOME);
     router.refresh();
   }
 

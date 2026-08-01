@@ -4,21 +4,34 @@ export type ImovelStatus = "ativo" | "reservado" | "vendido" | "inativo";
 export type ImovelImagemGrupo = "empreendimento" | "decorado" | "planta" | "implantacao";
 export type ImovelDiferencialGrupo = "lazer" | "diferencial";
 export type LeadTipoSlug = "financiamento" | "home-equity" | "imoveis" | "consorcio";
-export type LeadStatusSlug =
+// Substitui LeadStatusSlug (funil único) a partir de 014_crm_pipelines.sql:
+// agora cada LeadTipoSlug tem seu próprio pipeline em crm_etapas, e os 12
+// slugs abaixo são a união de todas as etapas de todos os pipelines — não
+// significa que um dado `tipo` aceite os 12 (a FK composta (tipo, status)
+// que restringe isso é responsabilidade do banco, não do tipo TS).
+export type LeadEtapaSlug =
   | "criado"
   | "simulacao"
-  | "analise-credito"
-  | "credito-aprovado"
+  | "pre-aprovacao"
   | "vistoria"
-  | "contrato-assinado"
-  | "perdido";
+  | "contrato"
+  | "ganho"
+  | "perdido"
+  | "apresentacao"
+  | "proposta"
+  | "qualificacao"
+  | "visita"
+  | "nao-qualificado";
 export type LeadInteracaoTipo =
   | "nota"
   | "ligacao"
   | "whatsapp"
   | "email"
   | "reuniao"
-  | "proposta";
+  | "proposta"
+  | "visita"
+  | "contrato"
+  | "sistema";
 
 export interface Database {
   public: {
@@ -354,28 +367,174 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["lead_tipos"]["Insert"]>;
         Relationships: [];
       };
-      lead_status: {
+      // Etapas por pipeline (014_crm_pipelines.sql). Substitui lead_status:
+      // agora há um conjunto de etapas por LeadTipoSlug, não um funil único.
+      // PK composta (tipo, slug) — a FK leads_etapa_fkey usa as duas colunas.
+      crm_etapas: {
         Row: {
-          slug: LeadStatusSlug;
+          tipo: LeadTipoSlug;
+          slug: LeadEtapaSlug;
           label: string;
+          ordem: number;
           cor_bg: string;
           cor_texto: string;
-          ordem: number;
+          is_inicial: boolean;
           is_final: boolean;
           is_ganho: boolean;
+          exige_motivo: boolean;
+          sla_dias: number | null;
           ativo: boolean;
         };
         Insert: {
-          slug: LeadStatusSlug;
+          tipo: LeadTipoSlug;
+          slug: LeadEtapaSlug;
           label: string;
+          ordem: number;
           cor_bg: string;
           cor_texto: string;
-          ordem: number;
+          is_inicial?: boolean;
           is_final?: boolean;
           is_ganho?: boolean;
+          exige_motivo?: boolean;
+          sla_dias?: number | null;
           ativo?: boolean;
         };
-        Update: Partial<Database["public"]["Tables"]["lead_status"]["Insert"]>;
+        Update: Partial<Database["public"]["Tables"]["crm_etapas"]["Insert"]>;
+        Relationships: [];
+      };
+      // Motivos de perda/não qualificação (014_crm_pipelines.sql). Tabela
+      // configurável por SQL (fora de escopo ter editor na interface por
+      // ora) — por isso `slug` é `string`, não um union fixo: a lista pode
+      // crescer sem exigir deploy de código. O slug 'outro' é o único
+      // tratado de forma especial (mover_lead_crm exige motivo_obs).
+      crm_motivos_perda: {
+        Row: {
+          slug: string;
+          label: string;
+          ordem: number;
+          ativo: boolean;
+        };
+        Insert: {
+          slug: string;
+          label: string;
+          ordem?: number;
+          ativo?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_motivos_perda"]["Insert"]>;
+        Relationships: [];
+      };
+      // Domínio de tipos de interação (015_crm_interacoes_lembretes.sql).
+      // Normaliza o antigo CHECK de lead_interacoes.tipo — mesmo padrão de
+      // imovel_tipos (011_imovel_tipos_fases.sql). `slug` reaproveita o
+      // union LeadInteracaoTipo: os 9 valores seedados são exatamente os 9
+      // que o union enumera.
+      crm_interacao_tipos: {
+        Row: {
+          slug: LeadInteracaoTipo;
+          label: string;
+          /** slug do catálogo em components/admin/crm/icones.tsx */
+          icone: string;
+          ordem: number;
+          ativo: boolean;
+        };
+        Insert: {
+          slug: LeadInteracaoTipo;
+          label: string;
+          icone: string;
+          ordem?: number;
+          ativo?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_interacao_tipos"]["Insert"]>;
+        Relationships: [];
+      };
+      // Lembrete de follow-up (015_crm_interacoes_lembretes.sql). Tabela
+      // própria, não coluna em lead_interacoes: um lead pode ter mais de um
+      // lembrete aberto, e "o contato aconteceu" (interação) não é o mesmo
+      // que "o follow-up foi cumprido" (lembrete).
+      crm_lembretes: {
+        Row: {
+          id: string;
+          lead_id: string;
+          interacao_id: string | null;
+          agendado_para: string;
+          descricao: string;
+          concluido: boolean;
+          concluido_em: string | null;
+          concluido_por: string | null;
+          criado_por: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          interacao_id?: string | null;
+          agendado_para: string;
+          descricao: string;
+          concluido?: boolean;
+          concluido_em?: string | null;
+          concluido_por?: string | null;
+          criado_por?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_lembretes"]["Insert"]>;
+        Relationships: [];
+      };
+      // Tags livres do CRM (016_crm_campos_e_tags.sql). `slug` fica `string`
+      // pelo mesmo motivo de crm_motivos_perda: sem editor na interface
+      // ainda, a lista cresce só por SQL Editor.
+      crm_tags: {
+        Row: {
+          slug: string;
+          label: string;
+          cor: string;
+          ordem: number;
+          ativo: boolean;
+        };
+        Insert: {
+          slug: string;
+          label: string;
+          cor?: string;
+          ordem?: number;
+          ativo?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_tags"]["Insert"]>;
+        Relationships: [];
+      };
+      // Associação lead <-> tag, N:N (016_crm_campos_e_tags.sql). PK
+      // composta — não há id próprio, a linha inteira é a chave.
+      lead_tags: {
+        Row: {
+          lead_id: string;
+          tag_slug: string;
+        };
+        Insert: {
+          lead_id: string;
+          tag_slug: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["lead_tags"]["Insert"]>;
+        Relationships: [];
+      };
+      // Registro de exclusão definitiva (016_crm_campos_e_tags.sql), para
+      // que apagar dado a pedido do titular (LGPD) fique comprovável sem
+      // guardar dado pessoal nenhum — só protocolo, tipo e quem excluiu.
+      crm_exclusoes: {
+        Row: {
+          id: string;
+          protocolo: string;
+          tipo: string;
+          excluido_por: string | null;
+          motivo: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          protocolo: string;
+          tipo: string;
+          excluido_por?: string | null;
+          motivo?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_exclusoes"]["Insert"]>;
         Relationships: [];
       };
       leads: {
@@ -383,7 +542,10 @@ export interface Database {
           id: string;
           protocolo: string;
           tipo: LeadTipoSlug;
-          status: LeadStatusSlug;
+          // Etapa dentro do pipeline do tipo (crm_etapas), não mais um
+          // funil global único — ver comment on column no banco
+          // (014_crm_pipelines.sql) e LeadEtapaSlug acima.
+          status: LeadEtapaSlug;
           nome: string;
           email: string;
           telefone: string;
@@ -397,6 +559,18 @@ export interface Database {
           enviado_crm: boolean;
           consentimento_lgpd: boolean;
           consentimento_em: string | null;
+          // Motivo obrigatório ao entrar em 'perdido'/'nao-qualificado'
+          // (mover_lead_crm, 017_crm_funcoes_rls.sql). Nulo fora dessas etapas.
+          motivo_perda: string | null;
+          motivo_obs: string | null;
+          favorito: boolean;
+          // Arquivar preserva o dado (a lixeira do CRM); exclusão definitiva
+          // é ação separada, registrada em crm_exclusoes.
+          arquivado_em: string | null;
+          arquivado_por: string | null;
+          // Extensibilidade sem migration: campos com `fonte: "extra"` em
+          // lib/crm/campos.ts gravam aqui (docs/crm-spec.md §3.4).
+          campos_extras: Record<string, unknown>;
           status_alterado_em: string;
           created_at: string;
           updated_at: string;
@@ -405,7 +579,7 @@ export interface Database {
           id?: string;
           protocolo?: string;
           tipo: LeadTipoSlug;
-          status?: LeadStatusSlug;
+          status?: LeadEtapaSlug;
           nome: string;
           email: string;
           telefone: string;
@@ -419,6 +593,12 @@ export interface Database {
           enviado_crm?: boolean;
           consentimento_lgpd?: boolean;
           consentimento_em?: string | null;
+          motivo_perda?: string | null;
+          motivo_obs?: string | null;
+          favorito?: boolean;
+          arquivado_em?: string | null;
+          arquivado_por?: string | null;
+          campos_extras?: Record<string, unknown>;
           status_alterado_em?: string;
           created_at?: string;
           updated_at?: string;
@@ -486,6 +666,8 @@ export interface Database {
           cep: string | null;
           numero: string | null;
           area_m2: number | null;
+          // quitado | financiado | alienado | inventario (016_crm_campos_e_tags.sql)
+          situacao_imovel: string | null;
           created_at: string;
         };
         Insert: {
@@ -505,6 +687,7 @@ export interface Database {
           cep?: string | null;
           numero?: string | null;
           area_m2?: number | null;
+          situacao_imovel?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["lead_home_equity"]["Insert"]>;
@@ -519,6 +702,12 @@ export interface Database {
           valor_entrada: number | null;
           ja_tem_aprovacao: boolean | null;
           observacoes: string | null;
+          // texto livre p/ imóvel fora do catálogo (016_crm_campos_e_tags.sql)
+          imovel_desejado: string | null;
+          orcamento_max: number | null;
+          cidade_preferida: string | null;
+          dormitorios_min: number | null;
+          tipo_imovel: string | null;
           created_at: string;
         };
         Insert: {
@@ -529,6 +718,11 @@ export interface Database {
           valor_entrada?: number | null;
           ja_tem_aprovacao?: boolean | null;
           observacoes?: string | null;
+          imovel_desejado?: string | null;
+          orcamento_max?: number | null;
+          cidade_preferida?: string | null;
+          dormitorios_min?: number | null;
+          tipo_imovel?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["lead_imovel"]["Insert"]>;
@@ -542,6 +736,11 @@ export interface Database {
           parcela_estimada: number | null;
           objetivo: string | null;
           ja_possui_consorcio: boolean | null;
+          // imovel | veiculo | servicos (016_crm_campos_e_tags.sql)
+          segmento: string | null;
+          grupo: string | null;
+          // nao-contemplado | em-lance | contemplado
+          contemplacao: string | null;
           created_at: string;
         };
         Insert: {
@@ -551,6 +750,9 @@ export interface Database {
           parcela_estimada?: number | null;
           objetivo?: string | null;
           ja_possui_consorcio?: boolean | null;
+          segmento?: string | null;
+          grupo?: string | null;
+          contemplacao?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["lead_consorcio"]["Insert"]>;
@@ -560,19 +762,27 @@ export interface Database {
         Row: {
           id: string;
           lead_id: string;
-          status_anterior: LeadStatusSlug | null;
-          status_novo: LeadStatusSlug;
+          status_anterior: LeadEtapaSlug | null;
+          status_novo: LeadEtapaSlug;
           alterado_por: string | null;
           observacao: string | null;
+          // Motivo da transição, copiado de leads.motivo_perda/motivo_obs
+          // pelo trigger log_lead_status_change no momento da mudança
+          // (017_crm_funcoes_rls.sql) — fica preso à transição, não só ao
+          // estado atual do lead.
+          motivo_perda: string | null;
+          motivo_obs: string | null;
           created_at: string;
         };
         Insert: {
           id?: string;
           lead_id: string;
-          status_anterior?: LeadStatusSlug | null;
-          status_novo: LeadStatusSlug;
+          status_anterior?: LeadEtapaSlug | null;
+          status_novo: LeadEtapaSlug;
           alterado_por?: string | null;
           observacao?: string | null;
+          motivo_perda?: string | null;
+          motivo_obs?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["lead_status_historico"]["Insert"]>;
@@ -607,8 +817,10 @@ export interface Database {
           tipo: LeadInteracaoTipo;
           conteudo: string;
           autor_id: string | null;
-          agendado_para: string | null;
-          concluido: boolean;
+          // O follow-up virou tabela própria (crm_lembretes,
+          // 015_crm_interacoes_lembretes.sql); agendado_para/concluido
+          // saíram daqui.
+          automatica: boolean;
           created_at: string;
         };
         Insert: {
@@ -617,8 +829,7 @@ export interface Database {
           tipo: LeadInteracaoTipo;
           conteudo: string;
           autor_id?: string | null;
-          agendado_para?: string | null;
-          concluido?: boolean;
+          automatica?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["lead_interacoes"]["Insert"]>;
@@ -626,6 +837,11 @@ export interface Database {
       };
     };
     Views: {
+      // Consulta consolidada do quadro do CRM (recriada em
+      // 016_crm_campos_e_tags.sql — a versão anterior, de
+      // 002_leads_crm.sql, usava lead_status em vez de crm_etapas e não
+      // tinha etapa/negócio/tags/lembrete). Filtra arquivados
+      // (arquivado_em is null) — nunca use `leads` direto para o quadro.
       vw_leads_crm: {
         Row: {
           id: string;
@@ -636,23 +852,51 @@ export interface Database {
           cpf: string | null;
           tipo: LeadTipoSlug;
           tipo_label: string;
-          status: LeadStatusSlug;
-          status_label: string;
+          status: LeadEtapaSlug;
+          etapa_label: string;
           cor_bg: string;
           cor_texto: string;
-          status_ordem: number;
+          etapa_ordem: number;
           is_final: boolean;
           is_ganho: boolean;
+          exige_motivo: boolean;
+          sla_dias: number | null;
           origem: string | null;
           pagina_url: string | null;
           imovel_id: string | null;
           imovel_titulo: string | null;
           corretor_id: string | null;
           corretor_nome: string | null;
+          favorito: boolean;
+          motivo_perda: string | null;
+          utm: Record<string, unknown> | null;
           created_at: string;
           status_alterado_em: string;
-          dias_no_status: number | null;
+          updated_at: string;
+          dias_na_etapa: number | null;
+          ultima_interacao_em: string | null;
+          proximo_lembrete_em: string | null;
+          proximo_lembrete_desc: string | null;
+          tags: string[];
           total_interacoes: number;
+          valor_negocio: number | null;
+        };
+        Relationships: [];
+      };
+      // Linha do tempo unificada (interações + transições de etapa),
+      // carregada sob demanda ao abrir o modal do lead — nunca junto do
+      // quadro (015_crm_interacoes_lembretes.sql).
+      vw_crm_timeline: {
+        Row: {
+          lead_id: string;
+          ocorrido_em: string;
+          natureza: "interacao" | "etapa";
+          tipo: string;
+          tipo_label: string | null;
+          corpo: string | null;
+          automatica: boolean;
+          autor_id: string | null;
+          autor_nome: string | null;
         };
         Relationships: [];
       };
@@ -729,6 +973,44 @@ export interface Database {
       };
       registrar_tentativa_lead: {
         Args: { p_ip: string };
+        Returns: boolean;
+      };
+      // Move um lead de etapa impondo a regra de motivo obrigatório
+      // (017_crm_funcoes_rls.sql). SECURITY INVOKER: a RLS de `leads`
+      // continua valendo, então o retorno pode ser `null`-equivalente em
+      // erro — na prática a chamada lança exceção Postgres
+      // (LEAD_NAO_ENCONTRADO | LEAD_DESATUALIZADO | ETAPA_INVALIDA |
+      // MOTIVO_OBRIGATORIO | MOTIVO_OBS_OBRIGATORIA), traduzida em
+      // app/actions/admin-crm.ts.
+      mover_lead_crm: {
+        Args: {
+          p_lead_id: string;
+          p_etapa: string;
+          p_motivo?: string | null;
+          p_motivo_obs?: string | null;
+          p_updated_at?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["leads"]["Row"];
+      };
+      // Grava interação e lembrete (quando informado) numa transação só
+      // (017_crm_funcoes_rls.sql) — evita salvar a nota e perder o
+      // follow-up por falha entre as duas gravações.
+      registrar_interacao_crm: {
+        Args: {
+          p_lead_id: string;
+          p_tipo: string;
+          p_conteudo: string;
+          p_lembrete_em?: string | null;
+          p_lembrete_desc?: string | null;
+        };
+        Returns: Database["public"]["Tables"]["lead_interacoes"]["Row"];
+      };
+      // true só quando o usuário autenticado tem profiles.role = 'admin'.
+      // SECURITY DEFINER com search_path fixo (017_crm_funcoes_rls.sql) —
+      // usada dentro das policies de RLS, não chamada diretamente pela
+      // aplicação.
+      eh_admin: {
+        Args: Record<string, never>;
         Returns: boolean;
       };
     };
