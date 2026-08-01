@@ -148,6 +148,22 @@ Financiamento, Home Equity, Consórcio, Imóveis.
   servidor: sem ele o `aria-describedby` dos itens vem de um contador de módulo
   que diverge entre servidor e cliente e quebra a hidratação.
 
+## Armadilhas já pagas
+- Variável `NEXT_PUBLIC_*` é embutida em **build time**: alterá-la na Vercel
+  **exige redeploy**; salvar não basta.
+- Um `UPDATE` que não casa com nenhuma linha é sucesso no Postgres (`error`
+  nulo, zero linhas). Confira o retorno com `.select()` antes de dizer "salvo".
+- As taxas são guardadas em **decimal** (0.115), não em percentual (11.5).
+  Converter apenas por `lib/parametros/taxa.ts` — errar isso não gera erro
+  nenhum e faz a parcela sair ~100x errada.
+- `lastModified` das páginas fixas do sitemap é mapa mantido à mão. Nunca
+  `new Date()`: faria toda página parecer alterada em todo deploy.
+- As entidades JSON-LD `#negocio` e `#rafael` são declaradas **uma única vez**,
+  no layout, a partir de `lib/seo/negocio.ts`. Não redeclare em página, ou
+  voltam as entidades conflitantes.
+- Build no Windows falhando com `spawn UNKNOWN` na geração de páginas: é
+  processo `node` órfão. Encerre os `node` pendentes e apague `.next`.
+
 ## Como trabalhar comigo neste projeto
 
 Toda melhoria ou ajuste segue três etapas, cada uma com seu modelo:
