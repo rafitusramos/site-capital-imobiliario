@@ -282,7 +282,17 @@ export function GaleriaImovel({ imagens, onChange }: GaleriaImovelProps) {
     <div>
       {erroUpload ? <p className="mb-4 text-sm text-[var(--erro)]">{erroUpload}</p> : null}
 
+      {/* `id` explícito: sem ele o dnd-kit deriva o `aria-describedby` dos
+          itens arrastáveis de um CONTADOR DE MÓDULO (`useUniqueId` em
+          @dnd-kit/utilities), não do `useId` do React. O módulo fica em cache
+          entre requisições no servidor, enquanto no cliente o contador nasce
+          do zero e ainda é renderizado duas vezes pelo StrictMode em
+          desenvolvimento — os dois lados chegam a números diferentes e o React
+          acusa erro de hidratação. Mesma correção já aplicada no quadro do CRM
+          (components/admin/crm/QuadroCRM.tsx). Só existe uma galeria montada
+          por vez, então o valor pode ser constante. */}
       <DndContext
+        id="galeria-imovel"
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={aoIniciarArraste}
