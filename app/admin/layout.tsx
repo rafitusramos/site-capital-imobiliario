@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, IBM_Plex_Mono, Libre_Caslon_Display } from "next/font/google";
+import { Archivo, Geologica, IBM_Plex_Mono, Libre_Caslon_Display } from "next/font/google";
 import "../globals.css";
 import "./admin.css";
 
@@ -23,6 +23,15 @@ const libreCaslonDisplay = Libre_Caslon_Display({
   variable: "--display",
 });
 
+// Só para a soma de valores no cabeçalho de cada coluna do quadro do CRM
+// (components/admin/crm/ColunaEtapa.tsx) — número de destaque, fonte
+// diferente do --mono usado no resto dos valores monetários do módulo.
+const geologica = Geologica({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--geologica",
+});
+
 export const metadata: Metadata = {
   title: "Admin · RT Capital Imobiliário",
   robots: { index: false, follow: false },
@@ -37,7 +46,7 @@ export default function AdminRootLayout({
   return (
     <html lang="pt-BR">
       <body
-        className={`${archivo.variable} ${ibmPlexMono.variable} ${libreCaslonDisplay.variable} min-h-screen bg-[var(--marfim)] text-[var(--tinta)] antialiased [font-family:var(--sans),sans-serif]`}
+        className={`${archivo.variable} ${ibmPlexMono.variable} ${libreCaslonDisplay.variable} ${geologica.variable} min-h-screen bg-[var(--marfim)] text-[var(--tinta)] antialiased [font-family:var(--sans),sans-serif]`}
       >
         {children}
       </body>
