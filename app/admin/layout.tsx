@@ -35,6 +35,7 @@ const geologica = Geologica({
 export const metadata: Metadata = {
   title: "Admin · RT Capital Imobiliário",
   robots: { index: false, follow: false },
+  icons: { icon: "/favicon.svg" },
 };
 
 // Root layout independente do app/(site)/layout.tsx: o admin não usa a nav, o

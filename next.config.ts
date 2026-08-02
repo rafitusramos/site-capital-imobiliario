@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   trailingSlash: true,
   experimental: {
+    // Habilita app/global-not-found.tsx: como o projeto usa dois root
+    // layouts (multiple root layouts, ver app/(site) e app/admin), não
+    // existe um not-found componível único — é o caso que esta flag cobre.
+    globalNotFound: true,
     serverActions: {
       // O upload de imagem de imóvel passa por server action, e o default do
       // Next é 1MB — qualquer foto real estourava com "Body exceeded 1 MB".

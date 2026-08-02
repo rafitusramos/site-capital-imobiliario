@@ -30,7 +30,6 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
     <Link className="im-card reveal" href={`/imoveis/${imovel.slug}/`}>
       <div className="im-card-capa">
         {imovel.capa ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={imovel.capa} alt="" loading="lazy" />
         ) : null}
         <span className="im-badge-fase" data-fase={imovel.fase?.slug}>
