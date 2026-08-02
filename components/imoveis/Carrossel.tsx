@@ -47,7 +47,13 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false, aoAmpliar
           decoding="async"
           fetchPriority={primeiraEager ? "high" : "low"}
         />
-        {imagem.ambiente ? <figcaption>{imagem.ambiente}</figcaption> : null}
+        {/* aria-hidden: o `alt` da imagem já anuncia o ambiente, e sem isso o
+            leitor de tela leria a mesma frase duas vezes seguidas. */}
+        {imagem.ambiente ? (
+          <figcaption className="im-carrossel-legenda" aria-hidden="true">
+            <span>{imagem.ambiente}</span>
+          </figcaption>
+        ) : null}
       </figure>
     );
   }
@@ -186,6 +192,15 @@ function CarrosselMultiplo({ imagens, ariaLabel, primeiraEager, aoAmpliar }: Car
                   decoding="async"
                   fetchPriority={primeiraEager && indice === 0 ? "high" : "low"}
                 />
+                {/* `span`, e não `figcaption`: o elemento vive dentro do
+                    `button` do slide, e figcaption só é válido dentro de
+                    figure. aria-hidden porque o aria-label do botão acima já
+                    anuncia o ambiente. */}
+                {imagem.ambiente ? (
+                  <span className="im-carrossel-legenda" aria-hidden="true">
+                    <span>{imagem.ambiente}</span>
+                  </span>
+                ) : null}
               </button>
             </div>
           ))}

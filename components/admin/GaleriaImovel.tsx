@@ -21,6 +21,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { uploadImagemImovel } from "@/app/actions/admin-imoveis";
+import { prepararImagem } from "@/lib/imoveis/redimensionar";
 import type { ImagemInput } from "@/lib/validations/imovel";
 import type { ImovelImagemGrupo } from "@/types/database";
 import {
@@ -38,7 +39,12 @@ const CAMPO_INLINE =
   "w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
 
 const TIPOS_AUTORIZADOS = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
-const TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024;
+
+// 4MB, e não os 5MB que a server action aceita: a requisição inteira precisa
+// caber no teto de ~4,5MB da função serverless na Vercel. Como o arquivo já
+// chega aqui reduzido por `prepararImagem`, na prática quase nada esbarra
+// nisso — é a rede de proteção, não o caminho comum.
+const TAMANHO_MAXIMO_BYTES = 4 * 1024 * 1024;
 
 /** Frase de convite exibida enquanto o grupo não tem nenhuma imagem. */
 const CONVITE_VAZIO: Partial<Record<ImovelImagemGrupo, string>> = {
@@ -150,11 +156,15 @@ export function GaleriaImovel({ imagens, onChange }: GaleriaImovelProps) {
         mensagensDeErro.push(`${arquivo.name}: formato não suportado. Use JPEG, PNG, WEBP ou GIF.`);
         continue;
       }
-      if (arquivo.size > TAMANHO_MAXIMO_BYTES) {
-        mensagensDeErro.push(`${arquivo.name}: maior que 5MB.`);
+      // Reduz antes de conferir o tamanho: foto de câmera passa de 5MB com
+      // frequência e cabe folgado depois de reduzida — recusar pelo tamanho
+      // bruto seria recusar justamente o caso mais comum.
+      const preparado = await prepararImagem(arquivo);
+      if (preparado.size > TAMANHO_MAXIMO_BYTES) {
+        mensagensDeErro.push(`${arquivo.name}: maior que 4MB mesmo depois de reduzida.`);
         continue;
       }
-      validos.push(arquivo);
+      validos.push(preparado);
     }
 
     if (validos.length > 0) {
@@ -282,7 +292,17 @@ export function GaleriaImovel({ imagens, onChange }: GaleriaImovelProps) {
     <div>
       {erroUpload ? <p className="mb-4 text-sm text-[var(--erro)]">{erroUpload}</p> : null}
 
+      {/* `id` explícito: sem ele o dnd-kit deriva o `aria-describedby` dos
+          itens arrastáveis de um CONTADOR DE MÓDULO (`useUniqueId` em
+          @dnd-kit/utilities), não do `useId` do React. O módulo fica em cache
+          entre requisições no servidor, enquanto no cliente o contador nasce
+          do zero e ainda é renderizado duas vezes pelo StrictMode em
+          desenvolvimento — os dois lados chegam a números diferentes e o React
+          acusa erro de hidratação. Mesma correção já aplicada no quadro do CRM
+          (components/admin/crm/QuadroCRM.tsx). Só existe uma galeria montada
+          por vez, então o valor pode ser constante. */}
       <DndContext
+        id="galeria-imovel"
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragStart={aoIniciarArraste}

@@ -17,6 +17,7 @@ import {
 } from "@/app/actions/admin-imoveis";
 import { slugify } from "@/lib/blog/slugify";
 import { mascaraMoeda } from "@/lib/mascaras";
+import { prepararImagem } from "@/lib/imoveis/redimensionar";
 import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
 import type { ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/lib/validations/imovel";
@@ -405,8 +406,11 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
     if (!arquivo) return;
     setErroTipologias(null);
     setEnviandoPlantaLinha(chave);
+    // Mesma redução da galeria: sem ela a planta em alta resolução estoura o
+    // teto de requisição da função serverless na Vercel.
+    const preparado = await prepararImagem(arquivo);
     const formData = new FormData();
-    formData.append("arquivo", arquivo);
+    formData.append("arquivo", preparado);
     const resultado = await uploadImagemImovel(formData);
     setEnviandoPlantaLinha(null);
     e.target.value = "";
