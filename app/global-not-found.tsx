@@ -29,7 +29,7 @@ export default function GlobalNotFound() {
   return (
     <html lang="pt-BR">
       <body className={`${libreCaslonDisplay.variable} ${archivo.variable}`}>
-        <section className="hero estado">
+        <section className="hero estado estado-cheio">
           <div className="wrap">
             <div className="eyebrow">Erro 404</div>
             <h1>Este endereço não existe.</h1>

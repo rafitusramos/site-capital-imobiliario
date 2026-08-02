@@ -8,6 +8,21 @@
   align-items: center;
 }
 
+/* Sem isto o .wrap vira item flex e encolhe até o conteúdo (685px em vez de
+   960px), e o `margin:0 auto` do lp.css o centraliza — o texto sai da grade
+   que todas as outras páginas usam. O width:100% devolve o .wrap ao
+   comportamento de bloco; quem centraliza na vertical é o align-items acima. */
+.estado .wrap {
+  width: 100%;
+}
+
+/* Só para app/global-not-found.tsx, que não passa por layout nenhum: sem nav
+   e sem rodapé, nada preenche o resto da viewport, e a foto de fundo do
+   body::before (lp.css) aparecia crua abaixo da faixa escura. */
+.estado-cheio {
+  min-height: 100dvh;
+}
+
 .estado-codigo {
   font-family: var(--mono);
   font-size: 13px;
