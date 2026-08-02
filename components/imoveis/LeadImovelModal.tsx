@@ -140,7 +140,6 @@ export const LeadImovelModal = forwardRef<LeadImovelModalHandle, LeadImovelModal
       };
       document.addEventListener("keydown", aoTeclar);
       return () => document.removeEventListener("keydown", aoTeclar);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [aberto]);
 
     function validar(): boolean {

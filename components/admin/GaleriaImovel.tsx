@@ -331,7 +331,6 @@ export function GaleriaImovel({ imagens, onChange }: GaleriaImovelProps) {
         <DragOverlay>
           {itemAtivo ? (
             <div className="aspect-[4/3] w-32 overflow-hidden rounded-md shadow-lg ring-2 ring-[var(--jade)]">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={itemAtivo.url} alt="" className="h-full w-full object-cover" />
             </div>
           ) : null}
@@ -458,7 +457,6 @@ function Miniatura({ item, ehCapa, reducedMotion, onAlterarAmbiente, onRemover }
       className={`group relative ${ehCapa ? "rounded-md ring-1 ring-[var(--bronze)]" : ""}`}
     >
       <div className="relative">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={setActivatorNodeRef}
           {...attributes}

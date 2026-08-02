@@ -330,7 +330,6 @@ export function PostEditor({
             Imagem de capa
           </label>
           {valores.cover_image ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={valores.cover_image} alt="" className="mb-2 h-32 w-full rounded-md object-cover" />
           ) : null}
           <input

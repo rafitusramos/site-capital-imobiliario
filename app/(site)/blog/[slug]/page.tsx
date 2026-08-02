@@ -143,7 +143,6 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
 
             {post.cover_image ? (
               <figure className="artigo-imagem">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={post.cover_image} alt={post.title} loading="lazy" />
               </figure>
             ) : null}
