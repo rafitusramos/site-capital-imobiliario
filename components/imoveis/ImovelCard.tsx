@@ -27,7 +27,7 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
   const local = [imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
 
   return (
-    <Link className="im-card" href={`/imoveis/${imovel.slug}/`}>
+    <Link className="im-card reveal" href={`/imoveis/${imovel.slug}/`}>
       <div className="im-card-capa">
         {imovel.capa ? (
           // eslint-disable-next-line @next/next/no-img-element
