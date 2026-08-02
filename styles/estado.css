@@ -1,0 +1,39 @@
+/* Telas de estado (404, erro) — reaproveitam .hero/.wrap/.eyebrow/.cta de
+   lp.css; aqui só o que falta: centralizar verticalmente e impedir que a
+   página vire um toco entre a nav e o rodapé. dvh (não vh) porque a barra de
+   endereço móvel muda a viewport em tempo real. */
+.estado {
+  min-height: 60dvh;
+  display: flex;
+  align-items: center;
+}
+
+.estado-codigo {
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--areia);
+  margin-top: var(--s5);
+}
+
+.estado-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s4);
+  margin-top: var(--s4);
+}
+
+.estado-links a {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--areia);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.estado-links a:hover,
+.estado-links a:focus-visible {
+  color: var(--branco);
+  border-bottom-color: var(--areia);
+}
