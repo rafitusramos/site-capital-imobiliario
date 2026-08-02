@@ -187,6 +187,16 @@ Toda melhoria ou ajuste segue três etapas, cada uma com seu modelo:
 Para qualquer diretiva de design, carregar **sempre** as duas skills: `frontend-design`
 (web design) e `ui-ux-pro-max`.
 
+### Revisão de pull request
+Todo PR passa pelo plugin `code-review` antes de ser aberto ou mergeado — vale
+para as duas pontas do fluxo, `Development → Preview` e `Preview → main`.
+Rodar `/code-review` sobre o diff da branch e resolver o que ele apontar; se
+alguma constatação for descartada, dizer por quê em vez de ignorar em silêncio.
+
+`/code-review ultra` (revisão multiagente na nuvem) é **acionada só por mim** e
+é cobrada à parte — o Claude não pode disparar por conta própria. Quando achar
+que o caso justifica, peça.
+
 ## REGRAS INVIOLÁVEIS
 1. Nenhum slug de URL pode mudar. As URLs atuais são a base do SEO.
 2. Nenhum texto de artigo pode ser reescrito. Conteúdo migra idêntico.
