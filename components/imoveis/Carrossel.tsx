@@ -40,7 +40,6 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false, aoAmpliar
     const [imagem] = imagens;
     return (
       <figure className="im-carrossel-unica">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imagem.url}
           alt={imagem.ambiente ?? ""}
@@ -185,7 +184,6 @@ function CarrosselMultiplo({ imagens, ariaLabel, primeiraEager, aoAmpliar }: Car
                     primeira (eager) aparecia. Galeria é conteúdo principal e
                     finita, então carrega tudo; `fetchPriority` baixo nas demais
                     evita competir com a capa do hero (LCP). */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imagem.url}
                   alt={imagem.ambiente ?? ""}

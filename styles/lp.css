@@ -14,7 +14,7 @@
   body::before{content:"";position:fixed;inset:0;z-index:-1;background:#0A241C url('/images/background.jpg') center center / cover no-repeat;background-attachment:fixed;opacity:.7;}
   a,button,summary,input,select{touch-action:manipulation;}
   :focus-visible{outline:3px solid var(--bronze);outline-offset:3px;}
-  .wrap{max-width:960px;margin:0 auto;padding:24px 24px;}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 24px;}
   section{padding:36px 0;background:var(--marfim);}
   .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:var(--s4);color:var(--jade);}
   .eyebrow::before{content:"";width:9px;height:9px;background:var(--jade);flex:none;}
@@ -172,7 +172,7 @@
   details .resp{padding:0 22px 20px;font-size:14.5px;color:#3d423e;}
 
   footer{background:var(--abissal);color:var(--areia);padding:var(--s5) 0;font-family:var(--mono);font-size:11.5px;line-height:1.8;}
-  .marca-footer{margin-bottom:var(--s4);}
+  .marca-footer{margin-bottom:var(--s2);}
   .marca-footer .selo{border-color:var(--areia);color:var(--branco);}
   .marca-footer .nome{color:var(--branco);}
   .marca-footer .nome small{color:var(--areia);}

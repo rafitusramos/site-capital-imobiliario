@@ -76,7 +76,6 @@ export function GaleriaPlantas({ imagens, ariaLabel }: GaleriaPlantasProps) {
             >
               ×
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={imagemAmpliada.url} alt={imagemAmpliada.ambiente ?? ""} />
             {imagemAmpliada.ambiente ? (
               <p className="im-planta-legenda">{imagemAmpliada.ambiente}</p>
