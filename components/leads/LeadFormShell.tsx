@@ -129,7 +129,6 @@ export const LeadFormShell = forwardRef<LeadFormShellHandle, LeadFormShellProps>
       };
       document.addEventListener("keydown", aoTeclar);
       return () => document.removeEventListener("keydown", aoTeclar);
-      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [aberto]);
 
     const validarEtapa = (indice: number): boolean => {

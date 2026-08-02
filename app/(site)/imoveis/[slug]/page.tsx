@@ -259,7 +259,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                browser poder priorizar o download e para aceitar srcset depois.
                O overlay .hero::after do lp.css pinta por cima e preserva o
                contraste do texto. */
-            // eslint-disable-next-line @next/next/no-img-element
             <img className="im-hero-capa" src={capa} alt="" fetchPriority="high" />
           ) : null}
           <div className="wrap">
@@ -556,7 +555,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               <div className="eyebrow reveal">Realização</div>
               <div className="im-realizacao-centro reveal d1">
                 {imovel.construtora_logo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={imovel.construtora_logo_url} alt={imovel.construtora} loading="lazy" />
                 ) : null}
                 <span>{imovel.construtora}</span>

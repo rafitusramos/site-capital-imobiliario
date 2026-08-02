@@ -81,6 +81,12 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
   // deve pisar em cima de uma edição em andamento.
   useEffect(() => {
     if (detalhe) setNome(detalhe.lead.nome);
+    // A dependência é o VALOR, não o objeto `detalhe`: incluir `detalhe`
+    // inteiro (o que a regra exige) faria o efeito rodar a cada nova
+    // identidade do objeto e sobrescrever o nome enquanto o operador
+    // digita — exatamente o que o comentário acima diz que não pode
+    // acontecer.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detalhe?.lead.nome]);
 
   useEffect(() => {

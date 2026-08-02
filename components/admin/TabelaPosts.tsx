@@ -81,7 +81,6 @@ function Autor({ autor }: { autor: PostAdmin["autor"] }) {
   return (
     <div className="flex min-w-0 items-center gap-2">
       {autor?.avatar_url ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={autor.avatar_url} alt="" className="h-6 w-6 flex-none rounded-full object-cover" />
       ) : (
         <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-neutral-200 text-neutral-500">
