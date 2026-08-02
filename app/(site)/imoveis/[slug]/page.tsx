@@ -146,6 +146,16 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const precoFormatado = imovel.valor_sob_consulta
     ? null
     : formatarPrecoAPartir(imovel.valor_a_partir_de);
+  // Leva o valor do imóvel para o simulador de financiamento já preenchido.
+  // Usa a mesma condição do preço na página: "sob consulta" tem precedência
+  // sobre o valor, então um imóvel marcado assim manda o visitante ao
+  // simulador em branco em vez de revelar por query string o preço que a LP
+  // esconde.
+  const hrefSimulador =
+    !imovel.valor_sob_consulta && imovel.valor_a_partir_de
+      ? `/financiamento/?valor=${Math.round(imovel.valor_a_partir_de)}#simulador`
+      : "/financiamento/#simulador";
+
   const idVideo = extrairIdYoutube(imovel.video_youtube_url);
   const enderecoMapa = imovel.endereco || local || imovel.titulo;
 
@@ -335,11 +345,16 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             <div className="wrap">
               <div className="eyebrow reveal">Galeria</div>
             </div>
-            <Carrossel
-              imagens={imagensEmpreendimento.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
-              ariaLabel={`Galeria do empreendimento ${imovel.titulo}`}
-              primeiraEager
-            />
+            {/* `Carrossel`, `GaleriaPlantas` e `ImovelCard` não recebem
+                `className`; o reveal vem por um wrapper em vez de alargar a API
+                dos três só por causa da animação. */}
+            <div className="reveal d2">
+              <Carrossel
+                imagens={imagensEmpreendimento.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
+                ariaLabel={`Galeria do empreendimento ${imovel.titulo}`}
+                primeiraEager
+              />
+            </div>
           </section>
         ) : null}
 
@@ -347,7 +362,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         <section id="fase-obra">
           <div className="wrap">
             <div className="eyebrow reveal">Fase da obra</div>
-            <ol className="im-fases" aria-label="Linha do tempo da obra">
+            <ol className="im-fases reveal d2" aria-label="Linha do tempo da obra">
               {fases.map((fase, indiceFase) => {
                 const feita = indiceFase < indiceFaseAtual;
                 const atual = fase.slug === imovel.fase.slug;
@@ -371,7 +386,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="lazer">
             <div className="wrap">
               <div className="eyebrow reveal">Lazer e convívio</div>
-              <ul className="im-lazer">
+              <ul className="im-lazer reveal d2">
                 {diferenciaisLazer.map((item) => {
                   const Icone = obterIcone(item.icone);
                   return (
@@ -395,10 +410,12 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               ) : null}
             </div>
             {imagensDecorado.length > 0 ? (
-              <Carrossel
-                imagens={imagensDecorado.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
-                ariaLabel={`Decorado das unidades do ${imovel.titulo}`}
-              />
+              <div className="reveal d3">
+                <Carrossel
+                  imagens={imagensDecorado.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
+                  ariaLabel={`Decorado das unidades do ${imovel.titulo}`}
+                />
+              </div>
             ) : null}
           </section>
         ) : null}
@@ -410,14 +427,19 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               <div className="eyebrow reveal">Plantas e quadro de áreas</div>
             </div>
             {imagensPlanta.length > 0 ? (
-              <GaleriaPlantas
-                imagens={imagensPlanta.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
-                ariaLabel={`Plantas do ${imovel.titulo}`}
-              />
+              /* Só seguro porque `.visivel` agora zera o `will-change` (lp.css):
+                 com ele ativo este wrapper viraria containing block e o
+                 lightbox `position:fixed` das plantas pararia de cobrir a tela. */
+              <div className="reveal d2">
+                <GaleriaPlantas
+                  imagens={imagensPlanta.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
+                  ariaLabel={`Plantas do ${imovel.titulo}`}
+                />
+              </div>
             ) : null}
             {imovel.tipologias.length > 0 ? (
               <div className="wrap">
-                <div className="tab-scroll" aria-label="Quadro de áreas">
+                <div className="tab-scroll reveal d3" aria-label="Quadro de áreas">
                   <table className="tabela">
                     <thead>
                       <tr>
@@ -476,7 +498,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="diferenciais">
             <div className="wrap">
               <div className="eyebrow reveal">Diferenciais</div>
-              <div className="im-diferenciais">
+              <div className="im-diferenciais reveal d2">
                 {diferenciaisGerais.map((item) => {
                   const Icone = obterIcone(item.icone);
                   return (
@@ -496,7 +518,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="localizacao">
             <div className="wrap">
               <div className="eyebrow reveal">Localização</div>
-              <div className="im-localizacao">
+              <div className="im-localizacao reveal d2">
                 {imovel.endereco ? <p className="endereco">{imovel.endereco}</p> : null}
                 {/* Prévia embutida sem chave de API (embed clássico do Maps). O
                     iframe não recebe cliques; o link por cima abre o mapa cheio
@@ -549,7 +571,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             <div className="wrap">
               <div className="eyebrow reveal">Perguntas frequentes</div>
               {imovel.faqs.map((faq) => (
-                <details key={faq.id}>
+                <details key={faq.id} className="reveal d2">
                   <summary>{faq.pergunta}</summary>
                   <div className="resp">{faq.resposta}</div>
                 </details>
@@ -561,7 +583,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {/* 13. CTA final + outros empreendimentos */}
         <section id="cta-final">
           <div className="wrap">
-            <div className="artigo-cta">
+            <div className="artigo-cta reveal">
               <h3>Quer saber mais sobre o {imovel.titulo}?</h3>
               <div className="im-cta-final-acoes">
                 <button
@@ -571,7 +593,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                 >
                   Quero saber mais
                 </button>
-                <a className="cta cta-secundaria" href="/financiamento/#simulador">
+                <a className="cta cta-secundaria" href={hrefSimulador}>
                   Simular financiamento
                 </a>
               </div>
@@ -583,6 +605,9 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           <section id="outros-empreendimentos">
             <div className="wrap">
               <div className="eyebrow reveal">Continue pesquisando</div>
+              {/* Sem reveal na grade: quem anima é cada `ImovelCard`, para os
+                  cards entrarem conforme aparecem em vez de a grade inteira
+                  surgir de uma vez quando o topo dela toca a viewport. */}
               <div className="im-grid">
                 {relacionados.map((relacionado) => (
                   <ImovelCard key={relacionado.id} imovel={relacionado} />

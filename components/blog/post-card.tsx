@@ -42,7 +42,7 @@ export function PostCard({
 }: PostCardProps) {
   return (
     <Link
-      className="post-card"
+      className="post-card reveal"
       data-cat={categoriaNome ?? undefined}
       href={`/blog/${slug}/`}
     >
@@ -74,7 +74,7 @@ export function PostCardDestaque({
   categoriaSlug,
 }: PostCardProps) {
   return (
-    <Link className="post-destaque" href={`/blog/${slug}/`}>
+    <Link className="post-destaque reveal" href={`/blog/${slug}/`}>
       <div className="post-card-img">
         {imagem ? <img src={imagem} alt="" /> : null}
         {badgeRotulo(rotulo, categoriaSlug)}

@@ -271,8 +271,29 @@
 .im-hero::after{background:transparent;}
 .im-hero-capa{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;opacity:.3;}
 
-/* Seções da LP: 24px de respiro vertical (sobrescreve os 36px do lp.css). */
-.im-lp-com-barra section{padding:24px 0;}
+/* Espaçamento entre seções da LP. O respiro vinha empilhado em quatro
+   camadas — `section` 24 + `.wrap` 24 + `.wrap` 24 + `section` 24 = 96px
+   entre dois blocos — e o salto ficava grande demais para seções curtas. A
+   `section` deixa de contribuir e o ritmo passa a ser só o do `.wrap`: 48px.
+   Não afeta o hero, que é `<header class="hero im-hero">`, não `<section>`.
+
+   `flow-root` não é decoração: sem padding nem borda, a margem do primeiro e
+   do último filho COLAPSA para fora da seção, e a faixa correspondente fica
+   fora do fundo marfim dela — foi assim que a margem do carrossel virou uma
+   tira do `body::before` aparecendo entre a galeria e a seção seguinte.
+   `flow-root` cria um contexto de formatação de bloco e prende as margens
+   dentro, sem acrescentar espaço nenhum. */
+.im-lp-com-barra section{padding:0;display:flow-root;}
+
+/* Galeria e plantas põem o rótulo num `.wrap` e o conteúdo FORA dele. Aí a
+   margem do eyebrow somava à do wrap e afastava o rótulo do que ele nomeia;
+   sozinho no wrap, ela não serve para nada. */
+.im-lp-com-barra .wrap > .eyebrow:only-child{margin-bottom:0;}
+
+/* E o carrossel logo abaixo desse rótulo reabriria o salto recém-fechado com
+   os 32px de margem própria. */
+.im-lp-com-barra .im-carrossel{margin:var(--s3) 0;}
+.im-lp-com-barra .im-carrossel-unica{margin:var(--s3) auto;}
 
 /* .eyebrow do lp.css é 12px e é compartilhado com blog e LPs de crédito —
    aqui, sem o <h2> de cada seção, o eyebrow vira o único rótulo visível e
@@ -384,5 +405,13 @@
 @media(min-width:900px){.im-barra-cta{display:none;}}
 
 /* Empurra o conteúdo pra não ficar coberto pela barra fixa em telas pequenas */
-.im-lp-com-barra{padding-bottom:84px;}
+/* A LP do imóvel não usa a foto de fundo fixa do `body::before` (lp.css): ela
+   existe para ser revelada sob as seções Abissal translúcidas das LPs de
+   crédito, e aqui não há nenhuma — a foto só aparecia por vão entre seções,
+   competindo com as fotos do próprio empreendimento.
+   `content:none` remove de fato a camada; o fundo marfim no wrapper é a
+   retaguarda para navegador sem suporte a `:has()`, onde a regra acima é
+   simplesmente ignorada. */
+body:has(.im-lp-com-barra)::before{content:none;}
+.im-lp-com-barra{padding-bottom:84px;background:var(--marfim);}
 @media(min-width:900px){.im-lp-com-barra{padding-bottom:0;}}

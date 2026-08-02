@@ -1,5 +1,8 @@
 /* ===== HOME — seção de soluções em cards ===== */
-.hero-home{padding:96px 0 72px;}
+/* Mesmo respiro de --s4 do `.hero` base. Aqui os valores eram fixos em px
+   (96/72), não a variável — então a mudança precisava vir também neste
+   arquivo, que carrega depois do lp.css e vencia por ordem de origem. */
+.hero-home{padding:var(--s4) 0;}
 .hero-home .sub{max-width:56ch;}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:24px;margin-top:8px;}
 .card{position:relative;background:var(--branco);border:1px solid rgba(10,36,28,.14);border-radius:8px;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;color:var(--tinta);box-shadow:0 10px 26px -18px rgba(10,36,28,.35);transition:transform .18s ease,box-shadow .18s ease;}

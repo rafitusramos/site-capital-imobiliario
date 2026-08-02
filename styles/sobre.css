@@ -1,4 +1,6 @@
 /* ===== SOBRE — hero de duas colunas (texto + foto) ===== */
+/* Sem padding próprio: herda os --s4 do `.hero` no lp.css, igual à home, ao
+   financiamento e ao home equity. */
 .hero-sobre .wrap{display:grid;grid-template-columns:1.3fr .9fr;gap:32px;align-items:center;}
 @media(max-width:760px){.hero-sobre .wrap{grid-template-columns:1fr;}}
 
