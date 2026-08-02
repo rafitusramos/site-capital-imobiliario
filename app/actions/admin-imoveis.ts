@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { aplicarMarcaDagua } from "@/lib/imoveis/marca-dagua";
 import {
   imovelFormSchema,
   type ImovelFormInput,
@@ -27,6 +28,9 @@ export interface AcaoResultado {
 }
 
 const BUCKET_IMAGENS = "imovel-images";
+// Original sem marca, bucket privado (migration 019) — existe só para
+// permitir refazer o selo depois; ninguém lê daqui pela LP.
+const BUCKET_IMAGENS_ORIGINAIS = "imovel-images-originais";
 const TAMANHO_MAXIMO_IMAGEM = 5 * 1024 * 1024;
 const TIPOS_IMAGEM_PERMITIDOS = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
@@ -52,10 +56,28 @@ async function enviarImagem(
   }
 
   const extensao = arquivo.name.split(".").pop() ?? "jpg";
-  const caminho = `${randomUUID()}.${extensao}`;
+  const uuid = randomUUID();
+  const buffer = Buffer.from(await arquivo.arrayBuffer());
 
-  const { error } = await supabase.storage.from(BUCKET_IMAGENS).upload(caminho, arquivo, {
-    contentType: arquivo.type,
+  // Original sem marca primeiro, no bucket privado: é a única rota de volta
+  // para refazer o selo depois. Falhou aqui, aborta antes de sequer marcar.
+  const { error: erroOriginal } = await supabase.storage
+    .from(BUCKET_IMAGENS_ORIGINAIS)
+    .upload(`${uuid}.${extensao}`, buffer, { contentType: arquivo.type, upsert: false });
+  if (erroOriginal) return { erro: "Não foi possível enviar a imagem." };
+
+  let marcada: Buffer;
+  try {
+    marcada = await aplicarMarcaDagua(buffer);
+  } catch {
+    // O original já subiu — fica órfão no bucket privado, lixo barato. Não
+    // publicar sem marca é o que essa feature existe para garantir.
+    return { erro: "Não foi possível processar a imagem." };
+  }
+
+  const caminho = `${uuid}.webp`;
+  const { error } = await supabase.storage.from(BUCKET_IMAGENS).upload(caminho, marcada, {
+    contentType: "image/webp",
     upsert: false,
   });
   if (error) return { erro: "Não foi possível enviar a imagem." };

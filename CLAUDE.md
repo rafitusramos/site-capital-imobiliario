@@ -22,9 +22,9 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 652 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 660 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
-no SQL Editor do Supabase; a última é a **018**.
+no SQL Editor do Supabase; a última é a **019**.
 
 ### CRM
 Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
@@ -46,6 +46,29 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 - Tags vivem no catálogo compartilhado `crm_tags`, com FK em `lead_tags`: não
   existe tag solta por lead. Criar tag pela interface exige admin (RLS
   `crm_tags_admin_write`).
+
+### Imagens de imóveis
+Toda imagem enviada em `/admin` para as 3 galerias e para as plantas da aba
+Tipologias sai com o selo da marca (RT · Rafael Teixeira · Capital Imobiliário ·
+rtcapitalimobiliario.com.br) queimado no canto inferior
+direito — a composição roda no servidor, dentro de `enviarImagem`
+(`app/actions/admin-imoveis.ts`), via `lib/imoveis/marca-dagua.ts` (`sharp`).
+Não é proteção contra crop nem contra remoção deliberada; é o teto do que dá
+para fazer numa imagem servida em página pública.
+
+- O original sem marca é gravado primeiro no bucket privado
+  `imovel-images-originais` (migration 019, `public = false`, sem policy de
+  leitura pública) — existe só para permitir refazer o selo depois. O
+  publicado em `imovel-images` é sempre WebP; o UUID do nome é o mesmo nos
+  dois buckets, é o que amarra marcado ↔ original sem tabela nova.
+- `lib/imoveis/marca-dagua.ts` é módulo puro (`import "server-only"`, sem
+  Supabase) e por isso não pode ser importado por um script `node` avulso —
+  `scripts/marcar-imagens.mjs`, o backfill das imagens publicadas antes dessa
+  feature existir, carrega uma cópia da mesma lógica. Mudou a composição do
+  selo num lugar, muda no outro.
+- `public/marca-dagua.png` é gerado e commitado à mão (não em runtime): o
+  `sharp` não garante fonte disponível no ambiente da Vercel para rasterizar
+  texto.
 
 ### Simuladores
 Financiamento (`/financiamento/`) e home equity (`/home_equity/`). O de
@@ -144,6 +167,11 @@ Financiamento, Home Equity, Consórcio, Imóveis.
   abertas quebram na próxima action com `UnrecognizedActionError`. É hard reload,
   não regressão. Mas **dois `next dev` do mesmo projeto** compartilham o mesmo
   `.next` e fazem isso voltar sozinho — rode só um servidor.
+- Texto acentuado num SVG rasterizado pelo `sharp` sai corrompido se o buffer
+  não for montado como UTF-8 explícito: a primeira versão de `marca-dagua.png`
+  ficou com "CAPITAL TMOBILIARIO" — e ninguém percebe olhando o código, só
+  abrindo o PNG. Escreva acento como entidade numérica (`&#193;`) no SVG e
+  **confira o PNG gerado sobre fundo escuro** antes de commitar.
 - `DndContext` do dnd-kit precisa de `id` fixo quando a página é renderizada no
   servidor: sem ele o `aria-describedby` dos itens vem de um contador de módulo
   que diverge entre servidor e cliente e quebra a hidratação.

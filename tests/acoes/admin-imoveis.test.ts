@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
+import sharp from "sharp";
 import { criarSupabaseFalso } from "@/tests/apoio/supabase-falso";
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
@@ -93,6 +94,21 @@ function tipologiaValida(extra: Partial<TipologiaInput> = {}): TipologiaInput {
 
 function arquivo(nome: string, conteudo: string | Uint8Array, tipo: string): File {
   return new File([conteudo], nome, { type: tipo });
+}
+
+/**
+ * JPEG de verdade — a partir de `enviarImagem` passar pela marca d'água
+ * (lib/imoveis/marca-dagua.ts), que decodifica com `sharp`, o antigo
+ * `arquivo("foto.jpg", "conteudo", ...)` não serve mais: "conteudo" não é
+ * um JPEG válido e o upload passaria a falhar no decode.
+ */
+async function arquivoJpegValido(nome = "foto.jpg"): Promise<File> {
+  const bytes = await sharp({
+    create: { width: 20, height: 20, channels: 3, background: { r: 100, g: 150, b: 200 } },
+  })
+    .jpeg()
+    .toBuffer();
+  return new File([bytes], nome, { type: "image/jpeg" });
 }
 
 afterEach(() => {
@@ -252,22 +268,56 @@ describe("uploadImagemImovel", () => {
     expect(resultado).toEqual({ sucesso: false, erro: "Imagem maior que 5MB." });
   });
 
-  test("sucesso devolve a publicUrl no bucket imovel-images", async () => {
+  test("sucesso devolve a publicUrl no bucket imovel-images, marcada com o selo", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarUpload("imovel-images", { data: { path: "xyz.jpg" }, error: null });
-    falso.programarPublicUrl("imovel-images", "https://cdn.example.com/imovel-images/xyz.jpg");
+    falso.programarUpload("imovel-images", { data: { path: "xyz.webp" }, error: null });
+    falso.programarPublicUrl("imovel-images", "https://cdn.example.com/imovel-images/xyz.webp");
     const fd = new FormData();
-    fd.set("arquivo", arquivo("foto.jpg", "conteudo", "image/jpeg"));
+    fd.set("arquivo", await arquivoJpegValido());
 
     const resultado = await uploadImagemImovel(fd);
 
     expect(resultado).toEqual({
       sucesso: true,
-      url: "https://cdn.example.com/imovel-images/xyz.jpg",
+      url: "https://cdn.example.com/imovel-images/xyz.webp",
     });
-    const chamada = falso.chamadasStorage.find((c) => c.metodo === "upload");
-    expect(chamada?.bucket).toBe("imovel-images");
+
+    // Sobe nos dois buckets: original sem marca no privado, marcado no público.
+    const uploads = falso.chamadasStorage.filter((c) => c.metodo === "upload");
+    expect(uploads.map((u) => u.bucket).sort()).toEqual(
+      ["imovel-images", "imovel-images-originais"].sort(),
+    );
+
+    const uploadPublico = uploads.find((u) => u.bucket === "imovel-images");
+    const opcoesPublico = uploadPublico?.args[2] as Record<string, unknown> | undefined;
+    expect(opcoesPublico?.contentType).toBe("image/webp");
+  });
+
+  test("erro ao subir o original aborta antes de marcar", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarUpload("imovel-images-originais", { data: null, error: { message: "falha" } });
+    const fd = new FormData();
+    fd.set("arquivo", await arquivoJpegValido());
+
+    const resultado = await uploadImagemImovel(fd);
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Não foi possível enviar a imagem." });
+    const uploads = falso.chamadasStorage.filter((c) => c.metodo === "upload");
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0]?.bucket).toBe("imovel-images-originais");
+  });
+
+  test("arquivo que não decodifica como imagem devolve erro de processamento", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    const fd = new FormData();
+    fd.set("arquivo", arquivo("foto.jpg", "isso não é um jpeg de verdade", "image/jpeg"));
+
+    const resultado = await uploadImagemImovel(fd);
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Não foi possível processar a imagem." });
   });
 });
 
