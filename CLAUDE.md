@@ -175,6 +175,29 @@ Financiamento, Home Equity, Consórcio, Imóveis.
 - `DndContext` do dnd-kit precisa de `id` fixo quando a página é renderizada no
   servidor: sem ele o `aria-describedby` dos itens vem de um contador de módulo
   que diverge entre servidor e cliente e quebra a hidratação.
+- Estas quatro decisões de estrutura **parecem** desvio da convenção do Next e
+  não são — não as "conserte":
+  1. **Não existe `app/layout.tsx`.** São dois root layouts,
+     `app/(site)/layout.tsx` e `app/admin/layout.tsx`. Criar um layout raiz
+     obrigaria o admin a herdar nav, rodapé e design system do site. É essa
+     ausência que exige o `app/global-not-found.tsx` (flag
+     `experimental.globalNotFound`) para a URL que não casa com rota nenhuma.
+  2. **`app/actions/` fica sem underscore.** A convenção de pasta privada
+     (`_actions`) existe, mas a pasta já não é roteável (não tem `page` nem
+     `route`) e `actions` não é nome reservado. Renomear custaria ~20 imports
+     e 4 documentos por ganho estilístico.
+  3. **`middleware.ts` não vira `proxy.ts`** enquanto o projeto estiver no
+     Next 15. `proxy.ts` é convenção do Next 16 — antes disso, quebra.
+  4. **A nav usa `<a>`, não `<Link>`.** É medição, não descuido:
+     `gtag('config')` roda uma vez por carga de página e é ele quem manda o
+     `page_view`. Com navegação client-side o GA4 contaria só a primeira
+     página de cada sessão, e a conversão `generate_lead` do Google Ads é
+     importada dali. A regra `@next/next/no-html-link-for-pages` está
+     desligada no `eslint.config.mjs` por causa disso; para religar, primeiro
+     dispare `page_view` a cada mudança de rota em `lib/analytics/eventos.ts`.
+- `eslint .` tem de sair com zero erro e zero aviso — é assim que a suíte está
+  hoje. Regra desligada exige comentário com o motivo e a condição de voltar,
+  no próprio `eslint.config.mjs`. Não silencie aviso sem justificar.
 
 ## Como trabalhar comigo neste projeto
 

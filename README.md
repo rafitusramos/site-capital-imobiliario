@@ -20,6 +20,7 @@ npm run dev
 | `npm run dev` | servidor de desenvolvimento |
 | `npm run build` | build de produção |
 | `npm start` | serve o build |
+| `npm run lint` | ESLint (`eslint .`, flat config) |
 | `npm test` | suíte de testes (Vitest) |
 | `npm run test:watch` | testes em watch |
 
@@ -53,6 +54,8 @@ regras invioláveis em `CLAUDE.md`.
 app/(site)/       páginas públicas (Server Components, dados via lib/queries)
 app/admin/        painel: CRUD de posts e imóveis, protegido por middleware
 app/actions/      server actions — captação de leads e escrita do admin
+app/global-not-found.tsx  404 de URL que não casa com rota nenhuma
+app/global-error.tsx      erro no próprio root layout (último recurso)
 lib/queries/      leitura do Supabase (público usa client anon; admin usa sessão)
 lib/validations/  schemas Zod — validam no servidor, sem confiar no cliente
 lib/financeiro.ts matemática dos simuladores (Price, SAC, taxa, CPF, telefone)
@@ -60,8 +63,23 @@ components/       UI por domínio (blog, imoveis, admin, leads, nav)
 supabase/migrations/  schema versionado
 content/blog/     markdown original dos 3 artigos migrados (referência histórica)
 docs/             modelo-artigo.md e carousel-spec.md — ambos usados pelo código
+styles/           CSS por página, importado pela própria página
 tests/            suíte Vitest (ver abaixo)
 ```
+
+`app/` guarda só roteamento — o código de aplicação vive nas pastas da raiz.
+É a estratégia "store project files outside of `app`" da documentação do Next.
+
+**Não existe `app/layout.tsx`.** O projeto usa dois root layouts
+(`app/(site)/layout.tsx` e `app/admin/layout.tsx`), cada um com seu próprio
+`<html>`/`<body>`, porque o admin não compartilha nav, rodapé nem design system
+com o site. É por isso que o 404 de URL não-casada precisa do
+`app/global-not-found.tsx` (habilitado por `experimental.globalNotFound`): sem
+um layout raiz único, não há 404 componível que sirva para os dois lados.
+
+Cada lado tem seu par de telas de estado: `not-found.tsx` para os `notFound()`
+e `error.tsx` para exceção em runtime, em `app/(site)/` e em
+`app/admin/(protected)/`.
 
 `docs/modelo-artigo.md` não é documentação solta: é o formato que a importação
 de `.md` no admin espera, e o próprio painel manda o usuário abrir esse arquivo.
