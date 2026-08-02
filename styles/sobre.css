@@ -1,4 +1,9 @@
 /* ===== SOBRE — hero de duas colunas (texto + foto) ===== */
+/* Mantém o respiro antigo do `.hero` (88/72), que passou a --s4 no lp.css para
+   /financiamento e /home_equity. O ajuste foi pedido só para aquelas duas e a
+   home; aqui o hero é de duas colunas com foto, e o enquadramento vertical não
+   entrou na avaliação. Apagar estas duas linhas alinha /sobre às demais. */
+.hero-sobre{padding:calc(var(--s7) + 16px) 0 var(--s7);}
 .hero-sobre .wrap{display:grid;grid-template-columns:1.3fr .9fr;gap:32px;align-items:center;}
 @media(max-width:760px){.hero-sobre .wrap{grid-template-columns:1fr;}}
 

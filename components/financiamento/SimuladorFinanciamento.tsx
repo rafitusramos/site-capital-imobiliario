@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import {
   digitos,
   brl,
@@ -79,6 +79,20 @@ export function SimuladorFinanciamento({
   taxaAnual?: number;
 }) {
   const [valorImovelSim, setValorImovelSim] = useState("R$ 1.000.000");
+
+  // O valor pode chegar da LP de imóvel: /financiamento/?valor=1230000#simulador.
+  // Lido num efeito, e não no render nem via `searchParams` da página, por dois
+  // motivos que se somam: a página é estática com `revalidate = 3600`, e tocar
+  // em searchParams no servidor a tornaria dinâmica, matando o ISR que existe
+  // para a taxa editada no admin aparecer; e o HTML pré-renderizado não conhece
+  // a query, então ler no render quebraria a hidratação.
+  useEffect(() => {
+    const bruto = new URLSearchParams(window.location.search).get("valor");
+    if (!bruto) return;
+    const valor = Number(bruto);
+    if (!Number.isFinite(valor) || valor <= 0) return;
+    setValorImovelSim(mascaraMoeda(String(Math.round(valor))));
+  }, []);
   const [percentualEntrada, setPercentualEntrada] = useState(20);
   const [prazoMeses, setPrazoMeses] = useState(420);
   const [ehSac, setEhSac] = useState(true);

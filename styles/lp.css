@@ -46,7 +46,12 @@
   .cta:disabled{opacity:.55;cursor:default;}
   .cta-nota{font-family:var(--mono);font-size:11.5px;color:var(--areia);margin-top:12px;letter-spacing:.05em;}
 
-  .hero{background:transparent;color:var(--branco);padding:calc(var(--s7) + 16px) 0 var(--s7);position:relative;overflow:hidden;}
+  /* Respiro do hero em --s4 (24px). Era calc(--s7 + 16px) no topo e --s7
+     embaixo — 88/72 — que afastava demais o título da barra e da primeira
+     seção. Vale para /financiamento e /home_equity, que usam `.hero` puro;
+     /sobre fixa o valor antigo no próprio arquivo, e as páginas de imóveis
+     têm override em imoveis.css, que carrega depois deste. */
+  .hero{background:transparent;color:var(--branco);padding:var(--s4) 0;position:relative;overflow:hidden;}
   .hero::after{content:"";position:absolute;inset:0;z-index:0;background:rgba(10,36,28,.70);pointer-events:none;}
   .hero .wrap{position:relative;z-index:1;}
   .hero .eyebrow{color:var(--areia);}
@@ -195,8 +200,22 @@
   /* ===== REVEAL ON SCROLL — deslize horizontal + para cima com fade ===== */
   .reveal{opacity:1;transform:none;}
   body.reveal-ativo .reveal{opacity:0;transform:translate3d(-28px,32px,0);transition:opacity .8s cubic-bezier(.22,1,.36,1),transform .8s cubic-bezier(.22,1,.36,1);will-change:opacity,transform;}
-  body.reveal-ativo .reveal.visivel{opacity:1;transform:none;}
+  /* `will-change:auto` ao terminar não é só higiene de performance (a camada
+     de composição por elemento deixa de ser mantida à toa): `will-change:
+     transform` cria containing block para descendente `position:fixed` MESMO
+     com `transform:none`. Sem esta linha, envolver um bloco que contenha
+     lightbox — o das plantas, `.im-planta-scrim`, é fixed/inset:0 — faz o
+     modal parar de cobrir a tela e ser posicionado dentro do wrapper. */
+  body.reveal-ativo .reveal.visivel{opacity:1;transform:none;will-change:auto;}
   .reveal.d1{transition-delay:.10s;} .reveal.d2{transition-delay:.20s;} .reveal.d3{transition-delay:.30s;}
+  /* Os cards são `.reveal` eles mesmos (e não a grade), para entrarem um a um
+     conforme aparecem. Só que `body.reveal-ativo .reveal` tem especificidade
+     maior que `.im-card`/`.post-card` e sequestraria a transição de hover
+     delas: o levantar do card passaria de .18s para .8s e ficaria mole.
+     Devolve a transição curta assim que o reveal termina. */
+  body.reveal-ativo .im-card.visivel,
+  body.reveal-ativo .post-card.visivel,
+  body.reveal-ativo .post-destaque.visivel{transition:transform .18s ease,box-shadow .18s ease;}
   @media(prefers-reduced-motion:reduce){body.reveal-ativo .reveal{opacity:1;transform:none;transition:none;}}
 
   /* ===== BARRA DE INSTITUIÇÕES ===== */
