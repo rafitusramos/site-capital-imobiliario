@@ -136,6 +136,9 @@
 @media(min-width:1024px){.im-carrossel-viewport{padding-left:26%;padding-right:26%;}}
 .im-carrossel-trilho{display:flex;touch-action:pan-y pinch-zoom;align-items:center;}
 .im-carrossel-slide{
+  /* Mesma constante usada pela legenda sobre a foto para dividir o corpo do
+     texto — ver .im-carrossel-legenda. Mudou aqui, confira lá. */
+  --escala-ativa:1.5;
   position:relative;
   /* Base menor que a original: a central cresce 1.5x sobre as vizinhas e
      precisa caber na área útil do viewport. */
@@ -146,12 +149,13 @@
 /* Escala discreta do slide selecionado (via classe, não mais tween contínuo
    do Embla): com poucos slides o cálculo por progresso de scroll dava
    escala/opacidade erradas — ver comentário de CarrosselMultiplo. */
-.im-carrossel-slide.ativo{transform:scale(1.5);opacity:1;z-index:2;}
+.im-carrossel-slide.ativo{transform:scale(var(--escala-ativa));opacity:1;z-index:2;}
 @media(min-width:768px){.im-carrossel-slide{flex-basis:50%;}}
 @media(min-width:1024px){.im-carrossel-slide{flex-basis:40%;}}
 @media(prefers-reduced-motion:reduce){.im-carrossel-slide{transition:none;}}
 
 .im-carrossel-slide-botao{
+  position:relative;
   display:block;width:100%;padding:0;margin:0;border:none;background:none;cursor:pointer;
   border-radius:8px;overflow:hidden;box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
 }
@@ -180,14 +184,80 @@
 /* Foto única: sem Embla nem setas, só a imagem centralizada — mesma largura
    e sombra do slide ativo dos carrosséis de verdade, para não destoar. */
 .im-carrossel-unica{
+  --escala-ativa:1; /* figura sem transform — ver .im-carrossel-legenda */
+  position:relative;
   max-width:min(640px,90%);margin:var(--s5) auto;text-align:center;
 }
 .im-carrossel-unica img{
   display:block;width:100%;aspect-ratio:4/3;object-fit:cover;
   border-radius:8px;box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
 }
-.im-carrossel-unica figcaption{
-  margin-top:10px;font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:#7a807c;
+
+/* ---- Legenda sobre a foto ----
+   O ambiente cadastrado no admin é impresso NA foto, não abaixo dela: na LP a
+   foto é o conteúdo, e a legenda solta embaixo disputava atenção com o texto
+   da seção. Isso é sobreposição em CSS, não pixel gravado — a imagem no bucket
+   continua limpa, ao contrário da marca d'água.
+
+   `font-size` dividido por `--escala-ativa` porque a legenda vive DENTRO do
+   elemento que o slide ativo escala em 1.5: sem a divisão o texto sairia 1,5x
+   maior que o pedido. Todo espaçamento interno em `em` de propósito, para
+   acompanhar essa divisão sem repetir a conta em cada propriedade. */
+.im-carrossel-legenda{
+  /* Altura do véu. `min-height`, e não `height`: ambiente que quebra em duas
+     linhas faz a faixa crescer em vez de a segunda linha vazar para fora do
+     gradiente. */
+  --legenda-veu-altura:15%;
+
+  position:absolute;left:0;right:0;bottom:0;
+  box-sizing:border-box;
+  min-height:var(--legenda-veu-altura);
+  display:flex;align-items:flex-end;gap:.7em;
+  padding:0 1.15em .95em;
+  border-radius:0 0 8px 8px;
+  /* A legenda não pode roubar o clique do slide (centralizar/ampliar). */
+  pointer-events:none;
+
+  font-family:var(--mono);
+  font-size:calc(12px / var(--escala-ativa));
+  line-height:1.35;letter-spacing:.06em;
+  color:var(--marfim);text-align:left;
+  /* Sombra além do véu: numa foto de fachada contra céu branco o véu sozinho
+     não garante os 4.5:1 exigidos na parte alta da rampa. */
+  text-shadow:0 1px 3px rgba(0,0,0,.9);
+
+  /* Paradas suavizadas em vez de `#000 → transparent` direto: é isto, e não a
+     altura da faixa, que faz o véu sumir na foto. Um gradiente linear puro
+     desenha uma aresta perceptível atravessando a imagem. */
+  background:linear-gradient(to top,
+    rgba(0,0,0,.88) 0%,
+    rgba(0,0,0,.84) 18%,
+    rgba(0,0,0,.70) 34%,
+    rgba(0,0,0,.50) 52%,
+    rgba(0,0,0,.28) 70%,
+    rgba(0,0,0,.10) 86%,
+    rgba(0,0,0,0) 100%);
+}
+/* Filete bronze: o mesmo acento do quadrado da marca, ancorando o canto
+   inferior esquerdo. Decoração — some para leitor de tela junto com o resto. */
+.im-carrossel-legenda::before{
+  content:"";flex:0 0 auto;
+  width:2px;height:1.05em;
+  background:var(--bronze);
+}
+.im-carrossel-legenda span{
+  /* Ambiente longo não pode cobrir metade da foto. */
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  overflow:hidden;
+}
+
+/* Só o slide central mostra legenda: os vizinhos não são escalados, então o
+   texto sairia em corpo diferente do central, e três legendas simultâneas
+   viram ruído numa faixa de fotos. */
+.im-carrossel-slide .im-carrossel-legenda{opacity:0;transition:opacity .35s ease-out;}
+.im-carrossel-slide.ativo .im-carrossel-legenda{opacity:1;}
+@media(prefers-reduced-motion:reduce){
+  .im-carrossel-slide .im-carrossel-legenda{transition:none;}
 }
 
 /* ---------------------------------------------------------------------
