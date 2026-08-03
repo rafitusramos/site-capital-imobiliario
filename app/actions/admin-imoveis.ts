@@ -69,7 +69,12 @@ async function enviarImagem(
   let marcada: Buffer;
   try {
     marcada = await aplicarMarcaDagua(buffer);
-  } catch {
+  } catch (erro) {
+    // Registrar é obrigatório, não zelo: um `catch` mudo aqui já custou uma
+    // investigação inteira. Todo upload em produção falhava com a mensagem
+    // genérica abaixo e NADA aparecia no log da Vercel — a causa era o selo
+    // sendo lido de `public/`, que não existe no bundle da função serverless.
+    console.error("[enviarImagem] falha ao aplicar marca d'água:", erro);
     // O original já subiu — fica órfão no bucket privado, lixo barato. Não
     // publicar sem marca é o que essa feature existe para garantir.
     return { erro: "Não foi possível processar a imagem." };
