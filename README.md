@@ -105,3 +105,32 @@ Há um `test.fails()` proposital em `tests/validacoes/imovel.test.ts`, que
 documenta uma armadilha do Zod 4 com chaves opcionais ausentes. Ele aparece como
 "1 expected fail" e a suíte segue verde; se um dia o schema for corrigido, esse
 teste fica vermelho avisando.
+
+## Auditoria de SEO
+
+A suíte do Vitest não alcança HTTP — quem confere status e metadados no site
+publicado é `scripts/audit-urls.mjs`, que roda contra uma URL de verdade.
+
+```bash
+# Só as asserções de status (produção, preview, ou localhost:3000)
+node scripts/audit-urls.mjs https://rtcapitalimobiliario.com.br
+
+# Com a segunda base, compara também title/description/canonical entre ambientes
+node scripts/audit-urls.mjs https://rtcapitalimobiliario.com.br https://<preview>.vercel.app
+```
+
+Sai com código 1 quando algo falha, então serve em CI ou como passo de
+checklist antes de promover para `main`.
+
+**Por que existe a parte de status.** A documentação do Next avisa que o
+`not-found` responde 404 em resposta não-streamada, mas **200 em resposta
+streamada**. Basta alguém pôr um `<Suspense>` acima da busca do dado em
+`app/(site)/blog/[slug]` ou `app/(site)/imoveis/[slug]` para o shell começar a
+ser enviado antes do `notFound()`: o status vira 200 e o Google passa a indexar
+página de erro como conteúdo real. Nem o build nem a suíte de testes acusam
+isso — só uma requisição HTTP de verdade.
+
+As asserções são **absolutas**, não comparativas, de propósito: uma regressão
+que chegasse aos dois ambientes passaria como "nenhuma divergência" na tabela
+comparativa. A âncora `/` → 200 está lá para um deploy quebrado, que responde
+404 em tudo, não passar com louvor nas outras linhas.
