@@ -68,7 +68,9 @@ para fazer numa imagem servida em página pública.
   selo num lugar, muda no outro.
 - `public/marca-dagua.png` é gerado e commitado à mão (não em runtime): o
   `sharp` não garante fonte disponível no ambiente da Vercel para rasterizar
-  texto.
+  texto. O PNG é a fonte da verdade, mas **o servidor não o lê do disco**: usa
+  `lib/imoveis/marca-dagua-asset.ts`, gerado por `scripts/gerar-asset-marca.mjs`
+  com os bytes em base64. Trocou o PNG, rode o script.
 
 ### Simuladores
 Financiamento (`/financiamento/`) e home equity (`/home_equity/`). O de
@@ -167,6 +169,17 @@ Financiamento, Home Equity, Consórcio, Imóveis.
   abertas quebram na próxima action com `UnrecognizedActionError`. É hard reload,
   não regressão. Mas **dois `next dev` do mesmo projeto** compartilham o mesmo
   `.next` e fazem isso voltar sozinho — rode só um servidor.
+- Arquivo em `public/` **não entra no bundle da função serverless** da Vercel:
+  ele é publicado na CDN, não no filesystem do lambda. Um
+  `readFile(process.cwd() + "/public/algo")` funciona no `next dev` e falha em
+  produção com ENOENT. Foi assim que todo upload de imagem do admin quebrou em
+  produção. Asset que o servidor precisa ler vai embutido no bundle (base64 num
+  módulo), não lido do disco.
+- `catch` que não registra a exceção transforma bug de 5 minutos em
+  investigação de hora. O `catch` mudo de `enviarImagem` devolvia "Não foi
+  possível processar a imagem." e não deixava **nada** no log da Vercel — sem
+  causa, sem stack, sem pista. Sempre `console.error` antes de converter
+  exceção em mensagem amigável.
 - Texto acentuado num SVG rasterizado pelo `sharp` sai corrompido se o buffer
   não for montado como UTF-8 explícito: a primeira versão de `marca-dagua.png`
   ficou com "CAPITAL TMOBILIARIO" — e ninguém percebe olhando o código, só
