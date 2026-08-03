@@ -1,7 +1,6 @@
 import "server-only";
 import sharp from "sharp";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import { MARCA_DAGUA_BASE64 } from "./marca-dagua-asset";
 
 /**
  * Selo aplicado no canto inferior direito de toda imagem de imóvel enviada
@@ -20,14 +19,25 @@ const LARGURA_MINIMA_SELO = 190;
 const LARGURA_MAXIMA_SELO = 420;
 const MARGEM_RELATIVA = 0.025;
 
-/** Lido uma única vez por processo — `public/` não muda em runtime. */
-let marcaPromise: Promise<Buffer> | null = null;
+/**
+ * O selo vem de uma string base64 embutida no bundle, e NÃO de
+ * `readFile(process.cwd() + "/public/marca-dagua.png")`.
+ *
+ * `public/` é publicado na CDN mas não entra no bundle da função serverless da
+ * Vercel: aquela leitura funcionava no `next dev` e falhava em produção, com o
+ * `catch` de `enviarImagem` transformando o ENOENT na mensagem genérica "Não
+ * foi possível processar a imagem." — todo upload do admin em produção morria
+ * assim, sem deixar rastro no log.
+ *
+ * `lib/imoveis/marca-dagua-asset.ts` é gerado por `scripts/gerar-asset-marca.mjs`
+ * a partir do PNG, que segue sendo a fonte da verdade. Mudou o PNG, rode o
+ * script.
+ */
+let marcaCache: Buffer | null = null;
 
-function carregarMarca(): Promise<Buffer> {
-  if (!marcaPromise) {
-    marcaPromise = readFile(path.join(process.cwd(), "public", "marca-dagua.png"));
-  }
-  return marcaPromise;
+function carregarMarca(): Buffer {
+  if (!marcaCache) marcaCache = Buffer.from(MARCA_DAGUA_BASE64, "base64");
+  return marcaCache;
 }
 
 /**
@@ -59,7 +69,7 @@ export async function aplicarMarcaDagua(entrada: Buffer): Promise<Buffer> {
 
   const margem = Math.round(largura * MARGEM_RELATIVA);
 
-  const marcaBase = sharp(await carregarMarca());
+  const marcaBase = sharp(carregarMarca());
   const marcaMeta = await marcaBase.metadata();
   const marcaLargura = marcaMeta.width ?? larguraSeloAlvo;
   const marcaAltura = marcaMeta.height ?? larguraSeloAlvo;
