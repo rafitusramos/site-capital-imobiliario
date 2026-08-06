@@ -279,7 +279,7 @@ export default function PoliticaDePrivacidadePage() {
               </h2>
               <p>
                 O site público usa cookies e identificadores de navegador de três ferramentas de
-                terceiros:
+                terceiros, e uma quarta ferramenta de medição que não usa nenhum dos dois:
               </p>
               <ul>
                 <li>
@@ -294,12 +294,17 @@ export default function PoliticaDePrivacidadePage() {
                   <strong>Meta Pixel</strong>, para medir o resultado das campanhas publicitárias
                   que fazemos no Instagram e no Facebook.
                 </li>
+                <li>
+                  <strong>Vercel Web Analytics</strong>, para contar acessos por página. Esta é a
+                  quarta ferramenta citada acima: ela não grava cookie nem identificador no seu
+                  navegador, e não acompanha você entre um site e outro.
+                </li>
               </ul>
               <p>
                 Essas ferramentas são carregadas assim que você acessa o site — elas não esperam
                 uma ação sua para começar a funcionar. Por isso, logo na primeira visita, este
                 site exibe um banner onde você pode <strong>recusar o rastreamento</strong> a
-                qualquer momento; ao recusar, essas três ferramentas param de coletar dados sobre
+                qualquer momento; ao recusar, todas as quatro param de coletar dados sobre
                 a sua navegação. Você pode mudar de ideia depois também: o link{" "}
                 <strong>&ldquo;Cookies e privacidade&rdquo;</strong>, no rodapé de todas as
                 páginas, reabre o banner para você revisar a sua escolha.
