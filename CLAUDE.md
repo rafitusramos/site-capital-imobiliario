@@ -10,8 +10,23 @@ Praça principal: Vinhedo/SP e região (Valinhos, Louveira, Jundiaí, Campinas, 
 - Deploy: Vercel
 
 ## Fluxo de branches
-`Development` → `Preview` → `main`. **Só `main` publica em produção**; as outras
-duas geram deploy de preview. Trabalhe em Development e promova por PR.
+Só existem duas branches permanentes: `Preview` e `main`. **Só `main` publica em
+produção**; `Preview` gera deploy de preview e é onde se valida.
+
+Todo trabalho nasce de `main`, numa branch descartável:
+
+- `feature/<nome>` para funcionalidade nova.
+- `hot-fix/<nome>` para correção.
+
+Daí o caminho é `feature|hot-fix/<nome>` → `Preview` → `main`, sempre por PR.
+Apague a branch depois que ela chegar em `main`.
+
+Partir de `main`, e não de `Preview`, é o que garante que a branch nasça em cima
+do que está publicado — `Preview` pode carregar coisa ainda não promovida, e
+herdar isso mistura mudanças de terceiros no PR.
+
+A branch `Development` **não existe mais**. Se algum documento ou comentário
+antigo ainda a citar, é resíduo.
 
 ## Estado atual
 
