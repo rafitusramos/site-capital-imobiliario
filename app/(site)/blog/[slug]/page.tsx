@@ -7,7 +7,12 @@ import {
   getPublishedPosts,
   getRelatedPosts,
 } from "@/lib/queries/posts";
-import { ctaDoArtigo, dividirConteudo, formatarData } from "@/lib/blog/blog";
+import {
+  canonicalDoArtigo,
+  ctaDoArtigo,
+  dividirConteudo,
+  formatarData,
+} from "@/lib/blog/blog";
 import { PostCard } from "@/components/blog/post-card";
 import { SITE_URL } from "@/lib/site";
 import { imagemOg, SITE_NOME } from "@/lib/og";
@@ -37,7 +42,8 @@ export async function generateMetadata({
   return {
     title: titulo,
     description: descricao,
-    alternates: post.canonical_url ? { canonical: post.canonical_url } : undefined,
+    // Canonical sempre presente — ver canonicalDoArtigo.
+    alternates: { canonical: canonicalDoArtigo(post.canonical_url, post.slug) },
     openGraph: {
       type: "article",
       siteName: SITE_NOME,

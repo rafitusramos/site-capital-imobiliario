@@ -81,3 +81,22 @@ export function formatarData(iso: string | null): string {
 
   return `${obter("day")}-${obter("month")}-${obter("year")}`;
 }
+
+// Canonical do artigo. NUNCA devolve vazio: sem valor explícito no banco, a
+// página é canônica de si mesma.
+//
+// `canonical_url` (migration 001) é coluna opcional e não tem campo nem no
+// admin nem no frontmatter de importação — na prática só os posts migrados do
+// site antigo a têm preenchida. Enquanto o metadata da página a usava direto,
+// num ternário que caía em `undefined`, todo post criado depois da migração
+// era servido sem <link rel="canonical"> nenhum, e o Google escolheu a
+// canônica por conta própria — agrupando artigos de tema parecido e deixando
+// de indexar o resto ("Cópia — Google escolheu canônica diferente" no Search
+// Console). A barra final acompanha `trailingSlash: true` do next.config.ts:
+// canonical sem barra apontaria para a URL que redireciona, não para a final.
+export function canonicalDoArtigo(
+  canonicalUrl: string | null | undefined,
+  slug: string,
+): string {
+  return canonicalUrl?.trim() || `/blog/${slug}/`;
+}
