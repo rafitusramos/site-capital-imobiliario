@@ -186,10 +186,26 @@
   .footer-disclaimer{color:var(--areia);}
 
   /* ===== BANNER DE CONSENTIMENTO (cookies/analytics) ===== */
-  .consentimento-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:110;max-width:440px;margin:0 auto;background:var(--branco);border-top:3px solid var(--bronze);border-radius:4px;box-shadow:0 -10px 40px -12px rgba(0,0,0,.35),0 10px 30px -12px rgba(10,36,28,.25);padding:22px 24px;animation:consentimento-entrar .4s cubic-bezier(.22,1,.36,1);}
+  .consentimento-banner{position:fixed;left:16px;right:16px;bottom:16px;z-index:110;max-width:440px;margin:0 auto;background:var(--branco);border-top:3px solid var(--bronze);border-radius:4px;box-shadow:0 -10px 40px -12px rgba(0,0,0,.35),0 10px 30px -12px rgba(10,36,28,.25);padding:22px 24px;animation:consentimento-deslizar .64s cubic-bezier(.22,1,.36,1),consentimento-surgir .9s ease-out;}
   @media(min-width:640px){.consentimento-banner{left:24px;right:auto;bottom:24px;}}
-  @keyframes consentimento-entrar{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
-  @media(prefers-reduced-motion:reduce){.consentimento-banner{animation:none;}}
+  /* Deslize da esquerda para a direita, não a subida de baixo que estava aqui
+     antes: o banner é ancorado na borda esquerda, então entrar por ela é a
+     direção que corresponde ao lugar onde ele mora. É o mesmo vocabulário do
+     .reveal logo abaixo (translate3d(-28px,...) na mesma curva), que já é o
+     jeito como o resto do site faz conteúdo aparecer.
+
+     São DUAS animações, e não uma só com opacity e transform nos mesmos
+     keyframes, porque as durações precisam divergir: o deslize fecha em 640ms
+     e o fade continua até 900ms. O banner chega no lugar e só então termina de
+     surgir — é o que faz a entrada ser suave em vez de um empurrão. Manter
+     tudo num keyframe só amarraria as duas curvas à mesma duração. */
+  @keyframes consentimento-deslizar{from{transform:translate3d(-64px,0,0);}to{transform:none;}}
+  @keyframes consentimento-surgir{from{opacity:0;}to{opacity:1;}}
+  /* Movimento reduzido pede menos deslocamento, não ausência de transição: o
+     fade fica (opacidade não desloca nada na tela) e só o deslize sai. Sem
+     nenhuma animação o banner simplesmente pisca na tela depois da hidratação,
+     que é mais brusco do que o próprio efeito. */
+  @media(prefers-reduced-motion:reduce){.consentimento-banner{animation:consentimento-surgir .9s ease-out;}}
   .consentimento-texto{font-family:var(--sans);font-size:13.5px;line-height:1.6;color:#3d423e;margin-bottom:16px;}
   .consentimento-texto a{color:var(--jade);text-decoration:underline;}
   .consentimento-acoes{display:flex;gap:10px;flex-wrap:wrap;}
