@@ -19,6 +19,7 @@ import {
   formatarFaixaVagas,
   formatarPrecoAPartir,
 } from "@/lib/imoveis/formato";
+import { montarOfferSchema } from "@/lib/imoveis/schema";
 import { SITE_URL } from "@/lib/site";
 import { imagemOg, SITE_NOME } from "@/lib/og";
 
@@ -165,36 +166,23 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
 
   const indiceFaseAtual = fases.findIndex((fase) => fase.slug === imovel.fase.slug);
 
-  // Teto de preço e nº de ofertas saem das tipologias — o Search Console avisa
-  // quando um AggregateOffer traz só lowPrice.
-  const precosTipologias = imovel.tipologias
-    .map((tipologia) => tipologia.valor_a_partir_de)
-    .filter((valor): valor is number => typeof valor === "number");
-  const maiorPreco = precosTipologias.length > 0 ? Math.max(...precosTipologias) : null;
+  const offers = montarOfferSchema(imovel);
 
+  // Sem preço publicável não existe `Product` válido: o Google exige offers,
+  // review ou aggregateRating, e imóvel não tem os dois últimos. Emitir
+  // `Product` mesmo assim é erro crítico no teste de resultados aprimorados —
+  // pior que não marcar, porque põe em dúvida o resto da marcação da página.
+  // Nesse caso a página cai para `Residence`, que descreve a mesma coisa, não
+  // exige oferta e valida limpo. Não é `RealEstateListing`: essa é camada
+  // futura, decidida em docs/handoff-schema-offers-imoveis.md.
   const productJsonLd = {
     "@context": "https://schema.org",
-    "@type": "Product",
+    "@type": offers ? "Product" : "Residence",
     name: imovel.titulo,
     description: imovel.seo_description ?? imovel.descricao_breve ?? undefined,
     image: urlAbsoluta(capa),
     brand: imovel.construtora ? { "@type": "Organization", name: imovel.construtora } : undefined,
-    // Preço sob consulta não vai para o JSON-LD: anunciar um valor que a página
-    // não mostra seria inconsistente para o Google.
-    offers: imovel.valor_a_partir_de && !imovel.valor_sob_consulta
-      ? {
-          "@type": "AggregateOffer",
-          lowPrice: imovel.valor_a_partir_de,
-          // highPrice só entra com dado real e acima do piso: um teto menor que
-          // o piso reprova o rich result.
-          ...(maiorPreco !== null && maiorPreco > imovel.valor_a_partir_de
-            ? { highPrice: maiorPreco }
-            : {}),
-          ...(imovel.tipologias.length > 0 ? { offerCount: imovel.tipologias.length } : {}),
-          priceCurrency: "BRL",
-          availability: "https://schema.org/InStock",
-        }
-      : undefined,
+    ...(offers ? { offers } : {}),
   };
 
   const faqJsonLd =
