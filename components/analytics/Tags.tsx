@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import { useEffect, useState } from "react";
 import {
   lerConsentimento,
@@ -81,6 +82,26 @@ export function Tags() {
 
   return (
     <>
+      {/*
+        Vercel Web Analytics. Não usa cookie nem identificador persistente e
+        não tem env var: o script é servido pela própria borda da Vercel
+        (/_vercel/insights/*) e só coleta em deploy da Vercel — em `next dev`
+        ele apenas loga em modo debug. Precisa estar habilitado no painel do
+        projeto (Analytics → Web Analytics), senão as requisições voltam 404.
+
+        Mora aqui dentro, e não solto no layout, pelos dois motivos que valem
+        para todas as outras tags: fica de fora de /admin (só o layout do site
+        monta `Tags`) e obedece o mesmo consentimento — recusar no banner
+        também para esta medição. Não existe API de `consent` como a do
+        gtag/fbq para avisá-la de uma recusa posterior, então o papel de
+        `aplicarConsentimentoNasTags` aqui é o `beforeSend`: ele relê o
+        consentimento a cada evento e devolve `null` para descartá-lo, o que
+        faz a recusa valer na hora, sem depender do próximo carregamento.
+      */}
+      <Analytics
+        beforeSend={(evento) => (podeRastrear(lerConsentimento()) ? evento : null)}
+      />
+
       {gtagSrcId && (
         <>
           <Script

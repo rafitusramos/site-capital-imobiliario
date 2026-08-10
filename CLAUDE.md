@@ -10,8 +10,23 @@ Praça principal: Vinhedo/SP e região (Valinhos, Louveira, Jundiaí, Campinas, 
 - Deploy: Vercel
 
 ## Fluxo de branches
-`Development` → `Preview` → `main`. **Só `main` publica em produção**; as outras
-duas geram deploy de preview. Trabalhe em Development e promova por PR.
+Só existem duas branches permanentes: `Preview` e `main`. **Só `main` publica em
+produção**; `Preview` gera deploy de preview e é onde se valida.
+
+Todo trabalho nasce de `main`, numa branch descartável:
+
+- `feature/<nome>` para funcionalidade nova.
+- `hot-fix/<nome>` para correção.
+
+Daí o caminho é `feature|hot-fix/<nome>` → `Preview` → `main`, sempre por PR.
+Apague a branch depois que ela chegar em `main`.
+
+Partir de `main`, e não de `Preview`, é o que garante que a branch nasça em cima
+do que está publicado — `Preview` pode carregar coisa ainda não promovida, e
+herdar isso mistura mudanças de terceiros no PR.
+
+A branch `Development` **não existe mais**. Se algum documento ou comentário
+antigo ainda a citar, é resíduo.
 
 ## Estado atual
 
@@ -71,6 +86,36 @@ para fazer numa imagem servida em página pública.
   texto. O PNG é a fonte da verdade, mas **o servidor não o lê do disco**: usa
   `lib/imoveis/marca-dagua-asset.ts`, gerado por `scripts/gerar-asset-marca.mjs`
   com os bytes em base64. Trocou o PNG, rode o script.
+
+### Dados estruturados dos imóveis
+A página de imóvel usa `@type: Product` com **`offers` obrigatório**: o Google
+exige `offers`, `review` ou `aggregateRating`, imóvel não tem os dois últimos, e
+`Product` sem nenhum deles é **erro crítico** no teste de resultados aprimorados
+— não aviso. `RealEstateListing` é camada futura complementar, não substituição.
+
+Tudo sai de `montarOfferSchema` (`lib/imoveis/schema.ts`), módulo puro travado
+em `tests/unidade/imoveis-schema.test.ts`. `priceCurrency` é sempre `BRL`.
+
+- `availability` vem da **fase de obra**, com o status na frente: `vendido` e
+  `inativo` → `SoldOut`; `reservado` → `LimitedAvailability`; senão
+  `pre_lancamento`/`lancamento`/`em_construcao` → `PreOrder` e `pronto` →
+  `InStock`. Quem compra na planta não recebe a chave hoje — só imóvel entregue
+  é `InStock`. Os slugs espelham os seeds de `imovel_fases` (migration 011).
+- `AggregateOffer` **só quando há faixa real** (teto acima do piso); com um
+  preço só, `Offer` simples. `lowPrice` igual a `highPrice` descreve uma faixa
+  que não existe, e teto abaixo do piso reprova o rich result.
+- `valor_sob_consulta` tem precedência sobre o valor, **igual à página**: nem
+  hero, nem tabela de tipologias, nem barra fixa mostram preço. Então o JSON-LD
+  também não mostra — nem o das tipologias. Marcação tem de representar o
+  conteúdo visível, e publicar ali entregaria de graça, na SERP, o preço que o
+  cadastro escondeu.
+- Sem preço publicável a página cai para **`Residence`**, que descreve a mesma
+  coisa e não exige oferta. `Product` inválido é pior que marcação nenhuma:
+  põe em dúvida o resto da página. Efeito colateral: esse imóvel não gera rich
+  result — para gerar, é preciso desligar `valor_sob_consulta`, que é decisão
+  comercial, não técnica.
+- `priceValidUntil` fica fora de propósito: não há regra de validade no
+  cadastro, e data vencida derruba o rich result. Campo ausente > campo vencido.
 
 ### Simuladores
 Financiamento (`/financiamento/`) e home equity (`/home_equity/`). O de
@@ -154,6 +199,17 @@ Financiamento, Home Equity, Consórcio, Imóveis.
   nenhum e faz a parcela sair ~100x errada.
 - `lastModified` das páginas fixas do sitemap é mapa mantido à mão. Nunca
   `new Date()`: faria toda página parecer alterada em todo deploy.
+- Toda rota indexável emite `alternates.canonical` **auto-referenciada, relativa
+  e com barra final** — a barra acompanha o `trailingSlash: true`, senão a
+  canonical aponta para a URL que redireciona em vez da final. Canonical
+  condicional é armadilha: o `alternates` do artigo saía de um ternário sobre
+  `posts.canonical_url`, coluna opcional que só os posts migrados do site antigo
+  têm preenchida, e por isso 3 dos 6 artigos eram servidos **sem canonical
+  nenhuma** — o Google escolheu a dele e reportou "Cópia — Google escolheu
+  canônica diferente". Agora passa por `canonicalDoArtigo`
+  (`lib/blog/blog.ts`), que nunca devolve vazio, travada em
+  `tests/unidade/blog-canonical.test.ts`. Nada avisa quando isso quebra: a
+  página renderiza perfeita, só o `<head>` fica mudo.
 - As entidades JSON-LD `#negocio` e `#rafael` são declaradas **uma única vez**,
   no layout, a partir de `lib/seo/negocio.ts`. Não redeclare em página, ou
   voltam as entidades conflitantes.
