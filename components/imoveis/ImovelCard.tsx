@@ -7,6 +7,7 @@ import {
   formatarPrecoAPartir,
 } from "@/lib/imoveis/formato";
 import { obterIcone } from "@/components/imoveis/icones";
+import { altDoImovel } from "@/lib/imoveis/seo";
 
 type ImovelCardProps = {
   imovel: ImovelComCapa;
@@ -30,7 +31,7 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
     <Link className="im-card reveal" href={`/imoveis/${imovel.slug}/`}>
       <div className="im-card-capa">
         {imovel.capa ? (
-          <img src={imovel.capa} alt="" loading="lazy" />
+          <img src={imovel.capa} alt={altDoImovel(imovel)} loading="lazy" />
         ) : null}
         <span className="im-badge-fase" data-fase={imovel.fase?.slug}>
           {imovel.fase?.nome}

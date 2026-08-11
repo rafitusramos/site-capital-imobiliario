@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
+import { altDaImagem } from "@/lib/imoveis/seo";
 
 export type ImagemCarrossel = { url: string; ambiente: string | null };
 
@@ -9,6 +10,14 @@ type CarrosselProps = {
   imagens: ImagemCarrossel[];
   /** Legenda de acessibilidade da região (ex.: "Galeria do empreendimento"). */
   ariaLabel: string;
+  /**
+   * Nome e cidade do imóvel ("Gran VIC Niágara, Vinhedo"), montado por
+   * `contextoDoImovel`. Entra no `alt` de cada foto: sozinho, o ambiente
+   * ("Sala de estar") não diz de qual empreendimento é a sala — e imagem de
+   * galeria sem isso não se sustenta fora da página, que é justamente onde o
+   * Google Imagens a mostra.
+   */
+  contexto: string;
   /** A primeira imagem do primeiro carrossel da página pode carregar eager (acima da dobra). */
   primeiraEager?: boolean;
   /**
@@ -33,7 +42,13 @@ const DURACAO_SEM_MOVIMENTO = 0;
  * verdade. Os hooks do Embla vivem em `CarrosselMultiplo` para nunca ficarem
  * depois de um return condicional.
  */
-export function Carrossel({ imagens, ariaLabel, primeiraEager = false, aoAmpliar }: CarrosselProps) {
+export function Carrossel({
+  imagens,
+  ariaLabel,
+  contexto,
+  primeiraEager = false,
+  aoAmpliar,
+}: CarrosselProps) {
   if (imagens.length === 0) return null;
 
   if (imagens.length === 1) {
@@ -42,7 +57,7 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false, aoAmpliar
       <figure className="im-carrossel-unica">
         <img
           src={imagem.url}
-          alt={imagem.ambiente ?? ""}
+          alt={altDaImagem(imagem.ambiente, contexto)}
           decoding="async"
           fetchPriority={primeiraEager ? "high" : "low"}
         />
@@ -61,6 +76,7 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false, aoAmpliar
     <CarrosselMultiplo
       imagens={imagens}
       ariaLabel={ariaLabel}
+      contexto={contexto}
       primeiraEager={primeiraEager}
       aoAmpliar={aoAmpliar}
     />
@@ -80,7 +96,13 @@ export function Carrossel({ imagens, ariaLabel, primeiraEager = false, aoAmpliar
  * viewport, sobrando espaço vazio nas bordas quando necessário (comportamento
  * desejado, não um bug).
  */
-function CarrosselMultiplo({ imagens, ariaLabel, primeiraEager, aoAmpliar }: CarrosselProps) {
+function CarrosselMultiplo({
+  imagens,
+  ariaLabel,
+  contexto,
+  primeiraEager,
+  aoAmpliar,
+}: CarrosselProps) {
   // O CSS já desliga a transição de escala/opacidade dos slides, mas o
   // deslocamento do próprio Embla continuaria animado — daí zerar `duration`.
   // Começa `false` para o servidor e o cliente renderizarem igual; o valor real
@@ -186,7 +208,7 @@ function CarrosselMultiplo({ imagens, ariaLabel, primeiraEager, aoAmpliar }: Car
                     evita competir com a capa do hero (LCP). */}
                 <img
                   src={imagem.url}
-                  alt={imagem.ambiente ?? ""}
+                  alt={altDaImagem(imagem.ambiente, contexto)}
                   decoding="async"
                   fetchPriority={primeiraEager && indice === 0 ? "high" : "low"}
                 />

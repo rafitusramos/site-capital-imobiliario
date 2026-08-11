@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Carrossel, type ImagemCarrossel } from "@/components/imoveis/Carrossel";
+import { altDaImagem } from "@/lib/imoveis/seo";
 
 type GaleriaPlantasProps = {
   imagens: ImagemCarrossel[];
   ariaLabel: string;
+  /** Nome e cidade do imóvel, para o `alt` das plantas. Ver `contextoDoImovel`. */
+  contexto: string;
 };
 
 /**
@@ -13,7 +16,7 @@ type GaleriaPlantasProps = {
  * lightbox sobre a página, sem tirar o visitante da LP. Fica num componente
  * cliente próprio porque a página do imóvel é Server Component.
  */
-export function GaleriaPlantas({ imagens, ariaLabel }: GaleriaPlantasProps) {
+export function GaleriaPlantas({ imagens, ariaLabel, contexto }: GaleriaPlantasProps) {
   const [ampliada, setAmpliada] = useState<number | null>(null);
   const gatilhoRef = useRef<HTMLElement | null>(null);
   const fecharRef = useRef<HTMLButtonElement>(null);
@@ -54,7 +57,7 @@ export function GaleriaPlantas({ imagens, ariaLabel }: GaleriaPlantasProps) {
 
   return (
     <>
-      <Carrossel imagens={imagens} ariaLabel={ariaLabel} aoAmpliar={abrir} />
+      <Carrossel imagens={imagens} ariaLabel={ariaLabel} contexto={contexto} aoAmpliar={abrir} />
 
       {imagemAmpliada ? (
         <div
@@ -76,7 +79,7 @@ export function GaleriaPlantas({ imagens, ariaLabel }: GaleriaPlantasProps) {
             >
               ×
             </button>
-            <img src={imagemAmpliada.url} alt={imagemAmpliada.ambiente ?? ""} />
+            <img src={imagemAmpliada.url} alt={altDaImagem(imagemAmpliada.ambiente, contexto)} />
             {imagemAmpliada.ambiente ? (
               <p className="im-planta-legenda">{imagemAmpliada.ambiente}</p>
             ) : null}
