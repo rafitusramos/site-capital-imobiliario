@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 660 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 702 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
 no SQL Editor do Supabase; a última é a **019**.
 
@@ -86,6 +86,42 @@ para fazer numa imagem servida em página pública.
   texto. O PNG é a fonte da verdade, mas **o servidor não o lê do disco**: usa
   `lib/imoveis/marca-dagua-asset.ts`, gerado por `scripts/gerar-asset-marca.mjs`
   com os bytes em base64. Trocou o PNG, rode o script.
+
+### Texto de descoberta (alt, title, description)
+Tudo derivado do cadastro em `lib/imoveis/seo.ts`, travado em
+`tests/unidade/imoveis-seo.test.ts`. Nenhuma dessas funções devolve vazio.
+
+- **`alt`** de imagem de imóvel vem dos dados: `altDoImovel` monta
+  "`{tipo} {nome} — {bairro}, {cidade}`" (hero e card), e `altDaImagem` monta
+  "`{ambiente} — {nome}, {cidade}`" nas galerias. O carrossel e a galeria de
+  plantas exigem a prop `contexto` (de `contextoDoImovel`) justamente para
+  isso: "Sala de estar" sozinho não diz de qual empreendimento é a sala, e é
+  fora da página que o Google Imagens mostra a foto.
+- **`alt=""` continua certo** para imagem cujo texto adjacente, dentro do
+  mesmo link, já é equivalente — capa de card de post (o `<h3>` ao lado é o
+  mesmo texto) e as fotos dos cards de serviço da home. Repetir ali só faria o
+  leitor de tela ler duas vezes. A regra é: `alt` que **acrescenta** informação
+  entra; `alt` que duplica o vizinho, não.
+- **`title`/`description`** de imóvel saem de `tituloDoImovel` e
+  `descricaoDoImovel`. `seo_title`/`seo_description` do admin mandam quando
+  existem — o template não reescreve copy que uma pessoa escolheu. Sem elas,
+  monta do cadastro: título ganha tipo, cidade e marca; a description desce
+  para `descricao_breve` e, faltando as duas, vira frase montada. Sem isso um
+  imóvel cadastrado sem os campos saía **sem meta description nenhuma**, e aí
+  quem escreve o resumo na SERP é o Google.
+- Todo texto de meta passa por `normalizarTexto`. `seo_description` é textarea:
+  quebra de linha ali vira quebra **literal** dentro do atributo `content`. O
+  HTML segue válido e nada reclama — só aparece lendo o fonte servido (foi o
+  caso do Jabô Studio).
+- **O modal de lead nunca abre sozinho.** Só por clique em
+  `[data-abrir-lead]`, via delegação em `LeadImovelModal`. Nada de timer, de
+  scroll nem de exit-intent: modal que cobre o conteúdo sem o visitante pedir é
+  intersticial intrusivo, penalizado no mobile.
+- **`VideoObject` só com todos os campos obrigatórios** (`name`,
+  `description`, `thumbnailUrl`, `uploadDate`). Hoje **não é emitido**: não há
+  `uploadDate` no cadastro nem como obtê-la em build sem chamar a API do
+  YouTube. Schema incompleto cria erro de rich result novo — foi assim que o
+  `Product` sem `offers` apareceu.
 
 ### Dados estruturados dos imóveis
 A página de imóvel usa `@type: Product` com **`offers` obrigatório**: o Google

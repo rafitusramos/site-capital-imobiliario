@@ -20,6 +20,12 @@ import {
   formatarPrecoAPartir,
 } from "@/lib/imoveis/formato";
 import { montarOfferSchema } from "@/lib/imoveis/schema";
+import {
+  altDoImovel,
+  contextoDoImovel,
+  descricaoDoImovel,
+  tituloDoImovel,
+} from "@/lib/imoveis/seo";
 import { SITE_URL } from "@/lib/site";
 import { imagemOg, SITE_NOME } from "@/lib/og";
 
@@ -88,10 +94,13 @@ export async function generateMetadata({ params }: PaginaImovelProps): Promise<M
   const imovel = await getImovelBySlug(slug);
   if (!imovel) return {};
 
-  const titulo = imovel.seo_title ?? imovel.titulo;
-  const descricao = imovel.seo_description ?? imovel.descricao_breve ?? undefined;
+  // `seo_title`/`seo_description` mandam quando existem; sem elas o texto é
+  // montado do cadastro em vez de cair no título cru (ou em description
+  // nenhuma). Ver lib/imoveis/seo.ts.
+  const titulo = tituloDoImovel(imovel);
+  const descricao = descricaoDoImovel(imovel);
   const caminho = `/imoveis/${imovel.slug}/`;
-  const imagem = imagemOg(capaDoImovel(imovel), imovel.titulo);
+  const imagem = imagemOg(capaDoImovel(imovel), altDoImovel(imovel));
 
   return {
     title: titulo,
@@ -165,6 +174,9 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const IconeVaga = obterIcone("vaga");
 
   const indiceFaseAtual = fases.findIndex((fase) => fase.slug === imovel.fase.slug);
+
+  // "Gran VIC Niágara, Vinhedo" — entra no `alt` de toda foto de galeria.
+  const contexto = contextoDoImovel(imovel);
 
   const offers = montarOfferSchema(imovel);
 
@@ -247,7 +259,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                browser poder priorizar o download e para aceitar srcset depois.
                O overlay .hero::after do lp.css pinta por cima e preserva o
                contraste do texto. */
-            <img className="im-hero-capa" src={capa} alt="" fetchPriority="high" />
+            <img className="im-hero-capa" src={capa} alt={altDoImovel(imovel)} fetchPriority="high" />
           ) : null}
           <div className="wrap">
             <span className="im-badge-fase im-badge-fase--inline" data-fase={imovel.fase.slug}>
@@ -339,6 +351,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               <Carrossel
                 imagens={imagensEmpreendimento.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
                 ariaLabel={`Galeria do empreendimento ${imovel.titulo}`}
+                contexto={contexto}
                 primeiraEager
               />
             </div>
@@ -401,6 +414,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                 <Carrossel
                   imagens={imagensDecorado.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
                   ariaLabel={`Decorado das unidades do ${imovel.titulo}`}
+                  contexto={contexto}
                 />
               </div>
             ) : null}
@@ -421,6 +435,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                 <GaleriaPlantas
                   imagens={imagensPlanta.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
                   ariaLabel={`Plantas do ${imovel.titulo}`}
+                  contexto={contexto}
                 />
               </div>
             ) : null}
