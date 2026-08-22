@@ -51,6 +51,16 @@ function IconeOlhoFechado() {
   );
 }
 
+function IconeAbrir() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
+      <path d="M11 3h6v6" />
+      <path d="M17 3 9.5 10.5" />
+      <path d="M15 11.5V16a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h4.5" />
+    </svg>
+  );
+}
+
 function IconeLixeira() {
   return (
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
@@ -220,6 +230,18 @@ export function TabelaPosts({ posts }: { posts: PostAdmin[] }) {
               >
                 <IconeLixeira />
               </button>
+              {post.status === "published" ? (
+                <a
+                  href={`/blog/${post.slug}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Abrir no site"
+                  aria-label="Abrir no site"
+                  className={`${ICONE_CLASSE} text-neutral-600`}
+                >
+                  <IconeAbrir />
+                </a>
+              ) : null}
             </div>
           </li>
         ))}
