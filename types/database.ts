@@ -1005,6 +1005,13 @@ export interface Database {
         };
         Returns: Database["public"]["Tables"]["lead_interacoes"]["Row"];
       };
+      // Gravação atômica das coleções filhas do imóvel e das tags do lead
+      // (021_rpc_colecoes_atomicas.sql): uma transação por coleção.
+      salvar_imovel_imagens: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
+      salvar_imovel_tipologias: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
+      salvar_imovel_diferenciais: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
+      salvar_imovel_faqs: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
+      definir_tags_lead: { Args: { p_lead_id: string; p_tags: string[] }; Returns: undefined };
       // true só quando o usuário autenticado tem profiles.role = 'admin'.
       // SECURITY DEFINER com search_path fixo (017_crm_funcoes_rls.sql) —
       // usada dentro das policies de RLS, não chamada diretamente pela

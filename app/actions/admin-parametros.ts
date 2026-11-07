@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { exigirAdmin } from "@/lib/admin/auth";
 import { parametrosSimuladorSchema, type ParametrosSimuladorInput } from "@/lib/validations/parametros";
 import { percentualParaDecimal } from "@/lib/parametros/taxa";
 
@@ -10,18 +10,10 @@ export interface AcaoResultado {
   erro?: string;
 }
 
-async function usuarioAutenticado() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
-}
-
 /** Salva as taxas dos simuladores (linha única, id = 1 de parametros_simulador). */
 export async function salvarParametros(input: ParametrosSimuladorInput): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirAdmin();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = parametrosSimuladorSchema.safeParse(input);
   if (!parsed.success) {
@@ -46,7 +38,10 @@ export async function salvarParametros(input: ParametrosSimuladorInput): Promise
     .eq("id", 1)
     .select("id");
 
-  if (error) return { sucesso: false, erro: "Não foi possível salvar as taxas." };
+  if (error) {
+    console.error("[salvarParametros]", error);
+    return { sucesso: false, erro: "Não foi possível salvar as taxas." };
+  }
 
   if (!data || data.length === 0) {
     return {

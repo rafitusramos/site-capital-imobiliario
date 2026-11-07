@@ -37,9 +37,9 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 709 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 755 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
-no SQL Editor do Supabase; a última é a **019**.
+no SQL Editor do Supabase; a última é a **021**.
 
 ### CRM
 Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
@@ -308,6 +308,24 @@ Financiamento, Home Equity, Consórcio, Imóveis.
      importada dali. A regra `@next/next/no-html-link-for-pages` está
      desligada no `eslint.config.mjs` por causa disso; para religar, primeiro
      dispare `page_view` a cada mudança de rota em `lib/analytics/eventos.ts`.
+- **Escrita de conteúdo é só para admin, nas duas camadas.** Policy de escrita
+  usa `public.eh_admin()` (migration 020), **nunca** `auth.role() =
+  'authenticated'`: esta última deixa qualquer corretor logado apagar posts,
+  imóveis e imagens. Policy nova de escrita sem `eh_admin()` é regressão. Na
+  aplicação, o ponto único da checagem é `exigirAdmin()` em `lib/admin/auth.ts`
+  (toda action de `admin-posts`, `admin-imoveis` e `admin-parametros` começa
+  por ele; as páginas usam `garantirAdminOuRedirecionar()` nos layouts de
+  `posts/`, `imoveis/` e `parametros/`). As ações do CRM seguem a RLS do CRM.
+- **`profiles.role` nunca pode ser atualizável pelo próprio usuário.**
+  `profiles_update_own` filtra a *linha*, não a *coluna*: sem revogar o
+  privilégio de coluna, qualquer logado fazia `update profiles set role =
+  'admin'` e passava em `eh_admin()` e em toda policy. A 020 deixa só
+  `full_name, phone, avatar_url, creci` com UPDATE. Coluna nova em `profiles`
+  nasce **sem** grant — conceda explicitamente só se for editável pelo dono.
+- Coleção filha gravada em várias chamadas (apagar, depois inserir/atualizar)
+  deixa a lista pela metade se uma falhar. Tipologias, diferenciais, FAQs,
+  imagens do imóvel e tags do lead vão por RPC `security invoker` (migration
+  021), uma transação por coleção.
 - `eslint .` tem de sair com zero erro e zero aviso — é assim que a suíte está
   hoje. Regra desligada exige comentário com o motivo e a condição de voltar,
   no próprio `eslint.config.mjs`. Não silencie aviso sem justificar.

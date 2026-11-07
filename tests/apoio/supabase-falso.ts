@@ -68,6 +68,9 @@ export function criarSupabaseFalso() {
   const RESPOSTA_PADRAO: RespostaFalsa = { data: null, error: null };
 
   let usuarioAtual: { id: string; [chave: string]: unknown } | null = null;
+  // Papel devolvido por `profiles.select` quando o teste não programou resposta
+  // (exigirAdmin lê o perfil em toda action de conteúdo). Padrão "admin".
+  let papelAtual: string | null = "admin";
 
   function programarResposta(tabela: string, operacao: Operacao, resposta: RespostaFalsa) {
     const chave = chaveTabela(tabela, operacao);
@@ -90,6 +93,11 @@ export function criarSupabaseFalso() {
 
   function programarPublicUrl(bucket: string, url: string) {
     respostasPublicUrl.set(bucket, url);
+  }
+
+  /** Papel do usuário logado em profiles; null simula perfil inexistente. */
+  function definirPapel(papel: string | null) {
+    papelAtual = papel;
   }
 
   function definirUsuario(user: { id: string; [chave: string]: unknown } | null) {
@@ -119,7 +127,11 @@ export function criarSupabaseFalso() {
     function resposta(): RespostaFalsa {
       registrar();
       if (!operacao) return RESPOSTA_PADRAO;
-      return consumirFila(respostasTabela.get(chaveTabela(tabela, operacao)), RESPOSTA_PADRAO);
+      const chave = chaveTabela(tabela, operacao);
+      if (tabela === "profiles" && operacao === "select" && !respostasTabela.get(chave)?.length) {
+        return { data: papelAtual ? { role: papelAtual } : null, error: null };
+      }
+      return consumirFila(respostasTabela.get(chave), RESPOSTA_PADRAO);
     }
 
     const builder: Record<string, unknown> = {
@@ -198,6 +210,7 @@ export function criarSupabaseFalso() {
     programarUpload,
     programarPublicUrl,
     definirUsuario,
+    definirPapel,
   };
 }
 
