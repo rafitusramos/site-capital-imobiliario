@@ -211,6 +211,7 @@ Tipografia que o layout de fato carrega: Libre Caslon Display (`--display`),
 Libre Caslon Text (`--texto`), Archivo (`--sans`), IBM Plex Mono (`--mono`).
 O admin carrega ainda Geologica (`--geologica`), usada só na soma de valores do
 cabeçalho das colunas do CRM.
+Fontes hospedadas em `app/fonts/` via `next/font/local` (woff2 latin em `app/fonts/arquivos/`); os 3 root layouts importam de lá.
 Cores: `--jade`, `--bronze`, `--abissal`, `--marfim`, `--areia`, `--tinta`,
 `--branco`, `--erro`.
 
@@ -280,6 +281,7 @@ Financiamento, Home Equity, Consórcio, Imóveis.
 - `DndContext` do dnd-kit precisa de `id` fixo quando a página é renderizada no
   servidor: sem ele o `aria-describedby` dos itens vem de um contador de módulo
   que diverge entre servidor e cliente e quebra a hidratação.
+- Build da Vercel quebrou em `next/font/google` (`Cannot read properties of null (reading '1')`): o Google passou a devolver URLs de fonte sem extensão às máquinas de build. Por isso as fontes são locais. Peso novo exige baixar o woff2 `latin` para `app/fonts/arquivos/` e declarar em `app/fonts/index.ts` — nunca volte ao `next/font/google`.
 - Estas quatro decisões de estrutura **parecem** desvio da convenção do Next e
   não são — não as "conserte":
   1. **Não existe `app/layout.tsx`.** São dois root layouts,
