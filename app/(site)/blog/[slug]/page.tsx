@@ -14,7 +14,7 @@ import {
   formatarData,
 } from "@/lib/blog/blog";
 import { PostCard } from "@/components/blog/post-card";
-import { SITE_URL } from "@/lib/site";
+import { montarJsonLdArtigo } from "@/lib/blog/json-ld";
 import { imagemOg, SITE_NOME } from "@/lib/og";
 
 export const revalidate = 3600;
@@ -78,51 +78,7 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
     ? await getRelatedPosts(post.id, post.category_id, 3)
     : [];
 
-  // URL canônica do post (com barra final — o projeto usa trailingSlash: true).
-  const urlPost = `${SITE_URL}/blog/${post.slug}/`;
-
-  // author/publisher referenciam os nós declarados uma única vez no layout
-  // (ver lib/seo/negocio.ts), em vez de duplicar o Person inline — o que
-  // antes criava uma segunda descrição de "#rafael" divergente da do layout.
-  const blogPostingJsonLd = {
-    "@context": "https://schema.org",
-    "@graph": [
-      {
-        "@type": "BlogPosting",
-        headline: post.title,
-        description: post.seo_description ?? post.excerpt ?? undefined,
-        datePublished: post.published_at ?? undefined,
-        dateModified: post.updated_at,
-        image: post.cover_image ? `${SITE_URL}${post.cover_image}` : undefined,
-        url: urlPost,
-        mainEntityOfPage: urlPost,
-        author: { "@id": `${SITE_URL}/#rafael` },
-        publisher: { "@id": `${SITE_URL}/#negocio` },
-      },
-      {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          {
-            "@type": "ListItem",
-            position: 1,
-            name: "Início",
-            item: `${SITE_URL}/`,
-          },
-          {
-            "@type": "ListItem",
-            position: 2,
-            name: "Blog",
-            item: `${SITE_URL}/blog/`,
-          },
-          {
-            "@type": "ListItem",
-            position: 3,
-            name: post.title,
-          },
-        ],
-      },
-    ],
-  };
+  const blogPostingJsonLd = montarJsonLdArtigo(post);
 
   return (
     <>

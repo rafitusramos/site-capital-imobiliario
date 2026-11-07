@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 748 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 755 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
 no SQL Editor do Supabase; a última é a **021**.
 
@@ -250,6 +250,12 @@ Financiamento, Home Equity, Consórcio, Imóveis.
 - As entidades JSON-LD `#negocio` e `#rafael` são declaradas **uma única vez**,
   no layout, a partir de `lib/seo/negocio.ts`. Não redeclare em página, ou
   voltam as entidades conflitantes.
+- O `image` do BlogPosting concatenava `SITE_URL` com a capa, que já é URL
+  absoluta do Supabase: saía `https://rtcapitalimobiliario.com.brhttps://...`
+  em todo artigo com capa. O JSON-LD do artigo agora vem de `montarJsonLdArtigo`
+  (`lib/blog/json-ld.ts`), travado em `tests/unidade/blog-json-ld.test.ts`.
+  Toda URL que pode vir absoluta ou relativa passa por `urlAbsoluta`
+  (`lib/og.ts`), nunca por concatenação com `SITE_URL`.
 - Build no Windows falhando com `spawn UNKNOWN` na geração de páginas: é
   processo `node` órfão. Encerre os `node` pendentes e apague `.next`.
 - Data que **volta do banco** não passa em `z.string().datetime()`: o PostgREST
