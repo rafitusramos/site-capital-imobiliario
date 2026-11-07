@@ -37,6 +37,11 @@ begin;
 revoke update on public.profiles from anon, authenticated;
 grant update (full_name, phone, avatar_url, creci) on public.profiles to authenticated;
 
+-- O default de `role` era 'admin': todo perfil criado sem papel explícito
+-- (ex.: cadastrar um corretor pelo Table Editor) nascia administrador.
+-- O padrão passa a ser o papel de menor privilégio; admin é sempre explícito.
+alter table public.profiles alter column role set default 'corretor';
+
 -- =====================================================================
 -- 2. TABELAS DE CONTEÚDO — escrita só para admin
 -- =====================================================================
