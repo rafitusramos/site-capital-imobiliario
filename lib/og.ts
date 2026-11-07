@@ -28,7 +28,11 @@ export type ImagemOg = {
   alt?: string;
 };
 
-function absoluta(url: string): string {
+/**
+ * Devolve a URL absoluta de um caminho que pode vir relativo ou absoluto.
+ * Capa do Supabase Storage já é absoluta; arquivo do /public é relativo ao site.
+ */
+export function urlAbsoluta(url: string): string {
   return url.startsWith("http") ? url : `${SITE_URL}${url}`;
 }
 
@@ -47,7 +51,7 @@ export function imagemOg(
 ): ImagemOg {
   if (!url) return { ...IMAGEM_OG_PADRAO, alt };
 
-  const abs = absoluta(url);
+  const abs = urlAbsoluta(url);
   if (!abs.includes(CAMINHO_OBJETO)) return { url: abs, alt };
 
   return {
