@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import type { createClient } from "@/lib/supabase/server";
+import { idSchema, usuarioAutenticado } from "@/lib/admin/auth";
 import { etapaInicial } from "@/lib/crm/etapas";
 import { slugify } from "@/lib/blog/slugify";
 import {
@@ -43,15 +44,7 @@ export interface CriarLeadResultado extends AcaoResultado {
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
-async function usuarioAutenticado() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return { supabase, user };
-}
 
-const idSchema = z.string().uuid();
 
 // ---------------------------------------------------------------------------
 // Tradução dos códigos de exceção do Postgres (017_crm_funcoes_rls.sql) para
@@ -690,26 +683,17 @@ export async function definirTags(leadId: string, tags: string[]): Promise<AcaoR
     return { sucesso: false, erro: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  // Confirma que o lead é visível (RLS) antes de mexer em lead_tags: um
-  // delete que não casa linha nenhuma é sucesso silencioso no Postgres, e
-  // sem essa checagem prévia não haveria como distinguir "sem tag nenhuma"
-  // de "sem permissão nesse lead" (regra do projeto).
-  const { data: lead, error: erroLead } = await supabase
-    .from("leads")
-    .select("id")
-    .eq("id", parsed.data.leadId)
-    .maybeSingle();
-  if (erroLead) return { sucesso: false, erro: "Não foi possível ler o lead." };
-  if (!lead) return { sucesso: false, erro: "Lead não encontrado ou você não tem permissão para acessá-lo." };
-
-  const { error: erroDelete } = await supabase.from("lead_tags").delete().eq("lead_id", parsed.data.leadId);
-  if (erroDelete) return { sucesso: false, erro: "Não foi possível atualizar as tags." };
-
-  if (parsed.data.tags.length > 0) {
-    const { error: erroInsert } = await supabase
-      .from("lead_tags")
-      .insert(parsed.data.tags.map((tagSlug) => ({ lead_id: parsed.data.leadId, tag_slug: tagSlug })));
-    if (erroInsert) return { sucesso: false, erro: "Não foi possível salvar as novas tags." };
+  // Uma chamada só (021_rpc_colecoes_atomicas.sql): a RPC confere que o lead
+  // é visível (RLS), apaga as tags que saíram e insere as novas na mesma
+  // transação — antes eram delete + insert separados, e falha entre os dois
+  // deixava o lead sem tag nenhuma.
+  const { error } = await supabase.rpc("definir_tags_lead", {
+    p_lead_id: parsed.data.leadId,
+    p_tags: parsed.data.tags,
+  });
+  if (error) {
+    console.error("[definirTags]", error);
+    return { sucesso: false, erro: traduzirErro(error, "Não foi possível atualizar as tags.") };
   }
 
   revalidarQuadro();

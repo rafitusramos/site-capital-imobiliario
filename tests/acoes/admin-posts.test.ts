@@ -17,6 +17,9 @@ import {
 } from "@/app/actions/admin-posts";
 
 const UUID_CATEGORIA = "123e4567-e89b-12d3-a456-426614174000";
+const UUID_POST = "11111111-1111-4111-8111-111111111111";
+const UUID_POST_EXISTENTE = "22222222-2222-4222-8222-222222222222";
+const SELECT_SLUG_ANTERIOR = { data: { slug: "slug-antigo" }, error: null };
 
 function montarSupabase() {
   const falso = criarSupabaseFalso();
@@ -64,21 +67,21 @@ describe("sessão expirada", () => {
   test("publicarPost sem usuário devolve erro de sessão", async () => {
     const falso = montarSupabase();
     falso.definirUsuario(null);
-    const resultado = await publicarPost("post-1", "algum-slug");
+    const resultado = await publicarPost(UUID_POST, "algum-slug");
     expect(resultado).toEqual({ sucesso: false, erro: "Sessão expirada. Faça login novamente." });
   });
 
   test("despublicarPost sem usuário devolve erro de sessão", async () => {
     const falso = montarSupabase();
     falso.definirUsuario(null);
-    const resultado = await despublicarPost("post-1", "algum-slug");
+    const resultado = await despublicarPost(UUID_POST, "algum-slug");
     expect(resultado).toEqual({ sucesso: false, erro: "Sessão expirada. Faça login novamente." });
   });
 
   test("excluirPost sem usuário devolve erro de sessão", async () => {
     const falso = montarSupabase();
     falso.definirUsuario(null);
-    const resultado = await excluirPost("post-1", "algum-slug");
+    const resultado = await excluirPost(UUID_POST, "algum-slug");
     expect(resultado).toEqual({ sucesso: false, erro: "Sessão expirada. Faça login novamente." });
   });
 
@@ -114,11 +117,12 @@ describe("salvarPost", () => {
   test("com id, faz update e devolve o mesmo id", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("posts", "update", { data: null, error: null });
+    falso.programarResposta("posts", "select", SELECT_SLUG_ANTERIOR);
+    falso.programarResposta("posts", "update", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await salvarPost({ ...postValido(), id: "post-existente" });
+    const resultado = await salvarPost({ ...postValido(), id: UUID_POST_EXISTENTE });
 
-    expect(resultado).toEqual({ sucesso: true, id: "post-existente" });
+    expect(resultado).toEqual({ sucesso: true, id: UUID_POST_EXISTENTE });
     const chamada = falso.chamadas.find((c) => c.tabela === "posts" && c.operacao === "update");
     expect(chamada).toBeDefined();
   });
@@ -136,9 +140,10 @@ describe("salvarPost", () => {
   test("erro 23505 no update vira mensagem de slug duplicado", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("posts", "select", SELECT_SLUG_ANTERIOR);
     falso.programarResposta("posts", "update", { data: null, error: { code: "23505" } });
 
-    const resultado = await salvarPost({ ...postValido(), id: "post-existente" });
+    const resultado = await salvarPost({ ...postValido(), id: UUID_POST_EXISTENTE });
 
     expect(resultado).toEqual({ sucesso: false, erro: "Já existe um artigo com esse slug." });
   });
@@ -156,9 +161,10 @@ describe("salvarPost", () => {
   test("outro erro no update vira 'Não foi possível salvar o artigo.'", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("posts", "select", SELECT_SLUG_ANTERIOR);
     falso.programarResposta("posts", "update", { data: null, error: { code: "500" } });
 
-    const resultado = await salvarPost({ ...postValido(), id: "post-existente" });
+    const resultado = await salvarPost({ ...postValido(), id: UUID_POST_EXISTENTE });
 
     expect(resultado).toEqual({ sucesso: false, erro: "Não foi possível salvar o artigo." });
   });
@@ -181,11 +187,11 @@ describe("publicarPost", () => {
       data: { published_at: "2024-01-10T12:00:00.000Z" },
       error: null,
     });
-    falso.programarResposta("posts", "update", { data: null, error: null });
+    falso.programarResposta("posts", "update", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await publicarPost("post-1", "artigo-x");
+    const resultado = await publicarPost(UUID_POST, "artigo-x");
 
-    expect(resultado).toEqual({ sucesso: true, id: "post-1" });
+    expect(resultado).toEqual({ sucesso: true, id: UUID_POST });
     const chamada = falso.chamadas.find((c) => c.tabela === "posts" && c.operacao === "update");
     expect((chamada!.payload as Record<string, unknown>).published_at).toBe("2024-01-10T12:00:00.000Z");
   });
@@ -194,9 +200,9 @@ describe("publicarPost", () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
     falso.programarResposta("posts", "select", { data: { published_at: null }, error: null });
-    falso.programarResposta("posts", "update", { data: null, error: null });
+    falso.programarResposta("posts", "update", { data: [{ id: "linha-1" }], error: null });
 
-    await publicarPost("post-1", "artigo-x");
+    await publicarPost(UUID_POST, "artigo-x");
 
     const chamada = falso.chamadas.find((c) => c.tabela === "posts" && c.operacao === "update");
     const payload = chamada!.payload as Record<string, unknown>;
@@ -210,7 +216,7 @@ describe("publicarPost", () => {
     falso.definirUsuario({ id: "user-1" });
     falso.programarResposta("posts", "select", { data: null, error: { message: "not found" } });
 
-    const resultado = await publicarPost("post-inexistente", "artigo-x");
+    const resultado = await publicarPost(UUID_POST_EXISTENTE, "artigo-x");
 
     expect(resultado).toEqual({ sucesso: false, erro: "Artigo não encontrado." });
   });
@@ -219,9 +225,9 @@ describe("publicarPost", () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
     falso.programarResposta("posts", "select", { data: { published_at: null }, error: null });
-    falso.programarResposta("posts", "update", { data: null, error: null });
+    falso.programarResposta("posts", "update", { data: [{ id: "linha-1" }], error: null });
 
-    await publicarPost("post-1", "artigo-x");
+    await publicarPost(UUID_POST, "artigo-x");
 
     expect(revalidatePath).toHaveBeenCalledWith("/blog");
     expect(revalidatePath).toHaveBeenCalledWith("/blog/artigo-x");
@@ -233,11 +239,11 @@ describe("despublicarPost", () => {
   test("grava status draft e revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("posts", "update", { data: null, error: null });
+    falso.programarResposta("posts", "update", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await despublicarPost("post-1", "artigo-x");
+    const resultado = await despublicarPost(UUID_POST, "artigo-x");
 
-    expect(resultado).toEqual({ sucesso: true, id: "post-1" });
+    expect(resultado).toEqual({ sucesso: true, id: UUID_POST });
     const chamada = falso.chamadas.find((c) => c.tabela === "posts" && c.operacao === "update");
     expect((chamada!.payload as Record<string, unknown>).status).toBe("draft");
     expect(revalidatePath).toHaveBeenCalledWith("/blog/artigo-x");
@@ -248,9 +254,9 @@ describe("excluirPost", () => {
   test("deleta e revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("posts", "delete", { data: null, error: null });
+    falso.programarResposta("posts", "delete", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await excluirPost("post-1", "artigo-x");
+    const resultado = await excluirPost(UUID_POST, "artigo-x");
 
     expect(resultado).toEqual({ sucesso: true });
     const chamada = falso.chamadas.find((c) => c.tabela === "posts" && c.operacao === "delete");
@@ -422,7 +428,7 @@ describe("importarMarkdown", () => {
   test("sucesso insere com slug derivado do título e campos do frontmatter mapeados", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("categories", "select", { data: { id: "cat-1" }, error: null });
+    falso.programarResposta("categories", "select", { data: { id: UUID_CATEGORIA }, error: null });
     falso.programarResposta("posts", "insert", { data: { id: "post-importado" }, error: null });
 
     const conteudo = markdown(
@@ -448,7 +454,119 @@ describe("importarMarkdown", () => {
     expect(payload.seo_title).toBe("Home Equity — SEO");
     expect(payload.seo_description).toBe("Descrição SEO do artigo.");
     expect(payload.cover_image).toBeNull();
-    expect(payload.category_id).toBe("cat-1");
+    expect(payload.category_id).toBe(UUID_CATEGORIA);
     expect(payload.author_id).toBe("user-1");
+  });
+});
+
+describe("permissão de administrador", () => {
+  const acoes: [string, () => Promise<{ sucesso: boolean; erro?: string }>][] = [
+    ["salvarPost", () => salvarPost(postValido())],
+    ["salvarPost (update)", () => salvarPost({ ...postValido(), id: UUID_POST })],
+    ["publicarPost", () => publicarPost(UUID_POST, "artigo-x")],
+    ["despublicarPost", () => despublicarPost(UUID_POST, "artigo-x")],
+    ["excluirPost", () => excluirPost(UUID_POST, "artigo-x")],
+    ["uploadCapa", () => uploadCapa(new FormData())],
+    ["importarMarkdown", () => importarMarkdown(new FormData())],
+  ];
+
+  test.each(acoes)("%s devolve erro de admin para corretor e não escreve", async (_nome, executar) => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "corretor-1" });
+    falso.definirPapel("corretor");
+
+    const resultado = await executar();
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Apenas administradores podem fazer isso." });
+    const escritas = falso.chamadas.filter((c) => c.operacao && c.operacao !== "select");
+    expect(escritas).toEqual([]);
+    expect(falso.chamadasStorage).toEqual([]);
+  });
+
+  test("perfil inexistente também é barrado", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "sem-perfil" });
+    falso.definirPapel(null);
+
+    const resultado = await excluirPost(UUID_POST, "artigo-x");
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Apenas administradores podem fazer isso." });
+  });
+});
+
+describe("integridade", () => {
+  test("id que não é UUID é rejeitado antes de qualquer consulta", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+
+    for (const resultado of [
+      await publicarPost("1; drop table posts", "x"),
+      await despublicarPost("abc", "x"),
+      await excluirPost("abc", "x"),
+      await salvarPost({ ...postValido(), id: "abc" }),
+    ]) {
+      expect(resultado).toEqual({ sucesso: false, erro: "Artigo inválido." });
+    }
+    expect(falso.chamadas.filter((c) => c.tabela === "posts")).toEqual([]);
+  });
+
+  test.each([
+    ["salvarPost", () => salvarPost({ ...postValido(), id: UUID_POST })],
+    ["publicarPost", () => publicarPost(UUID_POST, "x")],
+    ["despublicarPost", () => despublicarPost(UUID_POST, "x")],
+    ["excluirPost", () => excluirPost(UUID_POST, "x")],
+  ])("%s com zero linhas afetadas devolve erro, não sucesso", async (_nome, executar) => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("posts", "select", { data: { slug: "x", published_at: null }, error: null });
+    falso.programarResposta("posts", "update", { data: [], error: null });
+    falso.programarResposta("posts", "delete", { data: [], error: null });
+
+    const resultado = await executar();
+
+    expect(resultado.sucesso).toBe(false);
+    expect(resultado.erro).toMatch(/não encontrado/);
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("salvarPost com slug alterado revalida o slug novo e o antigo", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("posts", "select", SELECT_SLUG_ANTERIOR);
+    falso.programarResposta("posts", "update", { data: [{ id: UUID_POST }], error: null });
+
+    await salvarPost({ ...postValido(), id: UUID_POST });
+
+    expect(revalidatePath).toHaveBeenCalledWith("/blog/como-funciona-o-home-equity");
+    expect(revalidatePath).toHaveBeenCalledWith("/blog/slug-antigo");
+    expect(revalidatePath).toHaveBeenCalledWith("/blog");
+  });
+
+  test("capa usa extensão derivada do MIME, não do nome do arquivo", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    const fd = new FormData();
+    fd.set("arquivo", arquivo("capa.php", "conteudo", "image/png"));
+
+    await uploadCapa(fd);
+
+    const envio = falso.chamadasStorage.find((c) => c.metodo === "upload");
+    expect(envio?.args[0]).toMatch(/^[0-9a-f-]{36}\.png$/);
+  });
+
+  test("importarMarkdown com frontmatter que reprova no schema não insere nem sobe capa", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("categories", "select", { data: { id: UUID_CATEGORIA }, error: null });
+    const md = ["---", 'titulo: "Ab"', 'categoria: "Financiamento"', "---", "Corpo."].join("\n");
+    const fd = new FormData();
+    fd.set("arquivo_md", arquivo("artigo.md", md, "text/markdown"));
+    fd.set("arquivo_capa", arquivo("capa.jpg", "x", "image/jpeg"));
+
+    const resultado = await importarMarkdown(fd);
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Informe um título." });
+    expect(falso.chamadas.some((c) => c.operacao === "insert")).toBe(false);
+    expect(falso.chamadasStorage).toEqual([]);
   });
 });
