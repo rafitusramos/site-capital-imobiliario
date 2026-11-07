@@ -1,10 +1,5 @@
 import type { Metadata } from "next";
-import {
-  Libre_Caslon_Display,
-  Libre_Caslon_Text,
-  Archivo,
-  IBM_Plex_Mono,
-} from "next/font/google";
+import { libreCaslonDisplay, libreCaslonText, archivo, ibmPlexMono } from "@/app/fonts";
 import "../globals.css";
 import "../../styles/lp.css";
 import "../../styles/blog.css";
@@ -17,33 +12,6 @@ import { Tags } from "@/components/analytics/Tags";
 import { CapturaAtribuicao } from "@/components/analytics/CapturaAtribuicao";
 import { BannerConsentimento } from "@/components/consentimento/BannerConsentimento";
 import { AbrirPreferenciasCookies } from "@/components/consentimento/AbrirPreferenciasCookies";
-
-const libreCaslonDisplay = Libre_Caslon_Display({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--display",
-});
-
-const libreCaslonText = Libre_Caslon_Text({
-  subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--texto",
-});
-
-const archivo = Archivo({
-  subsets: ["latin"],
-  // 700 entra por causa do H3 do artigo (styles/blog.css), que é bold. Sem
-  // esse peso carregado o navegador sintetizaria um falso-negrito.
-  weight: ["400", "500", "600", "700"],
-  variable: "--sans",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--mono",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
