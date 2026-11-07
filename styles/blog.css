@@ -98,7 +98,7 @@
 .artigo-secao{background:var(--branco);display:flow-root;}
 .artigo-imagem{margin:28px 0;border-radius:8px;overflow:hidden;background:linear-gradient(135deg,var(--abissal),#123c2e);}
 .artigo-imagem img{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;}
-.artigo-corpo{max-width:720px;margin:0 auto;padding:0 24px;}
+.artigo-corpo{max-width:1080px;margin:0 auto;padding:0 24px;}
 .artigo-meta{margin:36px 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);}
 .artigo-meta .sep{color:#c9bfac;margin:0 8px;}
 /* Tipografia do artigo: Archivo (--sans) em H1, H2, H3 e corpo de texto.

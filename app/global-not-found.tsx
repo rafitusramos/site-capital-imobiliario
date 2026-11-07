@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Libre_Caslon_Display } from "next/font/google";
+import { archivo, libreCaslonDisplay } from "@/app/fonts";
 import Link from "next/link";
 import "./globals.css";
 import "@/styles/lp.css";
@@ -9,18 +9,6 @@ import "@/styles/estado.css";
 // (nem app/(site), nem app/admin). Como o projeto tem dois root layouts, não
 // existe not-found componível único — só duas fontes carregadas aqui, essa
 // tela não merece o peso das quatro do site.
-const libreCaslonDisplay = Libre_Caslon_Display({
-  subsets: ["latin"],
-  weight: "400",
-  variable: "--display",
-});
-
-const archivo = Archivo({
-  subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--sans",
-});
-
 export const metadata: Metadata = {
   title: "Página não encontrada · RT Capital Imobiliário",
 };
