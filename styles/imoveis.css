@@ -161,15 +161,17 @@
 .im-carrossel-slide.ativo{transform:scale(var(--escala-ativa));opacity:1;z-index:2;}
 /* Tablet: ativo ≈ 60% da largura (0,4 × 1,5). */
 @media(min-width:768px){.im-carrossel{--basis:40%;}}
-/* Desktop: a foto ativa mede 40% do max-width do .wrap (432px). Como a escala
+/* Desktop: a foto ativa mede 50% do max-width do .wrap (540px). Como a escala
    também amplia os 8px de padding do slide, a largura sem escala é
-   40% × wrap ÷ escala + 16px (o padding). Vizinhas continuam aparecendo nas
+   50% × wrap ÷ escala + 16px (o padding). Com 1024px de viewport o conteúdo
+   do .wrap tem 976px (24px de padding de cada lado): a ativa (540px) deixa
+   ~218px de cada lado para as vizinhas, então nada é cortado. Vizinhas continuam aparecendo nas
    laterais. Em px absolutos, e não em % do viewport, para não crescer com
    a tela. */
 @media(min-width:1024px){
   .im-carrossel{
-    --basis:calc(var(--wrap-max) * 0.4 / var(--escala-ativa) + 16px);
-    --folga-vertical:calc(var(--wrap-max) * 0.4 / var(--escala-ativa) * 0.1875 + 12px);
+    --basis:calc(var(--wrap-max) * 0.5 / var(--escala-ativa) + 16px);
+    --folga-vertical:calc(var(--wrap-max) * 0.5 / var(--escala-ativa) * 0.1875 + 12px);
   }
 }
 @media(prefers-reduced-motion:reduce){.im-carrossel-slide{transition:none;}}
@@ -217,8 +219,8 @@
   box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
 }
 .im-carrossel-unica img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;}
-/* Desktop: mesma largura da foto ativa do carrossel (40% do .wrap). */
-@media(min-width:1024px){.im-carrossel-unica{max-width:calc(1080px * 0.4);}}
+/* Desktop: mesma largura da foto ativa do carrossel (50% do .wrap). */
+@media(min-width:1024px){.im-carrossel-unica{max-width:calc(1080px * 0.5);}}
 
 /* ---- Legenda sobre a foto ----
    O ambiente cadastrado no admin é impresso NA foto, não abaixo dela: na LP a

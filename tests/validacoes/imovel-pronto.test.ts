@@ -50,6 +50,16 @@ describe("imovelFormSchema — discriminado por modalidade", () => {
     if (parsed.success) expect(parsed.data.modalidade).toBe("lancamento");
   });
 
+  test("capa_origem: default unidade, aceita condominio, rejeita outro valor", () => {
+    const padrao = imovelFormSchema.safeParse(pronto());
+    expect(padrao.success).toBe(true);
+    if (padrao.success && padrao.data.modalidade === "pronto") expect(padrao.data.capa_origem).toBe("unidade");
+    const cond = imovelFormSchema.safeParse(pronto({ capa_origem: "condominio" }));
+    expect(cond.success).toBe(true);
+    if (cond.success && cond.data.modalidade === "pronto") expect(cond.data.capa_origem).toBe("condominio");
+    expect(imovelFormSchema.safeParse(pronto({ capa_origem: "fachada" })).success).toBe(false);
+  });
+
   test("modalidade desconhecida reprova", () => {
     expect(imovelFormSchema.safeParse(pronto({ modalidade: "terreno" })).success).toBe(false);
   });

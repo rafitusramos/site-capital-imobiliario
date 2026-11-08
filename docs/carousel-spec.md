@@ -176,10 +176,12 @@ system e das restrições do repo (ver `CLAUDE.md`):
   legenda encostavam na borda do `overflow:hidden` e eram cortadas. O *peek* vem
   agora da largura do slide (`--basis`), não de padding.
 - **Largura do slide sem escala (`--basis`)**: mobile `52%` do viewport; ≥768px
-  `40%`; ≥1024px `calc(1080px × 0.4 / 1.5 + 16px)` = 304px. A foto ativa mede
+  `40%`; ≥1024px `calc(1080px × 0.5 / 1.5 + 16px)` = 376px. A foto ativa mede
   `1.5 × (basis − 16px)`.
-- **Desktop (≥1024px): a foto ativa mede 40% do max-width do `.wrap`** (1080px,
-  `--wrap-max`, espelho de `lp.css`), ou seja, 432px. O `+ 16px` é o padding de 8px
+- **Desktop (≥1024px): a foto ativa mede 50% do max-width do `.wrap`** (1080px,
+  `--wrap-max`, espelho de `lp.css`), ou seja, 540px. Em viewport de 1024px o
+  conteúdo do `.wrap` tem 976px (padding de 24px), então sobram ~218px de cada
+  lado para as vizinhas aparecerem, sem corte. O `+ 16px` é o padding de 8px
   de cada lado do slide, que também é ampliado pela escala. A foto única
   (`.im-carrossel-unica`) usa a mesma largura nesse breakpoint.
 - **Padding vertical do viewport (`--folga-vertical`)** = quanto a foto cresce com

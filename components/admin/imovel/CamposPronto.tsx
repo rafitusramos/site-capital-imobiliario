@@ -164,6 +164,33 @@ export function CamposPronto({ valores, setCampo }: CamposProps) {
           </span>
         </span>
       </label>
+
+      <fieldset className="mb-4">
+        <legend className={LABEL}>Foto de capa</legend>
+        <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
+          {(
+            [
+              { valor: "unidade", rotulo: "Primeira foto da unidade" },
+              { valor: "condominio", rotulo: "Primeira foto do condomínio" },
+            ] as const
+          ).map((opcao) => (
+            <label key={opcao.valor} className="flex min-h-[44px] items-center gap-2 text-sm text-[var(--abissal)]">
+              <input
+                type="radio"
+                name="capa_origem"
+                value={opcao.valor}
+                checked={valores.capa_origem === opcao.valor}
+                onChange={() => setCampo("capa_origem", opcao.valor)}
+              />
+              {opcao.rotulo}
+            </label>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-neutral-500">
+          Aparece no topo da página, no card da listagem e na prévia ao compartilhar. Se o grupo
+          escolhido não tiver fotos, o site usa o outro.
+        </p>
+      </fieldset>
     </>
   );
 }

@@ -779,6 +779,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
             imagens={imagens}
             onChange={aoMudarGaleria}
             modalidade={imovel.modalidade}
+            capaOrigem={valoresDados.capa_origem}
           />
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-black/10 pt-4">

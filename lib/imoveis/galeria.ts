@@ -1,5 +1,5 @@
 import type { ImagemInput } from "@/lib/validations/imovel";
-import type { ImovelImagemGrupo, ImovelModalidade } from "@/types/database";
+import type { ImovelCapaOrigem, ImovelImagemGrupo, ImovelModalidade } from "@/types/database";
 
 /**
  * Regra de negócio da aba Galeria do editor de imóveis, isolada de React e
@@ -50,13 +50,13 @@ export const GRUPOS_GALERIA_PRONTO: GrupoGaleriaInfo[] = [
   {
     id: "decorado",
     nome: "Fotos da unidade",
-    descricao: "Ambientes do imóvel. A primeira imagem é a capa do site.",
+    descricao: "Ambientes do imóvel. A primeira imagem pode ser a capa do site (campo 'Foto de capa', nos dados gerais).",
     convite: "Envie as fotos dos ambientes do imóvel.",
   },
   {
     id: "empreendimento",
     nome: "Fotos do condomínio",
-    descricao: "Fachada e áreas comuns do condomínio.",
+    descricao: "Fachada e áreas comuns do condomínio. A primeira imagem pode ser a capa do site (campo 'Foto de capa', nos dados gerais).",
     convite: "Envie as fotos da fachada e das áreas comuns do condomínio.",
   },
 ];
@@ -71,14 +71,19 @@ export function gruposDaGaleria(modalidade: ImovelModalidade = "lancamento"): Gr
 // volta, basta reinserir aqui — e fazer a página pública consumir o grupo.
 
 /**
- * Grupo cuja primeira imagem é a capa: fachada no lançamento; foto da unidade
- * no pronto (condomínio se a unidade ainda não tem foto).
+ * Grupo cuja primeira imagem é a capa: fachada no lançamento; no pronto, o
+ * grupo escolhido em `capa_origem` (unidade por padrão), com queda para o outro
+ * quando o escolhido está vazio. Espelha `capaDaPagina` (lib/imoveis/capa.ts).
  */
 export function grupoDaCapa<T extends ImagemInput>(
   grupos: GaleriaAgrupada<T>,
   modalidade: ImovelModalidade = "lancamento",
+  capaOrigem: ImovelCapaOrigem = "unidade",
 ): ImovelImagemGrupo {
-  return modalidade === "pronto" && grupos.decorado.length > 0 ? "decorado" : "empreendimento";
+  if (modalidade !== "pronto") return "empreendimento";
+  const [escolhido, outro]: ImovelImagemGrupo[] =
+    capaOrigem === "condominio" ? ["empreendimento", "decorado"] : ["decorado", "empreendimento"];
+  return grupos[escolhido].length > 0 ? escolhido : outro;
 }
 
 /**
@@ -117,10 +122,11 @@ export function agruparImagens<T extends ImagemInput>(imagens: T[]): GaleriaAgru
 export function achatarGaleria<T extends ImagemInput>(
   grupos: GaleriaAgrupada<T>,
   modalidade: ImovelModalidade = "lancamento",
+  capaOrigem: ImovelCapaOrigem = "unidade",
 ): T[] {
   const achatada: T[] = [];
   const exibidos = gruposDaGaleria(modalidade).map((g) => g.id);
-  const capa = grupoDaCapa(grupos, modalidade);
+  const capa = grupoDaCapa(grupos, modalidade, capaOrigem);
 
   // Grupos fora de GRUPOS_GALERIA (hoje só `implantacao`) não têm seção na tela,
   // mas precisam sair daqui mesmo assim: `salvarImagens` reconcilia a coleção
