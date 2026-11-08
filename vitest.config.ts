@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 const raiz = fileURLToPath(new URL(".", import.meta.url));
 
 export default defineConfig({
+  // tsconfig usa jsx "preserve" (Next compila); sem isto o Vitest não lê .tsx.
+  // Necessário para importar o módulo de página em tests/unidade.
+  oxc: { jsx: { runtime: "automatic" } },
   test: {
     environment: "node",
     include: ["tests/**/*.test.ts"],

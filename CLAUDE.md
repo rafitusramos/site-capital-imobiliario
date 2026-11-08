@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1018 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 1021 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **028**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
@@ -210,6 +210,11 @@ e a mesma rota `/imoveis/<slug>/`: **nenhuma URL nova**, layout por modalidade.
   lançamento a ignora.
 - **Endereço exato só com `exibir_endereco`** (padrão `false`): sem ele, nem o
   texto nem o `q=` do mapa embutido levam o endereço — só bairro e cidade.
+- Imóvel removido ou despublicado (ex.: vendido): `/imoveis/<slug>/` faz redirect
+  permanente (308) para `/imoveis/` — nunca 404. Não é preciso cadastrar redirect
+  por slug. Vale também para slug desconhecido ou malformado; a page e o
+  `generateMetadata` chamam `permanentRedirect`, travado em
+  `tests/unidade/imovel-removido-redirect.test.ts`.
 - **Fase fixa**: pronto sempre tem `fase_id` = fase `pronto`. A action
   `salvarImovel` busca e grava (descartando o que o cliente mandar) e o trigger
   `imoveis_fase_pronto` da 026 garante no banco. A modalidade **não muda**
@@ -506,3 +511,4 @@ Criadas depois, também não podem quebrar (linkadas no rodapé e citadas em
 documento legal): `/politica-de-privacidade/` e `/termos-de-uso/`.
 
 O inventário completo de URLs é o `app/sitemap.ts`.
+Slugs de imóvel (`/imoveis/<slug>/`) são cobertos pela regra de redirect 308 para `/imoveis/` quando o imóvel é removido ou despublicado (ver "Modalidade").
