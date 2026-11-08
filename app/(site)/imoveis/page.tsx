@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { getImoveisPublicados, getTiposEFases } from "@/lib/queries/imoveis";
 import { ImoveisFiltro } from "@/components/imoveis/ImoveisFiltro";
 import { HeroVideo } from "@/components/imoveis/HeroVideo";
+import { montarItemList } from "@/lib/seo/lista";
+import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO, SITE_NOME } from "@/lib/og";
 
 export const revalidate = 3600;
@@ -38,8 +40,20 @@ export default async function ImoveisIndicePage() {
     getTiposEFases(),
   ]);
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      montarBreadcrumb([{ nome: "Imóveis" }]),
+      montarItemList(imoveis.map((imovel) => ({ caminho: `/imoveis/${imovel.slug}/` }))),
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="hero im-hero-home" id="topo">
         <HeroVideo />
         <div className="wrap">

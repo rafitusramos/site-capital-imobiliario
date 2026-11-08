@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/styles/sobre.css";
-import { IMAGEM_OG_PADRAO } from "@/lib/og";
+import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
+import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
 
 const TITULO = "Sobre — Rafael Teixeira · Capital Imobiliário";
 const DESCRICAO =
@@ -20,11 +21,27 @@ export const metadata: Metadata = {
     images: [IMAGEM_OG_PADRAO],
     locale: "pt_BR",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: TITULO,
+    description:
+      "Corretor de imóveis e correspondente bancário especializado em crédito com garantia de imóvel, financiamento SBPE e consórcio.",
+    images: [OG_IMAGEM_PADRAO],
+  },
+};
+
+const breadcrumbJsonLd = {
+  "@context": "https://schema.org",
+  ...montarBreadcrumb([{ nome: "Sobre" }]),
 };
 
 export default function SobrePage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <header className="hero hero-sobre">
         <div className="wrap">
           <div>
