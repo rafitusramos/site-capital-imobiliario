@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1067 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 1068 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **028**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
@@ -234,7 +234,8 @@ e a mesma rota `/imoveis/<slug>/`: **nenhuma URL nova**, layout por modalidade.
   **condomínio**. Ordem da página: vídeo, fotos da unidade, descrição da unidade
   (texto + ficha), fotos do condomínio, o condomínio, localização, lazer,
   diferenciais, CTA, outros imóveis, FAQ. O hero mostra "Valor de venda" e, abaixo,
-  condomínio e IPTU por mês (mesmo com o valor "sob consulta").
+  condomínio e IPTU por mês (mesmo com o valor "sob consulta"). A ficha da descrição
+  **não** repete condomínio nem IPTU (só o hero os mostra).
 - Schema: pronto gera `Offer` simples com `valor_venda` (nunca `AggregateOffer`;
   `valor_a_partir_de` e tipologias são ignorados) e, **além do `Product`**,
   um nó `RealEstateListing` complementar (`montarRealEstateListingSchema`),

@@ -43,9 +43,13 @@ describe("fichaDoPronto", () => {
       "Vagas",
       "Mobiliado",
       "Ano de construção",
-      "Condomínio",
-      "IPTU",
     ]);
+  });
+
+  test("não repete condomínio e IPTU: ficam só no hero (custosMensaisDoPronto)", () => {
+    const rotulos = fichaDoPronto(pronto).map((f) => f.rotulo);
+    expect(rotulos).not.toContain("Condomínio");
+    expect(rotulos).not.toContain("IPTU");
   });
 
   test("formata os valores", () => {
@@ -53,7 +57,7 @@ describe("fichaDoPronto", () => {
     expect(ficha["Área útil"]).toBe("180 m²");
     expect(ficha["Dormitórios"]).toBe("3");
     expect(ficha["Mobiliado"]).toBe("Sim");
-    expect(ficha["Condomínio"]).toMatch(/R\$\s?900/);
+    expect(ficha["Condomínio"]).toBeUndefined();
   });
 
   test("andar 0 é térreo; mobiliado false é Não; null some", () => {

@@ -24,13 +24,14 @@ type FichaPronto = {
   andar: number | null;
   mobiliado: boolean | null;
   ano_construcao: number | null;
-  valor_condominio: number | null;
-  valor_iptu: number | null;
 };
 
 export type ItemFicha = { rotulo: string; valor: string };
 
-/** Ficha técnica da unidade: só o que está preenchido, na ordem de leitura. */
+/**
+ * Ficha técnica da unidade: só o que está preenchido, na ordem de leitura.
+ * Condomínio e IPTU não entram: já aparecem no hero (`custosMensaisDoPronto`).
+ */
 export function fichaDoPronto(imovel: FichaPronto): ItemFicha[] {
   const itens: (ItemFicha | null)[] = [
     imovel.area_util !== null ? { rotulo: "Área útil", valor: `${imovel.area_util} m²` } : null,
@@ -48,10 +49,6 @@ export function fichaDoPronto(imovel: FichaPronto): ItemFicha[] {
     imovel.ano_construcao !== null
       ? { rotulo: "Ano de construção", valor: `${imovel.ano_construcao}` }
       : null,
-    imovel.valor_condominio !== null
-      ? { rotulo: "Condomínio", valor: brl(imovel.valor_condominio) }
-      : null,
-    imovel.valor_iptu !== null ? { rotulo: "IPTU", valor: brl(imovel.valor_iptu) } : null,
   ];
   return itens.filter((item): item is ItemFicha => item !== null);
 }
