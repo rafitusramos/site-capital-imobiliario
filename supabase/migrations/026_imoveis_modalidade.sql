@@ -70,6 +70,7 @@ comment on column public.imoveis.video_data_publicacao is
 create or replace function public.imoveis_fase_pronto()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   if new.modalidade = 'pronto' then
@@ -85,3 +86,6 @@ $$;
 create trigger imoveis_fase_pronto
   before insert or update on public.imoveis
   for each row execute function public.imoveis_fase_pronto();
+
+-- Função de trigger não é chamável pela API (mesmo padrão da 0181).
+revoke execute on function public.imoveis_fase_pronto() from public, anon, authenticated;
