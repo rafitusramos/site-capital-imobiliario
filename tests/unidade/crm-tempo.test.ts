@@ -33,14 +33,14 @@ describe("estadoDaEtapa", () => {
 // A vírgula entre data e hora depende do ICU do Node ("13/07/2026, 14:32"); o regex aceita as duas formas.
 describe("formatarData", () => {
   test("converte UTC para o horário de São Paulo (UTC-3)", () => {
-    expect(formatarData("2026-07-13T17:32:00Z")).toMatch(/^13/07/2026,? 14:32$/);
+    expect(formatarData("2026-07-13T17:32:00Z")).toMatch(/^13\/07\/2026,? 14:32$/);
   });
 
   test("cruza a meia-noite para o dia anterior em São Paulo", () => {
-    expect(formatarData("2026-07-13T01:30:00Z")).toMatch(/^12/07/2026,? 22:30$/);
+    expect(formatarData("2026-07-13T01:30:00Z")).toMatch(/^12\/07\/2026,? 22:30$/);
   });
 
   test("aceita o deslocamento +00:00 que o PostgREST devolve", () => {
-    expect(formatarData("2026-07-13T17:32:00+00:00")).toMatch(/^13/07/2026,? 14:32$/);
+    expect(formatarData("2026-07-13T17:32:00+00:00")).toMatch(/^13\/07\/2026,? 14:32$/);
   });
 });
