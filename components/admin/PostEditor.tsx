@@ -12,6 +12,10 @@ import {
   salvarPost,
   uploadCapa,
 } from "@/app/actions/admin-posts";
+import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
+import { useGuardaAlteracoes } from "@/components/admin/useGuardaAlteracoes";
+import { houveAlteracao } from "@/lib/admin/alteracoes";
+import { useToast } from "@/lib/admin/toast";
 import { slugify } from "@/lib/blog/slugify";
 import type { PostAdmin } from "@/lib/queries/admin-posts";
 import type { Database } from "@/types/database";
@@ -67,8 +71,15 @@ export function PostEditor({
   const [aba, setAba] = useState<"editar" | "preview">("editar");
   const [confirmaSlug, setConfirmaSlug] = useState(false);
   const [enviando, setEnviando] = useState<Enviando>(null);
-  const [erro, setErro] = useState<string | null>(null);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  // Erro de validação do campo slug: fica inline, junto da confirmação. O resto
+  // do feedback (salvo, publicado, falhas de servidor) sai por toast.
+  const [erroSlug, setErroSlug] = useState<string | null>(null);
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
+  const { mostrarToast } = useToast();
+  // Último estado gravado no servidor — o `post` da prop não muda após salvar.
+  const [salvo, setSalvo] = useState<Valores>(valores);
+  const sujo = houveAlteracao(salvo, valores);
+  const { saidaPendente, confirmarSaida, cancelarSaida } = useGuardaAlteracoes(sujo);
 
   function setValor<K extends keyof Valores>(campo: K, valor: Valores[K]) {
     setValores((atual) => ({ ...atual, [campo]: valor }));
@@ -92,15 +103,14 @@ export function PostEditor({
 
   function bloqueadoPorSlug(): boolean {
     if (slugMudouEmPostPublicado && !confirmaSlug) {
-      setErro("Marque a confirmação abaixo antes de salvar a mudança de slug.");
+      setErroSlug("Marque a confirmação abaixo antes de salvar a mudança de slug.");
       return true;
     }
     return false;
   }
 
   async function salvarRascunho() {
-    setErro(null);
-    setMensagem(null);
+    setErroSlug(null);
     if (bloqueadoPorSlug()) return;
 
     setEnviando("rascunho");
@@ -108,34 +118,35 @@ export function PostEditor({
     setEnviando(null);
 
     if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível salvar o artigo.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar o artigo.");
       return;
     }
+    setSalvo(valores);
     if (!post && resultado.id) {
       router.replace(`/admin/posts/${resultado.id}`);
       return;
     }
     router.refresh();
-    setMensagem("Rascunho salvo.");
+    mostrarToast("sucesso", "Rascunho salvo.");
   }
 
   async function publicar() {
-    setErro(null);
-    setMensagem(null);
+    setErroSlug(null);
     if (bloqueadoPorSlug()) return;
 
     setEnviando("publicar");
     const resultadoSalvar = await salvarPost({ ...valores, id: post?.id });
     if (!resultadoSalvar.sucesso || !resultadoSalvar.id) {
       setEnviando(null);
-      setErro(resultadoSalvar.erro ?? "Não foi possível salvar antes de publicar.");
+      mostrarToast("erro", resultadoSalvar.erro ?? "Não foi possível salvar antes de publicar.");
       return;
     }
+    setSalvo(valores);
 
     const resultadoPublicar = await publicarPost(resultadoSalvar.id, valores.slug);
     setEnviando(null);
     if (!resultadoPublicar.sucesso) {
-      setErro(resultadoPublicar.erro ?? "Não foi possível publicar o artigo.");
+      mostrarToast("erro", resultadoPublicar.erro ?? "Não foi possível publicar o artigo.");
       return;
     }
     if (!post) {
@@ -143,49 +154,46 @@ export function PostEditor({
       return;
     }
     router.refresh();
-    setMensagem("Publicado.");
+    mostrarToast("sucesso", "Publicado.");
   }
 
   async function despublicar() {
     if (!post) return;
-    setErro(null);
-    setMensagem(null);
     setEnviando("despublicar");
     const resultado = await despublicarPost(post.id, post.slug);
     setEnviando(null);
     if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível despublicar o artigo.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível despublicar o artigo.");
       return;
     }
     router.refresh();
-    setMensagem("Despublicado — voltou para rascunho.");
+    mostrarToast("sucesso", "Despublicado — voltou para rascunho.");
   }
 
   async function excluir() {
     if (!post) return;
-    if (!confirm(`Excluir "${post.title}"? Essa ação não pode ser desfeita.`)) return;
-    setErro(null);
+    setConfirmandoExcluir(false);
     setEnviando("excluir");
     const resultado = await excluirPost(post.id, post.slug);
     setEnviando(null);
     if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível excluir o artigo.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível excluir o artigo.");
       return;
     }
+    // Excluído: a navegação é por código, que a guarda de alterações não intercepta.
     router.push("/admin/posts");
   }
 
   async function aoSelecionarCapa(e: ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
-    setErro(null);
     setEnviando("capa");
     const formData = new FormData();
     formData.append("arquivo", arquivo);
     const resultado = await uploadCapa(formData);
     setEnviando(null);
     if (!resultado.sucesso || !resultado.url) {
-      setErro(resultado.erro ?? "Não foi possível enviar a imagem.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível enviar a imagem.");
       return;
     }
     setValor("cover_image", resultado.url);
@@ -228,6 +236,11 @@ export function PostEditor({
                 />
                 Entendo que isso quebra a URL indexada e quero mudar assim mesmo.
               </label>
+              {erroSlug ? (
+                <p role="alert" className="mt-2 font-medium">
+                  {erroSlug}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -370,9 +383,6 @@ export function PostEditor({
         </div>
       </div>
 
-      {erro ? <p className="mb-3 text-sm text-[var(--erro)]">{erro}</p> : null}
-      {mensagem ? <p className="mb-3 text-sm text-[var(--jade)]">{mensagem}</p> : null}
-
       <div className="flex flex-wrap gap-3 border-t border-black/10 pt-4">
         <button
           type="button"
@@ -404,13 +414,33 @@ export function PostEditor({
           <button
             type="button"
             disabled={enviando !== null}
-            onClick={excluir}
+            onClick={() => setConfirmandoExcluir(true)}
             className="ml-auto rounded-md px-4 py-2 text-sm font-semibold text-[var(--erro)] transition hover:bg-red-50 disabled:opacity-50"
           >
             {enviando === "excluir" ? "Excluindo…" : "Excluir"}
           </button>
         ) : null}
       </div>
+
+      <ConfirmarAcao
+        aberto={confirmandoExcluir}
+        titulo="Excluir artigo?"
+        descricao={`"${post?.title ?? ""}" será excluído e a URL deixa de existir. Essa ação não pode ser desfeita.`}
+        rotuloConfirmar="Excluir"
+        variante="perigo"
+        onConfirmar={excluir}
+        onCancelar={() => setConfirmandoExcluir(false)}
+      />
+      <ConfirmarAcao
+        aberto={saidaPendente}
+        titulo="Descartar alterações?"
+        descricao="Há alterações não salvas neste artigo. Se sair agora, elas serão perdidas."
+        rotuloConfirmar="Descartar e sair"
+        rotuloCancelar="Continuar editando"
+        variante="perigo"
+        onConfirmar={confirmarSaida}
+        onCancelar={cancelarSaida}
+      />
     </div>
   );
 }

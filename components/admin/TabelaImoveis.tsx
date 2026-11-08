@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
+import { BarraLista, CabecalhoOrdenavel } from "@/components/admin/ControlesLista";
+import { alternarOrdenacao, consultarLista, type ConfigLista, type ConsultaLista } from "@/lib/admin/listas";
+import { useToast } from "@/lib/admin/toast";
 import { despublicarImovel, excluirImovel, publicarImovel } from "@/app/actions/admin-imoveis";
 import type { ImovelAdminResumo } from "@/lib/queries/admin-imoveis";
 import { formatarFase, formatarTipo } from "@/lib/imoveis/formato";
@@ -27,6 +31,51 @@ const ICONE_CLASSE =
   "inline-flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-black/5 disabled:opacity-40 disabled:hover:bg-transparent";
 
 const GRADE = "sm:grid sm:grid-cols-[2fr_1.2fr_1fr_1fr_1fr_auto] sm:items-center sm:gap-4";
+
+type AcaoPendente = { tipo: "publicar" | "despublicar" | "excluir"; imovel: Imovel };
+
+const VERBO = { publicar: "publicar", despublicar: "despublicar", excluir: "excluir" } as const;
+
+const MENSAGEM_OK = {
+  publicar: "Empreendimento publicado.",
+  despublicar: "Empreendimento despublicado — voltou para rascunho.",
+  excluir: "Empreendimento excluído.",
+} as const;
+
+const TEXTOS_CONFIRMACAO = {
+  publicar: {
+    titulo: "Publicar empreendimento?",
+    rotulo: "Publicar",
+    descricao: (nome: string) => `"${nome}" passa a aparecer no site público.`,
+  },
+  despublicar: {
+    titulo: "Despublicar empreendimento?",
+    rotulo: "Despublicar",
+    descricao: (nome: string) => `"${nome}" sai do site público e volta para rascunho.`,
+  },
+  excluir: {
+    titulo: "Excluir empreendimento?",
+    rotulo: "Excluir",
+    descricao: (nome: string) => `"${nome}" será excluído e a URL deixa de existir. Essa ação não pode ser desfeita.`,
+  },
+} as const;
+
+const OPCOES_STATUS = [
+  { valor: "ativo", rotulo: STATUS_LABEL.ativo },
+  { valor: "reservado", rotulo: STATUS_LABEL.reservado },
+  { valor: "vendido", rotulo: STATUS_LABEL.vendido },
+  { valor: "inativo", rotulo: STATUS_LABEL.inativo },
+];
+
+const CONFIG_LISTA: ConfigLista<Imovel> = {
+  textos: (i) => [i.titulo, i.slug],
+  status: (i) => i.status,
+  ordenadores: {
+    titulo: (i) => i.titulo,
+    cidade: (i) => i.cidade,
+    fase: (i) => i.fase?.ordem ?? null,
+  },
+};
 
 function IconeEditar() {
   return (
@@ -84,144 +133,161 @@ function StatusBadge({ status }: { status: string }) {
 
 export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
   const router = useRouter();
+  const { mostrarToast } = useToast();
   const [pendenteId, setPendenteId] = useState<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [acao, setAcao] = useState<AcaoPendente | null>(null);
+  const [consulta, setConsulta] = useState<ConsultaLista>({ busca: "", status: "todos", ordem: null });
 
-  async function aoPublicar(imovel: Imovel) {
-    setErro(null);
+  const visiveis = useMemo(() => consultarLista(imoveis, consulta, CONFIG_LISTA), [imoveis, consulta]);
+
+  async function executar(tipo: AcaoPendente["tipo"], imovel: Imovel) {
+    setAcao(null);
     setPendenteId(imovel.id);
-    const resultado = await publicarImovel(imovel.id, imovel.slug);
+    const resultado =
+      tipo === "publicar"
+        ? await publicarImovel(imovel.id, imovel.slug)
+        : tipo === "despublicar"
+          ? await despublicarImovel(imovel.id, imovel.slug)
+          : await excluirImovel(imovel.id, imovel.slug);
     setPendenteId(null);
     if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível publicar o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? `Não foi possível ${VERBO[tipo]} o empreendimento.`);
       return;
     }
+    mostrarToast("sucesso", MENSAGEM_OK[tipo]);
     router.refresh();
   }
 
-  async function aoDespublicar(imovel: Imovel) {
-    setErro(null);
-    setPendenteId(imovel.id);
-    const resultado = await despublicarImovel(imovel.id, imovel.slug);
-    setPendenteId(null);
-    if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível despublicar o empreendimento.");
-      return;
-    }
-    router.refresh();
-  }
-
-  async function aoExcluir(imovel: Imovel) {
-    if (!confirm(`Excluir "${imovel.titulo}"? Essa ação não pode ser desfeita.`)) return;
-    setErro(null);
-    setPendenteId(imovel.id);
-    const resultado = await excluirImovel(imovel.id, imovel.slug);
-    setPendenteId(null);
-    if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível excluir o empreendimento.");
-      return;
-    }
-    router.refresh();
+  function ordenar(coluna: string) {
+    setConsulta((c) => ({ ...c, ordem: alternarOrdenacao(c.ordem, coluna) }));
   }
 
   if (imoveis.length === 0) {
     return <p className="text-sm text-neutral-500">Nenhum empreendimento ainda.</p>;
   }
 
-  return (
-    <div className="rounded-lg border border-black/10 bg-white">
-      {erro ? (
-        <p className="border-b border-black/10 bg-red-50 px-4 py-2 text-sm text-[var(--erro)]">{erro}</p>
-      ) : null}
+  const textos = acao ? TEXTOS_CONFIRMACAO[acao.tipo] : null;
 
-      <div className={`hidden border-b border-black/10 bg-neutral-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-neutral-500 ${GRADE}`}>
-        <span>Empreendimento</span>
-        <span>Cidade</span>
-        <span>Tipo</span>
-        <span>Fase</span>
-        <span>Status</span>
-        <span>Ações</span>
+  return (
+    <div>
+      <BarraLista
+        rotuloBusca="Buscar empreendimento"
+        placeholderBusca="Nome ou slug"
+        busca={consulta.busca}
+        onBusca={(busca) => setConsulta((c) => ({ ...c, busca }))}
+        status={consulta.status}
+        onStatus={(status) => setConsulta((c) => ({ ...c, status }))}
+        opcoesStatus={OPCOES_STATUS}
+        total={imoveis.length}
+        exibidos={visiveis.length}
+      />
+
+      <div className="rounded-lg border border-black/10 bg-white">
+        <div className={`hidden border-b border-black/10 bg-neutral-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-neutral-500 ${GRADE}`}>
+          <CabecalhoOrdenavel coluna="titulo" rotulo="Empreendimento" ordem={consulta.ordem} onOrdenar={ordenar} />
+          <CabecalhoOrdenavel coluna="cidade" rotulo="Cidade" ordem={consulta.ordem} onOrdenar={ordenar} />
+          <span>Tipo</span>
+          <CabecalhoOrdenavel coluna="fase" rotulo="Fase" ordem={consulta.ordem} onOrdenar={ordenar} />
+          <span>Status</span>
+          <span>Ações</span>
+        </div>
+
+        {visiveis.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-neutral-500">
+            Nenhum empreendimento encontrado com esses filtros.
+          </p>
+        ) : (
+          <ul role="list" className="divide-y divide-black/5">
+            {visiveis.map((imovel) => (
+              <li key={imovel.id} className={`flex flex-col gap-2 p-4 text-sm sm:px-4 sm:py-3 ${GRADE}`}>
+                <div className="min-w-0">
+                  <span className="font-medium text-[var(--abissal)]">{imovel.titulo}</span>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 sm:hidden">
+                    <span>{imovel.cidade ?? "—"}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>{formatarTipo(imovel.tipo)}</span>
+                    <span aria-hidden="true">·</span>
+                    <StatusBadge status={imovel.status} />
+                  </div>
+                </div>
+
+                <span className="hidden text-neutral-600 sm:block">{imovel.cidade ?? "—"}</span>
+                <span className="hidden text-neutral-600 sm:block">{formatarTipo(imovel.tipo)}</span>
+                <span className="hidden text-neutral-600 sm:block">{formatarFase(imovel.fase)}</span>
+                <span className="hidden sm:block">
+                  <StatusBadge status={imovel.status} />
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={`/admin/imoveis/${imovel.id}`}
+                    title="Editar"
+                    aria-label={`Editar empreendimento "${imovel.titulo}"`}
+                    className={`${ICONE_CLASSE} text-[var(--jade)]`}
+                  >
+                    <IconeEditar />
+                  </Link>
+                  {imovel.status === "ativo" ? (
+                    <button
+                      type="button"
+                      title="Despublicar"
+                      aria-label={`Despublicar empreendimento "${imovel.titulo}"`}
+                      disabled={pendenteId === imovel.id}
+                      onClick={() => setAcao({ tipo: "despublicar", imovel })}
+                      className={`${ICONE_CLASSE} text-neutral-600`}
+                    >
+                      <IconeOlhoFechado />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      title="Publicar"
+                      aria-label={`Publicar empreendimento "${imovel.titulo}"`}
+                      disabled={pendenteId === imovel.id}
+                      onClick={() => setAcao({ tipo: "publicar", imovel })}
+                      className={`${ICONE_CLASSE} text-[var(--jade)]`}
+                    >
+                      <IconeOlho />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    title="Excluir"
+                    aria-label={`Excluir empreendimento "${imovel.titulo}"`}
+                    disabled={pendenteId === imovel.id}
+                    onClick={() => setAcao({ tipo: "excluir", imovel })}
+                    className={`${ICONE_CLASSE} text-[var(--erro)]`}
+                  >
+                    <IconeLixeira />
+                  </button>
+                  {imovel.status === "ativo" ? (
+                    <a
+                      href={`/imoveis/${imovel.slug}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Abrir no site"
+                      aria-label={`Abrir empreendimento "${imovel.titulo}" no site (nova aba)`}
+                      className={`${ICONE_CLASSE} text-neutral-600`}
+                    >
+                      <IconeAbrir />
+                    </a>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      <ul role="list" className="divide-y divide-black/5">
-        {imoveis.map((imovel) => (
-          <li key={imovel.id} className={`flex flex-col gap-2 p-4 text-sm sm:px-4 sm:py-3 ${GRADE}`}>
-            <div className="min-w-0">
-              <span className="font-medium text-[var(--abissal)]">{imovel.titulo}</span>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 sm:hidden">
-                <span>{imovel.cidade ?? "—"}</span>
-                <span aria-hidden="true">·</span>
-                <span>{formatarTipo(imovel.tipo)}</span>
-                <span aria-hidden="true">·</span>
-                <StatusBadge status={imovel.status} />
-              </div>
-            </div>
-
-            <span className="hidden text-neutral-600 sm:block">{imovel.cidade ?? "—"}</span>
-            <span className="hidden text-neutral-600 sm:block">{formatarTipo(imovel.tipo)}</span>
-            <span className="hidden text-neutral-600 sm:block">{formatarFase(imovel.fase)}</span>
-            <span className="hidden sm:block">
-              <StatusBadge status={imovel.status} />
-            </span>
-
-            <div className="flex items-center gap-1">
-              <Link
-                href={`/admin/imoveis/${imovel.id}`}
-                title="Editar"
-                aria-label="Editar"
-                className={`${ICONE_CLASSE} text-[var(--jade)]`}
-              >
-                <IconeEditar />
-              </Link>
-              {imovel.status === "ativo" ? (
-                <button
-                  type="button"
-                  title="Despublicar"
-                  aria-label="Despublicar"
-                  disabled={pendenteId === imovel.id}
-                  onClick={() => aoDespublicar(imovel)}
-                  className={`${ICONE_CLASSE} text-neutral-600`}
-                >
-                  <IconeOlhoFechado />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  title="Publicar"
-                  aria-label="Publicar"
-                  disabled={pendenteId === imovel.id}
-                  onClick={() => aoPublicar(imovel)}
-                  className={`${ICONE_CLASSE} text-[var(--jade)]`}
-                >
-                  <IconeOlho />
-                </button>
-              )}
-              <button
-                type="button"
-                title="Excluir"
-                aria-label="Excluir"
-                disabled={pendenteId === imovel.id}
-                onClick={() => aoExcluir(imovel)}
-                className={`${ICONE_CLASSE} text-[var(--erro)]`}
-              >
-                <IconeLixeira />
-              </button>
-              {imovel.status === "ativo" ? (
-                <a
-                  href={`/imoveis/${imovel.slug}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Abrir no site"
-                  aria-label="Abrir no site"
-                  className={`${ICONE_CLASSE} text-neutral-600`}
-                >
-                  <IconeAbrir />
-                </a>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ConfirmarAcao
+        aberto={acao !== null}
+        titulo={textos?.titulo ?? ""}
+        descricao={acao && textos ? textos.descricao(acao.imovel.titulo) : ""}
+        rotuloConfirmar={textos?.rotulo}
+        variante={acao?.tipo === "excluir" ? "perigo" : "padrao"}
+        onConfirmar={() => acao && executar(acao.tipo, acao.imovel)}
+        onCancelar={() => setAcao(null)}
+      />
     </div>
   );
 }
