@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 847 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **024**.
+Suíte em Vitest: `npm test` — 914 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **025**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -61,7 +61,9 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
   (migration 022), **nunca** somadas em JS: o max-rows do PostgREST truncaria em silêncio.
 - `lib/crm/etapas.ts` **espelha** os seeds de `crm_etapas` da migration 014. Os
   dois têm de andar juntos: mudou label, cor, ordem, SLA ou `exige_motivo` numa
-  ponta, refaça na outra.
+  ponta, refaça na outra. **Exceção: `notifica_lead`** (migration 025) é lido do
+  banco em tempo de execução e editado em `/admin/parametros`; **não** entra em
+  `etapas.ts`, e a seed da 025 não precisa ser espelhada lá.
 - Trocar um lead de etapa passa **sempre** pelo RPC `mover_lead_crm`, nunca por
   update solto. É lá que vivem o motivo obrigatório de perdido/não-qualificado
   e a concorrência otimista — e vale igual para o arrastar e para os botões do
@@ -74,6 +76,36 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 - Tags vivem no catálogo compartilhado `crm_tags`, com FK em `lead_tags`: não
   existe tag solta por lead. Criar tag pela interface exige admin (RLS
   `crm_tags_admin_write`).
+
+### E-mails
+Provider **Resend** (`lib/email/`). Variáveis só de servidor (nunca `NEXT_PUBLIC_`),
+documentadas em `.env.local.example`: `RESEND_API_KEY`, `EMAIL_REMETENTE`,
+`EMAIL_ADMIN`. O domínio remetente precisa estar verificado no Resend.
+
+- **Sem `RESEND_API_KEY` é no-op** (`enviar.ts` loga uma vez e devolve
+  `sem-chave`), e o wrapper **nunca lança**: falha vira `console.error` +
+  resultado. E-mail jamais pode derrubar a captação de lead nem o movimento de etapa.
+- Dono recebe e-mail em **todo lead novo** e em **toda mudança de etapa**. O lead
+  recebe confirmação ao entrar e, na mudança de etapa, **só se a etapa destino tem
+  `crm_etapas.notifica_lead = true`** (ligado por etapa em `/admin/parametros`;
+  etapas sem texto em `templates/etapa-lead.ts` ficam desabilitadas lá).
+- Os dois disparos rodam em `after()` (`criarLead`, `moverLead`). `moverLead` lê
+  o status **antes** do RPC `mover_lead_crm` (que segue sendo a única forma de mover);
+  etapa igual à atual não envia nada.
+- **Aviso ao lead é agendado +10 min** (`scheduledAt` do Resend). Qualquer movimento
+  posterior do mesmo lead — inclusive o "desfazer" do quadro, que também chama
+  `moverLead` — **cancela primeiro** os `etapa-lead` ainda `agendado` com horário
+  futuro (`cancelarAgendados`) e só depois agenda o novo. Se o Resend recusar o
+  cancelamento (já enviado), a linha não é marcada `cancelado`.
+- Cada tentativa vira linha em `crm_emails` (migration 025), escrita com a service
+  role (sem policy de escrita para `authenticated`; leitura só `eh_admin()`).
+  `agendado` não vira `enviado` sozinho (sem webhook): compare `agendado_para` com agora.
+- Templates em `lib/email/templates/` são funções puras; todo dado do visitante passa
+  por `escaparHtml`. Copy para o lead nunca promete aprovação de crédito.
+- `TEXTO_CONSENTIMENTO` não muda por causa disto: são e-mails transacionais sobre o
+  pedido da própria pessoa. A regra de só mudá-lo com a CAPI continua valendo.
+- `enviado_whatsapp` em `leads` ficou sem uso (a coluna foi mantida; o stub de
+  WhatsApp foi removido).
 
 ### Imagens de imóveis
 Toda imagem enviada em `/admin` para as 3 galerias e para as plantas da aba
