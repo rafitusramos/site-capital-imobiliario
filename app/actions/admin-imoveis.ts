@@ -7,7 +7,7 @@ import type { createClient } from "@/lib/supabase/server";
 import { aplicarMarcaDagua } from "@/lib/imoveis/marca-dagua";
 import {
   imovelFormSchema,
-  type ImovelFormInput,
+  type ImovelFormEntrada,
   imagensFormSchema,
   type ImagemInput,
   tipologiasFormSchema,
@@ -18,9 +18,7 @@ import {
   type FaqInput,
 } from "@/lib/validations/imovel";
 
-export interface SalvarImovelInput extends ImovelFormInput {
-  id?: string;
-}
+export type SalvarImovelInput = ImovelFormEntrada & { id?: string };
 
 export interface AcaoResultado {
   sucesso: boolean;
@@ -41,6 +39,8 @@ const EXTENSAO_POR_MIME: Record<string, string> = {
 };
 const TIPOS_IMAGEM_PERMITIDOS = new Set(Object.keys(EXTENSAO_POR_MIME));
 const ERRO_ID_INVALIDO = "Empreendimento inválido.";
+const ERRO_MODALIDADE_TROCADA =
+  "A modalidade (lançamento ou pronto) não pode ser alterada depois de criado. Crie outro cadastro.";
 const ERRO_NAO_ENCONTRADO = "Empreendimento não encontrado ou sem permissão para alterá-lo.";
 
 
@@ -119,12 +119,29 @@ export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResult
     return { sucesso: false, erro: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  // Imóvel pronto tem fase fixa. O trigger da migration 026 também força,
+  // mas o servidor define aqui para o payload já sair coerente — e qualquer
+  // fase_id vindo do cliente é descartado.
+  let dadosGravacao: Record<string, unknown> = parsed.data;
+  if (parsed.data.modalidade === "pronto") {
+    const { data: fasePronto, error: erroFase } = await supabase
+      .from("imovel_fases")
+      .select("id")
+      .eq("slug", "pronto")
+      .maybeSingle();
+    if (erroFase || !fasePronto) {
+      console.error("[salvarImovel] fase 'pronto' não encontrada:", erroFase);
+      return { sucesso: false, erro: "A fase 'Pronto' não está cadastrada. Contate o suporte." };
+    }
+    dadosGravacao = { ...parsed.data, fase_id: fasePronto.id };
+  }
+
   if (id) {
     // Slug antigo lido ANTES do update: se mudou, a URL antiga precisa ser
     // revalidada também, senão continua servindo a página em cache.
     const { data: anterior, error: erroAnterior } = await supabase
       .from("imoveis")
-      .select("slug")
+      .select("slug, modalidade")
       .eq("id", id)
       .maybeSingle();
     if (erroAnterior) {
@@ -132,10 +149,15 @@ export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResult
       return { sucesso: false, erro: "Não foi possível salvar o empreendimento." };
     }
     if (!anterior) return { sucesso: false, erro: ERRO_NAO_ENCONTRADO };
+    // Trocar a modalidade deixaria colunas da outra órfãs (faixas x unidade
+    // única) e mudaria o layout de uma URL já indexada.
+    if (anterior.modalidade && anterior.modalidade !== parsed.data.modalidade) {
+      return { sucesso: false, erro: ERRO_MODALIDADE_TROCADA };
+    }
 
     const { data: atualizados, error } = await supabase
       .from("imoveis")
-      .update(parsed.data)
+      .update(dadosGravacao as never)
       .eq("id", id)
       .select("id");
     if (error) {
@@ -159,7 +181,7 @@ export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResult
   // todo empreendimento novo nasceria publicado.
   const { data, error } = await supabase
     .from("imoveis")
-    .insert({ ...parsed.data, status: "inativo" })
+    .insert({ ...dadosGravacao, status: "inativo" } as never)
     .select("id")
     .single();
 

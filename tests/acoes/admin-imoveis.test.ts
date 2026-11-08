@@ -185,6 +185,117 @@ describe("salvarImovel", () => {
   });
 });
 
+describe("salvarImovel — imóvel pronto", () => {
+  const FASE_PRONTO_UUID = "123e4567-e89b-12d3-a456-426614174099";
+
+  function prontoValido(extra: Record<string, unknown> = {}): SalvarImovelInput {
+    return {
+      modalidade: "pronto",
+      titulo: "Casa no Marambaia",
+      slug: "casa-marambaia",
+      tipo_id: TIPO_UUID,
+      fase_id: "",
+      bairro: "",
+      cidade: "",
+      estado: "",
+      endereco: "",
+      cep: "",
+      valor_sob_consulta: false,
+      video_youtube_url: "",
+      video_data_publicacao: "",
+      descricao_breve: "",
+      descricao_completa: "",
+      seo_title: "",
+      seo_description: "",
+      ordem: 0,
+      area_util: 180,
+      area_total: null,
+      dormitorios: 3,
+      suites: null,
+      banheiros: null,
+      vagas: 2,
+      valor_venda: 1250000,
+      valor_condominio: null,
+      valor_iptu: null,
+      nome_condominio: "",
+      andar: null,
+      mobiliado: null,
+      ano_construcao: null,
+      exibir_endereco: false,
+      ...extra,
+    } as SalvarImovelInput;
+  }
+
+  test("grava fase_id da fase 'pronto', mesmo sem o cliente enviar", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("imovel_fases", "select", { data: { id: FASE_PRONTO_UUID }, error: null });
+    falso.programarResposta("imoveis", "insert", { data: { id: "imovel-novo" }, error: null });
+
+    const resultado = await salvarImovel(prontoValido());
+
+    expect(resultado).toEqual({ sucesso: true, id: "imovel-novo" });
+    const fases = falso.chamadas.find((c) => c.tabela === "imovel_fases");
+    expect(fases?.filtros).toContainEqual({ metodo: "eq", args: ["slug", "pronto"] });
+    const insercao = falso.chamadas.find((c) => c.tabela === "imoveis" && c.operacao === "insert");
+    expect(insercao!.payload).toMatchObject({
+      modalidade: "pronto",
+      fase_id: FASE_PRONTO_UUID,
+      status: "inativo",
+      valor_venda: 1250000,
+    });
+  });
+
+  test("ignora um fase_id enviado pelo cliente", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("imovel_fases", "select", { data: { id: FASE_PRONTO_UUID }, error: null });
+    falso.programarResposta("imoveis", "insert", { data: { id: "imovel-novo" }, error: null });
+
+    await salvarImovel(prontoValido({ fase_id: FASE_UUID }));
+
+    const insercao = falso.chamadas.find((c) => c.tabela === "imoveis" && c.operacao === "insert");
+    expect((insercao!.payload as Record<string, unknown>).fase_id).toBe(FASE_PRONTO_UUID);
+  });
+
+  test("sem a fase 'pronto' cadastrada, não grava nada", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("imovel_fases", "select", { data: null, error: null });
+
+    const resultado = await salvarImovel(prontoValido());
+
+    expect(resultado.sucesso).toBe(false);
+    expect(falso.chamadas.some((c) => c.tabela === "imoveis")).toBe(false);
+  });
+
+  test("lançamento não consulta imovel_fases", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("imoveis", "insert", { data: { id: "imovel-novo" }, error: null });
+
+    await salvarImovel(imovelValido());
+
+    expect(falso.chamadas.some((c) => c.tabela === "imovel_fases")).toBe(false);
+  });
+
+  test("não deixa trocar a modalidade de um imóvel existente", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("imovel_fases", "select", { data: { id: FASE_PRONTO_UUID }, error: null });
+    falso.programarResposta("imoveis", "select", {
+      data: { slug: "casa-marambaia", modalidade: "lancamento" },
+      error: null,
+    });
+
+    const resultado = await salvarImovel({ ...prontoValido(), id: UUID_IMOVEL_EXISTENTE });
+
+    expect(resultado.sucesso).toBe(false);
+    expect(resultado.erro).toMatch(/modalidade/i);
+    expect(falso.chamadas.some((c) => c.operacao === "update")).toBe(false);
+  });
+});
+
 describe("publicarImovel", () => {
   test("grava status ativo e revalida", async () => {
     const falso = montarSupabase();

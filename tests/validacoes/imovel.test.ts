@@ -105,31 +105,31 @@ describe("imovelFormSchema", () => {
     test("string vazia vira null", () => {
       const parsed = imovelFormSchema.safeParse({ ...base(), area_min: "" });
       expect(parsed.success).toBe(true);
-      if (parsed.success) expect(parsed.data.area_min).toBeNull();
+      if (parsed.success) expect((parsed.data as { area_min: number | null }).area_min).toBeNull();
     });
 
     test("undefined vira null", () => {
       const parsed = imovelFormSchema.safeParse({ ...base(), area_min: undefined });
       expect(parsed.success).toBe(true);
-      if (parsed.success) expect(parsed.data.area_min).toBeNull();
+      if (parsed.success) expect((parsed.data as { area_min: number | null }).area_min).toBeNull();
     });
 
     test("null permanece null", () => {
       const parsed = imovelFormSchema.safeParse({ ...base(), area_min: null });
       expect(parsed.success).toBe(true);
-      if (parsed.success) expect(parsed.data.area_min).toBeNull();
+      if (parsed.success) expect((parsed.data as { area_min: number | null }).area_min).toBeNull();
     });
 
     test("NaN vira null", () => {
       const parsed = imovelFormSchema.safeParse({ ...base(), area_min: NaN });
       expect(parsed.success).toBe(true);
-      if (parsed.success) expect(parsed.data.area_min).toBeNull();
+      if (parsed.success) expect((parsed.data as { area_min: number | null }).area_min).toBeNull();
     });
 
     test("número válido é mantido", () => {
       const parsed = imovelFormSchema.safeParse({ ...base(), area_min: 68 });
       expect(parsed.success).toBe(true);
-      if (parsed.success) expect(parsed.data.area_min).toBe(68);
+      if (parsed.success) expect((parsed.data as { area_min: number | null }).area_min).toBe(68);
     });
   });
 
@@ -145,7 +145,7 @@ describe("imovelFormSchema", () => {
     test("inteiro válido é mantido", () => {
       const parsed = imovelFormSchema.safeParse({ ...base(), dormitorios_min: 3 });
       expect(parsed.success).toBe(true);
-      if (parsed.success) expect(parsed.data.dormitorios_min).toBe(3);
+      if (parsed.success) expect((parsed.data as { dormitorios_min: number | null }).dormitorios_min).toBe(3);
     });
   });
 
