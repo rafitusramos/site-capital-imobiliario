@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 755 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 758 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
 no SQL Editor do Supabase; a última é a **021**.
 
@@ -256,6 +256,7 @@ Financiamento, Home Equity, Consórcio, Imóveis.
   (`lib/blog/json-ld.ts`), travado em `tests/unidade/blog-json-ld.test.ts`.
   Toda URL que pode vir absoluta ou relativa passa por `urlAbsoluta`
   (`lib/og.ts`), nunca por concatenação com `SITE_URL`.
+- Formatar data em qualquer componente que renderiza no servidor exige `timeZone: "America/Sao_Paulo"` (o servidor é UTC): use `formatarData` de `lib/crm/tempo.ts`. Sem isso o texto do SSR difere do hidratado e dá React #418 — foi o caso de `/admin/parametros`.
 - Build no Windows falhando com `spawn UNKNOWN` na geração de páginas: é
   processo `node` órfão. Encerre os `node` pendentes e apague `.next`.
 - Data que **volta do banco** não passa em `z.string().datetime()`: o PostgREST

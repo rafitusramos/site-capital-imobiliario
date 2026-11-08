@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { salvarParametros } from "@/app/actions/admin-parametros";
+import { formatarAtualizacao } from "@/lib/parametros/atualizacao";
 
 type Valores = {
   financiamentoTaxaAnual: number;
@@ -12,14 +13,6 @@ type Valores = {
 const CAMPO =
   "mb-1 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
 const LABEL = "mb-1 block text-sm font-medium text-[var(--abissal)]";
-
-function formatarData(iso: string | null): string {
-  if (!iso) return "nunca editado — valor de fábrica";
-  return new Date(iso).toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
 
 export function ParametrosForm({
   valoresIniciais,
@@ -112,7 +105,7 @@ export function ParametrosForm({
       </div>
 
       <p className="mb-4 text-xs text-neutral-500">
-        Última atualização: {formatarData(atualizadoEm)}
+        Última atualização: {formatarAtualizacao(atualizadoEm)}
         {atualizadoPorNome ? ` · por ${atualizadoPorNome}` : ""}
       </p>
 
