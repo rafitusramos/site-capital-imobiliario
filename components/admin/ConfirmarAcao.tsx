@@ -57,6 +57,14 @@ export function ConfirmarAcao({
 }: ConfirmarAcaoProps) {
   const painelRef = useRef<HTMLDivElement>(null);
   const ultimoFocoRef = useRef<HTMLElement | null>(null);
+  // onCancelar costuma chegar como arrow inline (identidade nova a cada
+  // render). Se entrasse nas dependências do efeito abaixo, cada tecla digitada
+  // num campo de `children` re-rodaria o efeito e puxaria o foco de volta para
+  // o botão de fechar. A ref mantém o efeito dependente só de `aberto`.
+  const onCancelarRef = useRef(onCancelar);
+  useEffect(() => {
+    onCancelarRef.current = onCancelar;
+  });
 
   useEffect(() => {
     if (!aberto) return;
@@ -67,7 +75,7 @@ export function ConfirmarAcao({
     function aoTeclar(e: KeyboardEvent) {
       if (e.key === "Escape") {
         e.preventDefault();
-        onCancelar();
+        onCancelarRef.current();
         return;
       }
       if (e.key !== "Tab" || !painelRef.current) return;
@@ -88,7 +96,7 @@ export function ConfirmarAcao({
       document.removeEventListener("keydown", aoTeclar);
       ultimoFocoRef.current?.focus();
     };
-  }, [aberto, onCancelar]);
+  }, [aberto]);
 
   if (!aberto) return null;
 

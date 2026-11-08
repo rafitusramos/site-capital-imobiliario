@@ -81,7 +81,7 @@ export function CorpoModalLead({ detalhe, dominios, leadId, executarAcao, onMuda
 
       <div>
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-neutral-500">Linha do tempo</h3>
-        <LinhaDoTempo itens={detalhe.timeline} />
+        <LinhaDoTempo itens={detalhe.timeline} usuario={detalhe.usuario} executarAcao={executarAcao} />
       </div>
     </div>
   );

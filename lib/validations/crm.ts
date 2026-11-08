@@ -265,6 +265,19 @@ export const novaInteracaoSchema = z.object({
   lembrete: lembreteNovoSchema.optional(),
 });
 
+export const editarInteracaoSchema = z.object({
+  interacaoId: z.string().uuid(),
+  conteudo: novaInteracaoSchema.shape.conteudo,
+});
+
+// Motivo da exclusão definitiva (docs/crm-spec.md §3.5): evidência de LGPD em
+// `crm_exclusoes.motivo`, por isso obrigatório e com mínimo — "x" não é motivo.
+export const motivoExclusaoSchema = z
+  .string({ error: "Informe o motivo da exclusão." })
+  .trim()
+  .min(5, "Informe o motivo da exclusão (mínimo 5 caracteres).")
+  .max(500, "Motivo longo demais (máx. 500 caracteres).");
+
 // ---- Tags ----
 
 export const definirTagsSchema = z.object({

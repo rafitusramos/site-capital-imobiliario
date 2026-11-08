@@ -185,9 +185,26 @@ export async function getLead(id: string): Promise<LeadDetalhado | null> {
   return { lead, detalhe, tags: (tagsLinhas ?? []).map((linha) => linha.tag_slug) };
 }
 
+export type UsuarioCRM = { id: string | null; souAdmin: boolean };
+
+/**
+ * Quem está olhando e se é admin. Só decide o que MOSTRAR (botão de exportar,
+ * editar/apagar interação): a autoridade continua sendo a action + a RLS
+ * (migration 024) — esconder botão não é controle de acesso.
+ */
+export async function getUsuarioCRM(): Promise<UsuarioCRM> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { id: null, souAdmin: false };
+  const { data: perfil } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  return { id: user.id, souAdmin: perfil?.role === "admin" };
+}
+
 export type LinhaTimelineCRM = Database["public"]["Views"]["vw_crm_timeline"]["Row"];
 
-/** Linha do tempo unificada (interações + transições de etapa), mais recente primeiro. Sob demanda — nunca junto do quadro (docs/crm-spec.md §3.2). */
+/** Linha do tempo unificada (interações, transições de etapa e lembretes), mais recente primeiro. Sob demanda — nunca junto do quadro (docs/crm-spec.md §3.2). */
 export async function getTimeline(leadId: string): Promise<LinhaTimelineCRM[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

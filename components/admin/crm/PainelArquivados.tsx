@@ -14,6 +14,8 @@ const BOTAO_SECUNDARIO =
   "rounded-md border border-neutral-300 px-3 py-1.5 text-xs font-medium text-neutral-600 transition hover:border-[var(--abissal)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)] disabled:opacity-50";
 const BOTAO_PERIGO =
   "rounded-md border border-[var(--erro)] px-3 py-1.5 text-xs font-medium text-[var(--erro)] transition hover:bg-[var(--erro)]/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--erro)] disabled:opacity-50";
+// Espelha motivoExclusaoSchema (lib/validations/crm.ts); a action é quem decide de verdade.
+const MOTIVO_MIN = 5;
 const CAMPO =
   "w-full rounded-md border border-neutral-300 px-2.5 py-1.5 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
 
@@ -48,6 +50,7 @@ export function PainelArquivados({ arquivados, souAdmin }: PainelArquivadosProps
   const [restaurandoId, setRestaurandoId] = useState<string | null>(null);
   const [alvoExclusao, setAlvoExclusao] = useState<LeadArquivado | null>(null);
   const [protocoloDigitado, setProtocoloDigitado] = useState("");
+  const [motivoDigitado, setMotivoDigitado] = useState("");
   const [excluindo, setExcluindo] = useState(false);
 
   async function restaurar(id: string) {
@@ -65,12 +68,13 @@ export function PainelArquivados({ arquivados, souAdmin }: PainelArquivadosProps
   function abrirExclusao(lead: LeadArquivado) {
     setAlvoExclusao(lead);
     setProtocoloDigitado("");
+    setMotivoDigitado("");
   }
 
   async function confirmarExclusao() {
     if (!alvoExclusao) return;
     setExcluindo(true);
-    const resultado = await excluirLead(alvoExclusao.id);
+    const resultado = await excluirLead(alvoExclusao.id, motivoDigitado.trim());
     setExcluindo(false);
     if (!resultado.sucesso) {
       mostrarToast("erro", resultado.erro ?? "Não foi possível excluir o lead.");
@@ -140,14 +144,27 @@ export function PainelArquivados({ arquivados, souAdmin }: PainelArquivadosProps
       <ConfirmarAcao
         aberto={alvoExclusao !== null}
         titulo="Excluir lead definitivamente"
-        descricao={`Isso apaga "${alvoExclusao?.nome}" e todo o histórico (interações, lembretes, transições de etapa) para sempre — não é possível desfazer. Para confirmar, digite o protocolo ${alvoExclusao?.protocolo ?? ""}.`}
+        descricao={`Isso apaga "${alvoExclusao?.nome}" e todo o histórico (interações, lembretes, transições de etapa) para sempre — não é possível desfazer. Informe o motivo (fica registrado como evidência de LGPD) e, para confirmar, digite o protocolo ${alvoExclusao?.protocolo ?? ""}.`}
         rotuloConfirmar="Excluir definitivamente"
         variante="perigo"
         pendente={excluindo}
-        confirmarDesabilitado={protocoloDigitado.trim() !== alvoExclusao?.protocolo}
+        confirmarDesabilitado={protocoloDigitado.trim() !== alvoExclusao?.protocolo || motivoDigitado.trim().length < MOTIVO_MIN}
         onConfirmar={confirmarExclusao}
         onCancelar={() => setAlvoExclusao(null)}
       >
+        <label className="mb-1 block text-sm font-medium text-[var(--abissal)]" htmlFor="motivo-exclusao">
+          Motivo da exclusão
+        </label>
+        <textarea
+          id="motivo-exclusao"
+          rows={2}
+          maxLength={500}
+          value={motivoDigitado}
+          onChange={(e) => setMotivoDigitado(e.target.value)}
+          placeholder="Ex.: pedido de eliminação do titular (LGPD)"
+          className={`${CAMPO} mb-1`}
+        />
+        <p className="mb-3 text-xs text-neutral-500">Mínimo de {MOTIVO_MIN} caracteres.</p>
         <label className="mb-1 block text-sm font-medium text-[var(--abissal)]" htmlFor="confirmar-protocolo">
           Protocolo
         </label>
