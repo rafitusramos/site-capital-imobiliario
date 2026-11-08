@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import {
   getImovelBySlug,
   getImoveisPublicados,
@@ -39,6 +39,10 @@ import { SITE_URL } from "@/lib/site";
 import { imagemOg, SITE_NOME } from "@/lib/og";
 
 export const revalidate = 3600;
+
+// `dynamicParams` fica no padrão (true): slug fora de generateStaticParams
+// também chega aqui e cai no redirect.
+const DESTINO_IMOVEL_AUSENTE = "/imoveis/";
 
 type PaginaImovelProps = {
   params: Promise<{ slug: string }>;
@@ -278,7 +282,9 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: PaginaImovelProps): Promise<Metadata> {
   const { slug } = await params;
   const imovel = await getImovelBySlug(slug);
-  if (!imovel) return {};
+  // Removido/despublicado (ex.: vendido): mesmo destino da página, para o
+  // 308 não ser precedido por um 404 vindo dos metadados.
+  if (!imovel) permanentRedirect(DESTINO_IMOVEL_AUSENTE);
 
   // `seo_title`/`seo_description` mandam quando existem; sem elas o texto é
   // montado do cadastro em vez de cair no título cru (ou em description
@@ -313,7 +319,8 @@ export async function generateMetadata({ params }: PaginaImovelProps): Promise<M
 export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const { slug } = await params;
   const imovel = await getImovelBySlug(slug);
-  if (!imovel) notFound();
+  // 308 para a listagem, nunca 404: preserva links e ranking de imóvel vendido.
+  if (!imovel) permanentRedirect(DESTINO_IMOVEL_AUSENTE);
 
   const relacionados = imovel.cidade
     ? await getImoveisRelacionados(imovel.id, imovel.cidade, 3)
