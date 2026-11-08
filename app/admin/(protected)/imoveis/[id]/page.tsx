@@ -19,7 +19,7 @@ export default async function EditarImovelPage({ params }: PaginaEditarImovelPro
   return (
     <div>
       <h1 className="mb-6 text-lg font-semibold text-[var(--abissal)]">Editar empreendimento</h1>
-      <ImovelEditor imovel={imovel} tipos={tipos} fases={fases} />
+      <ImovelEditor imovel={imovel} modalidade={imovel.modalidade} tipos={tipos} fases={fases} />
     </div>
   );
 }

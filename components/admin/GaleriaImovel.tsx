@@ -87,6 +87,8 @@ function localizarGrupo(
 export type GaleriaImovelProps = {
   imagens: ImagemInput[];
   onChange: (imagens: ImagemInput[]) => void;
+  /** Seções exibidas. Imagens dos grupos omitidos continuam na lista e são salvas junto. */
+  grupos?: ImovelImagemGrupo[];
 };
 
 /**
@@ -96,7 +98,7 @@ export type GaleriaImovelProps = {
  * "agrupada" da galeria — a fonte da verdade para `ordem`/`destaque`
  * continua sendo `achatarGaleria`, repassada ao pai a cada mudança.
  */
-export function GaleriaImovel({ imagens, onChange }: GaleriaImovelProps) {
+export function GaleriaImovel({ imagens, onChange, grupos: gruposVisiveis }: GaleriaImovelProps) {
   const [grupos, setGrupos] = useState<GaleriaAgrupada<ImagemComChave>>(() =>
     agruparImagens(imagens.map(comChaveLocal)),
   );
@@ -310,7 +312,7 @@ export function GaleriaImovel({ imagens, onChange }: GaleriaImovelProps) {
         onDragCancel={() => setItemAtivo(null)}
       >
         <div className="space-y-8">
-          {GRUPOS_GALERIA.map((grupoInfo) => (
+          {GRUPOS_GALERIA.filter((g) => !gruposVisiveis || gruposVisiveis.includes(g.id)).map((grupoInfo) => (
             <SecaoGrupo
               key={grupoInfo.id}
               grupoInfo={grupoInfo}

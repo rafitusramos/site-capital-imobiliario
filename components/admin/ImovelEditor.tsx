@@ -16,12 +16,23 @@ import {
   type SalvarImovelInput,
 } from "@/app/actions/admin-imoveis";
 import { slugify } from "@/lib/blog/slugify";
-import { mascaraMoeda } from "@/lib/mascaras";
+import {
+  montarPayloadImovel,
+  paraInteiro,
+  paraMoedaOuNull,
+  paraNumeroOuNull,
+  moedaParaCampo,
+  valoresIniciaisDados,
+  type ValoresDados,
+} from "@/lib/imoveis/formulario";
+import { CamposLancamento } from "@/components/admin/imovel/CamposLancamento";
+import { CamposPronto } from "@/components/admin/imovel/CamposPronto";
+import { CAMPO, LABEL } from "@/components/admin/imovel/camposComuns";
 import { prepararImagem } from "@/lib/imoveis/redimensionar";
 import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
 import type { ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/lib/validations/imovel";
-import type { ImovelDiferencialGrupo } from "@/types/database";
+import type { ImovelDiferencialGrupo, ImovelModalidade } from "@/types/database";
 import { listaDeIcones, obterIcone } from "@/components/imoveis/icones";
 import { GaleriaImovel } from "@/components/admin/GaleriaImovel";
 import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
@@ -29,17 +40,17 @@ import { useGuardaAlteracoes } from "@/components/admin/useGuardaAlteracoes";
 import { houveAlteracao } from "@/lib/admin/alteracoes";
 import { useToast } from "@/lib/admin/toast";
 
-const CAMPO =
-  "mb-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
 const CAMPO_INLINE =
   "w-full rounded-md border border-neutral-300 px-2 py-1.5 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
-const LABEL = "mb-1 block text-sm font-medium text-[var(--abissal)]";
 const BOTAO_SECUNDARIO =
   "rounded-md border border-neutral-300 px-4 py-2 text-sm font-semibold text-[var(--abissal)] transition hover:border-[var(--abissal)] disabled:opacity-50";
 const BOTAO_PRIMARIO =
   "rounded-md bg-[var(--jade)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#175840] disabled:opacity-50";
 
 type AbaId = "dados" | "galeria" | "tipologias" | "diferenciais" | "faq";
+
+// Imóvel pronto é uma unidade só: não tem tipologias.
+const ABAS_PRONTO: AbaId[] = ["dados", "galeria", "diferenciais", "faq"];
 
 const ABAS: { id: AbaId; label: string }[] = [
   { id: "dados", label: "Dados gerais" },
@@ -49,127 +60,24 @@ const ABAS: { id: AbaId; label: string }[] = [
   { id: "faq", label: "FAQ" },
 ];
 
-function paraNumeroOuNull(valor: string): number | null {
-  const t = valor.trim();
-  if (t === "") return null;
-  const n = Number(t.replace(",", "."));
-  return Number.isNaN(n) ? null : n;
-}
-
-/**
- * Campos monetários do cadastro. Diferente de `paraNumeroOuNull`, lê só os
- * dígitos — assim o texto mascarado ("R$ 445.000") volta a ser 445000 — e
- * devolve null quando não sobra dígito nenhum (campo apagado), em vez de 0.
- */
-function paraMoedaOuNull(valor: string): number | null {
-  const digitos = valor.replace(/\D/g, "");
-  return digitos === "" ? null : Number(digitos);
-}
-
-/** Número do banco -> texto mascarado do input. Os preços aqui são reais inteiros. */
-function moedaParaCampo(valor: number | null | undefined): string {
-  if (valor === null || valor === undefined) return "";
-  return mascaraMoeda(String(Math.round(valor)));
-}
-
-function paraInteiro(valor: string, padrao = 0): number {
-  const n = parseInt(valor, 10);
-  return Number.isNaN(n) ? padrao : n;
-}
-
 /** Gera um id temporário só para `key` do React em linhas ainda não salvas. */
 function idTemporario(): string {
   return `tmp-${Math.random().toString(36).slice(2)}`;
 }
 
-type ValoresDados = {
-  titulo: string;
-  slug: string;
-  tipo_id: string;
-  fase_id: string;
-  bairro: string;
-  cidade: string;
-  estado: string;
-  endereco: string;
-  cep: string;
-  area_min: string;
-  area_max: string;
-  dormitorios_min: string;
-  dormitorios_max: string;
-  banheiros_min: string;
-  banheiros_max: string;
-  vagas_min: string;
-  vagas_max: string;
-  valor_a_partir_de: string;
-  valor_sob_consulta: boolean;
-  previsao_entrega: string;
-  video_youtube_url: string;
-  construtora: string;
-  construtora_logo_url: string;
-  descricao_breve: string;
-  descricao_completa: string;
-  descricao_unidades: string;
-  seo_title: string;
-  seo_description: string;
-  ordem: string;
-};
-
-/**
- * Empreendimento novo (imovel === null) nasce com tipo "Apartamento" e fase
- * "Lançamento" pré-selecionados, quando essas opções existem — o mesmo
- * default de antes da normalização em tabela. Se a opção não existir mais
- * (desativada), cai para a primeira da lista.
- */
-function idPadrao(opcoes: { id: string; slug: string }[], slugPreferido: string): string {
-  return opcoes.find((opcao) => opcao.slug === slugPreferido)?.id ?? opcoes[0]?.id ?? "";
-}
-
-function valoresIniciaisDados(
-  imovel: ImovelComColecoesAdmin | null,
-  tipos: ImovelTipoOpcao[],
-  fases: ImovelFaseOpcao[],
-): ValoresDados {
-  return {
-    titulo: imovel?.titulo ?? "",
-    slug: imovel?.slug ?? "",
-    tipo_id: imovel?.tipo_id ?? idPadrao(tipos, "apartamento"),
-    fase_id: imovel?.fase_id ?? idPadrao(fases, "lancamento"),
-    bairro: imovel?.bairro ?? "",
-    cidade: imovel?.cidade ?? "",
-    estado: imovel?.estado ?? "",
-    endereco: imovel?.endereco ?? "",
-    cep: imovel?.cep ?? "",
-    area_min: imovel?.area_min?.toString() ?? "",
-    area_max: imovel?.area_max?.toString() ?? "",
-    dormitorios_min: imovel?.dormitorios_min?.toString() ?? "",
-    dormitorios_max: imovel?.dormitorios_max?.toString() ?? "",
-    banheiros_min: imovel?.banheiros_min?.toString() ?? "",
-    banheiros_max: imovel?.banheiros_max?.toString() ?? "",
-    vagas_min: imovel?.vagas_min?.toString() ?? "",
-    vagas_max: imovel?.vagas_max?.toString() ?? "",
-    valor_a_partir_de: moedaParaCampo(imovel?.valor_a_partir_de),
-    valor_sob_consulta: imovel?.valor_sob_consulta ?? false,
-    previsao_entrega: imovel?.previsao_entrega ?? "",
-    video_youtube_url: imovel?.video_youtube_url ?? "",
-    construtora: imovel?.construtora ?? "",
-    construtora_logo_url: imovel?.construtora_logo_url ?? "",
-    descricao_breve: imovel?.descricao_breve ?? "",
-    descricao_completa: imovel?.descricao_completa ?? "",
-    descricao_unidades: imovel?.descricao_unidades ?? "",
-    seo_title: imovel?.seo_title ?? "",
-    seo_description: imovel?.seo_description ?? "",
-    ordem: imovel?.ordem?.toString() ?? "0",
-  };
-}
-
 type ImovelEditorProps = {
   imovel: ImovelComColecoesAdmin | null;
+  /** Imóvel existente manda; em cadastro novo vem da escolha em /admin/imoveis/novo. */
+  modalidade: ImovelModalidade;
   tipos: ImovelTipoOpcao[];
   fases: ImovelFaseOpcao[];
 };
 
-export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
+export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fases }: ImovelEditorProps) {
   const router = useRouter();
+  const modalidade: ImovelModalidade = imovel?.modalidade ?? modalidadeInicial;
+  const pronto = modalidade === "pronto";
+  const abasVisiveis = pronto ? ABAS.filter((item) => ABAS_PRONTO.includes(item.id)) : ABAS;
   const [aba, setAba] = useState<AbaId>("dados");
 
   // -----------------------------------------------------------------
@@ -218,38 +126,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   }
 
   function montarPayloadDados(): SalvarImovelInput {
-    return {
-      id: imovel?.id,
-      titulo: valoresDados.titulo,
-      slug: valoresDados.slug,
-      tipo_id: valoresDados.tipo_id,
-      fase_id: valoresDados.fase_id,
-      bairro: valoresDados.bairro,
-      cidade: valoresDados.cidade,
-      estado: valoresDados.estado,
-      endereco: valoresDados.endereco,
-      cep: valoresDados.cep,
-      area_min: paraNumeroOuNull(valoresDados.area_min),
-      area_max: paraNumeroOuNull(valoresDados.area_max),
-      dormitorios_min: paraNumeroOuNull(valoresDados.dormitorios_min),
-      dormitorios_max: paraNumeroOuNull(valoresDados.dormitorios_max),
-      banheiros_min: paraNumeroOuNull(valoresDados.banheiros_min),
-      banheiros_max: paraNumeroOuNull(valoresDados.banheiros_max),
-      vagas_min: paraNumeroOuNull(valoresDados.vagas_min),
-      vagas_max: paraNumeroOuNull(valoresDados.vagas_max),
-      valor_a_partir_de: paraMoedaOuNull(valoresDados.valor_a_partir_de),
-      valor_sob_consulta: valoresDados.valor_sob_consulta,
-      previsao_entrega: valoresDados.previsao_entrega,
-      video_youtube_url: valoresDados.video_youtube_url,
-      construtora: valoresDados.construtora,
-      construtora_logo_url: valoresDados.construtora_logo_url,
-      descricao_breve: valoresDados.descricao_breve,
-      descricao_completa: valoresDados.descricao_completa,
-      descricao_unidades: valoresDados.descricao_unidades,
-      seo_title: valoresDados.seo_title,
-      seo_description: valoresDados.seo_description,
-      ordem: paraInteiro(valoresDados.ordem, 0),
-    };
+    return montarPayloadImovel(valoresDados, modalidade, imovel?.id);
   }
 
   async function salvarDados() {
@@ -560,7 +437,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
       </Link>
 
       <div className="mb-6 flex flex-wrap gap-2 border-b border-black/10">
-        {ABAS.map((item) => (
+        {abasVisiveis.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -630,6 +507,14 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                     ))}
                   </select>
                 </div>
+                {pronto ? (
+                  <div>
+                    <span className={LABEL}>Fase</span>
+                    <p className="mb-4 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+                      Pronto (definida automaticamente)
+                    </p>
+                  </div>
+                ) : (
                 <div>
                   <label className={LABEL} htmlFor="fase">
                     Fase
@@ -647,6 +532,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                     ))}
                   </select>
                 </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -705,114 +591,11 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                 className={CAMPO}
               />
 
-              <label className={LABEL}>Faixa de área (m²)</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  aria-label="Área mínima"
-                  placeholder="mín."
-                  value={valoresDados.area_min}
-                  onChange={(e) => setCampoDados("area_min", e.target.value)}
-                  className={CAMPO}
-                />
-                <input
-                  aria-label="Área máxima"
-                  placeholder="máx."
-                  value={valoresDados.area_max}
-                  onChange={(e) => setCampoDados("area_max", e.target.value)}
-                  className={CAMPO}
-                />
-              </div>
-
-              <label className={LABEL}>Faixa de dormitórios</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  aria-label="Dormitórios mínimo"
-                  placeholder="mín."
-                  value={valoresDados.dormitorios_min}
-                  onChange={(e) => setCampoDados("dormitorios_min", e.target.value)}
-                  className={CAMPO}
-                />
-                <input
-                  aria-label="Dormitórios máximo"
-                  placeholder="máx."
-                  value={valoresDados.dormitorios_max}
-                  onChange={(e) => setCampoDados("dormitorios_max", e.target.value)}
-                  className={CAMPO}
-                />
-              </div>
-
-              <label className={LABEL}>Faixa de banheiros</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  aria-label="Banheiros mínimo"
-                  placeholder="mín."
-                  value={valoresDados.banheiros_min}
-                  onChange={(e) => setCampoDados("banheiros_min", e.target.value)}
-                  className={CAMPO}
-                />
-                <input
-                  aria-label="Banheiros máximo"
-                  placeholder="máx."
-                  value={valoresDados.banheiros_max}
-                  onChange={(e) => setCampoDados("banheiros_max", e.target.value)}
-                  className={CAMPO}
-                />
-              </div>
-
-              <label className={LABEL}>Faixa de vagas</label>
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  aria-label="Vagas mínimo"
-                  placeholder="mín."
-                  value={valoresDados.vagas_min}
-                  onChange={(e) => setCampoDados("vagas_min", e.target.value)}
-                  className={CAMPO}
-                />
-                <input
-                  aria-label="Vagas máximo"
-                  placeholder="máx."
-                  value={valoresDados.vagas_max}
-                  onChange={(e) => setCampoDados("vagas_max", e.target.value)}
-                  className={CAMPO}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className={LABEL} htmlFor="valor_a_partir_de">
-                    Valor a partir de (R$)
-                  </label>
-                  <input
-                    id="valor_a_partir_de"
-                    inputMode="numeric"
-                    placeholder="R$ 445.000"
-                    value={valoresDados.valor_a_partir_de}
-                    onChange={(e) => setCampoDados("valor_a_partir_de", mascaraMoeda(e.target.value))}
-                    disabled={valoresDados.valor_sob_consulta}
-                    className={`${CAMPO} disabled:bg-neutral-100 disabled:text-neutral-400`}
-                  />
-                  <label className="-mt-2 mb-4 flex items-center gap-2 text-sm text-[var(--abissal)]">
-                    <input
-                      type="checkbox"
-                      checked={valoresDados.valor_sob_consulta}
-                      onChange={(e) => setCampoDados("valor_sob_consulta", e.target.checked)}
-                    />
-                    Sob consulta (não exibe o valor na página)
-                  </label>
-                </div>
-                <div>
-                  <label className={LABEL} htmlFor="previsao_entrega">
-                    Previsão de entrega
-                  </label>
-                  <input
-                    id="previsao_entrega"
-                    placeholder="Dez/2027"
-                    value={valoresDados.previsao_entrega}
-                    onChange={(e) => setCampoDados("previsao_entrega", e.target.value)}
-                    className={CAMPO}
-                  />
-                </div>
-              </div>
+              {pronto ? (
+                <CamposPronto valores={valoresDados} setCampo={setCampoDados} />
+              ) : (
+                <CamposLancamento valores={valoresDados} setCampo={setCampoDados} />
+              )}
 
               <label className={LABEL} htmlFor="video_youtube_url">
                 Vídeo do YouTube (opcional)
@@ -824,6 +607,21 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                 onChange={(e) => setCampoDados("video_youtube_url", e.target.value)}
                 className={CAMPO}
               />
+
+              <label className={LABEL} htmlFor="video_data_publicacao">
+                Data de publicação do vídeo
+              </label>
+              <input
+                id="video_data_publicacao"
+                type="date"
+                value={valoresDados.video_data_publicacao}
+                onChange={(e) => setCampoDados("video_data_publicacao", e.target.value)}
+                className={CAMPO}
+              />
+              <p className="-mt-3 mb-4 text-xs text-neutral-500">
+                Sem esta data o vídeo não entra nos dados estruturados (Google). É a data em que o
+                vídeo foi publicado no YouTube.
+              </p>
 
               <label className={LABEL} htmlFor="ordem">
                 Ordem no índice (menor aparece primeiro)
@@ -837,6 +635,8 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
             </div>
 
             <div>
+              {!pronto ? (
+                <>
               <label className={LABEL} htmlFor="construtora">
                 Construtora
               </label>
@@ -856,6 +656,8 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                 onChange={(e) => setCampoDados("construtora_logo_url", e.target.value)}
                 className={CAMPO}
               />
+                </>
+              ) : null}
 
               <label className={LABEL} htmlFor="descricao_breve">
                 Subtítulo do card (descrição breve)
@@ -879,6 +681,8 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                 className={CAMPO}
               />
 
+              {!pronto ? (
+                <>
               <label className={LABEL} htmlFor="descricao_unidades">
                 Seção &quot;As unidades&quot;
               </label>
@@ -889,6 +693,8 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                 onChange={(e) => setCampoDados("descricao_unidades", e.target.value)}
                 className={CAMPO}
               />
+                </>
+              ) : null}
 
               <label className={LABEL} htmlFor="seo_title">
                 SEO — título
@@ -969,7 +775,11 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
 
       {aba === "galeria" && imovel ? (
         <div>
-          <GaleriaImovel imagens={imagens} onChange={aoMudarGaleria} />
+          <GaleriaImovel
+            imagens={imagens}
+            onChange={aoMudarGaleria}
+            grupos={pronto ? ["empreendimento"] : undefined}
+          />
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-black/10 pt-4">
             <button
