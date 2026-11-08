@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
+import { BarraLista, CabecalhoOrdenavel } from "@/components/admin/ControlesLista";
+import { alternarOrdenacao, consultarLista, type ConfigLista, type ConsultaLista } from "@/lib/admin/listas";
+import { useToast } from "@/lib/admin/toast";
 import { despublicarPost, excluirPost, publicarPost } from "@/app/actions/admin-posts";
 import type { PostAdmin } from "@/lib/queries/admin-posts";
 import { formatarData } from "@/lib/blog/blog";
@@ -23,6 +27,45 @@ const ICONE_CLASSE =
   "inline-flex h-8 w-8 items-center justify-center rounded-md transition hover:bg-black/5 disabled:opacity-40 disabled:hover:bg-transparent";
 
 const GRADE = "sm:grid sm:grid-cols-[2fr_1.5fr_1fr_1fr_1fr_auto] sm:items-center sm:gap-4";
+
+type AcaoPendente = { tipo: "publicar" | "despublicar" | "excluir"; post: PostAdmin };
+
+const VERBO = { publicar: "publicar", despublicar: "despublicar", excluir: "excluir" } as const;
+
+const MENSAGEM_OK = {
+  publicar: "Artigo publicado.",
+  despublicar: "Artigo despublicado — voltou para rascunho.",
+  excluir: "Artigo excluído.",
+} as const;
+
+const TEXTOS_CONFIRMACAO = {
+  publicar: {
+    titulo: "Publicar artigo?",
+    rotulo: "Publicar",
+    descricao: (nome: string) => `"${nome}" passa a aparecer no blog público.`,
+  },
+  despublicar: {
+    titulo: "Despublicar artigo?",
+    rotulo: "Despublicar",
+    descricao: (nome: string) => `"${nome}" sai do blog público e volta para rascunho.`,
+  },
+  excluir: {
+    titulo: "Excluir artigo?",
+    rotulo: "Excluir",
+    descricao: (nome: string) => `"${nome}" será excluído e a URL deixa de existir. Essa ação não pode ser desfeita.`,
+  },
+} as const;
+
+const OPCOES_STATUS = [
+  { valor: "draft", rotulo: "Rascunho" },
+  { valor: "published", rotulo: "Publicado" },
+];
+
+const CONFIG_LISTA: ConfigLista<PostAdmin> = {
+  textos: (p) => [p.title, p.slug],
+  status: (p) => p.status,
+  ordenadores: { titulo: (p) => p.title, publicado: (p) => p.published_at },
+};
 
 function IconeEditar() {
   return (
@@ -104,148 +147,165 @@ function Autor({ autor }: { autor: PostAdmin["autor"] }) {
 
 export function TabelaPosts({ posts }: { posts: PostAdmin[] }) {
   const router = useRouter();
+  const { mostrarToast } = useToast();
   const [pendenteId, setPendenteId] = useState<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [acao, setAcao] = useState<AcaoPendente | null>(null);
+  const [consulta, setConsulta] = useState<ConsultaLista>({ busca: "", status: "todos", ordem: null });
 
-  async function aoPublicar(post: PostAdmin) {
-    setErro(null);
+  const visiveis = useMemo(() => consultarLista(posts, consulta, CONFIG_LISTA), [posts, consulta]);
+
+  async function executar(tipo: AcaoPendente["tipo"], post: PostAdmin) {
+    setAcao(null);
     setPendenteId(post.id);
-    const resultado = await publicarPost(post.id, post.slug);
+    const resultado =
+      tipo === "publicar"
+        ? await publicarPost(post.id, post.slug)
+        : tipo === "despublicar"
+          ? await despublicarPost(post.id, post.slug)
+          : await excluirPost(post.id, post.slug);
     setPendenteId(null);
     if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível publicar o artigo.");
+      mostrarToast("erro", resultado.erro ?? `Não foi possível ${VERBO[tipo]} o artigo.`);
       return;
     }
+    mostrarToast("sucesso", MENSAGEM_OK[tipo]);
     router.refresh();
   }
 
-  async function aoDespublicar(post: PostAdmin) {
-    setErro(null);
-    setPendenteId(post.id);
-    const resultado = await despublicarPost(post.id, post.slug);
-    setPendenteId(null);
-    if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível despublicar o artigo.");
-      return;
-    }
-    router.refresh();
-  }
-
-  async function aoExcluir(post: PostAdmin) {
-    if (!confirm(`Excluir "${post.title}"? Essa ação não pode ser desfeita.`)) return;
-    setErro(null);
-    setPendenteId(post.id);
-    const resultado = await excluirPost(post.id, post.slug);
-    setPendenteId(null);
-    if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível excluir o artigo.");
-      return;
-    }
-    router.refresh();
+  function ordenar(coluna: string) {
+    setConsulta((c) => ({ ...c, ordem: alternarOrdenacao(c.ordem, coluna) }));
   }
 
   if (posts.length === 0) {
     return <p className="text-sm text-neutral-500">Nenhum artigo ainda.</p>;
   }
 
-  return (
-    <div className="rounded-lg border border-black/10 bg-white">
-      {erro ? (
-        <p className="border-b border-black/10 bg-red-50 px-4 py-2 text-sm text-[var(--erro)]">{erro}</p>
-      ) : null}
+  const textos = acao ? TEXTOS_CONFIRMACAO[acao.tipo] : null;
 
-      <div className={`hidden border-b border-black/10 bg-neutral-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-neutral-500 ${GRADE}`}>
-        <span>Título</span>
-        <span>Categoria</span>
-        <span>Status</span>
-        <span>Autor</span>
-        <span>Publicado em</span>
-        <span>Ações</span>
+  return (
+    <div>
+      <BarraLista
+        rotuloBusca="Buscar artigo"
+        placeholderBusca="Título ou slug"
+        busca={consulta.busca}
+        onBusca={(busca) => setConsulta((c) => ({ ...c, busca }))}
+        status={consulta.status}
+        onStatus={(status) => setConsulta((c) => ({ ...c, status }))}
+        opcoesStatus={OPCOES_STATUS}
+        total={posts.length}
+        exibidos={visiveis.length}
+      />
+
+      <div className="rounded-lg border border-black/10 bg-white">
+        <div className={`hidden border-b border-black/10 bg-neutral-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-neutral-500 ${GRADE}`}>
+          <CabecalhoOrdenavel coluna="titulo" rotulo="Título" ordem={consulta.ordem} onOrdenar={ordenar} />
+          <span>Categoria</span>
+          <span>Status</span>
+          <span>Autor</span>
+          <CabecalhoOrdenavel coluna="publicado" rotulo="Publicado em" ordem={consulta.ordem} onOrdenar={ordenar} />
+          <span>Ações</span>
+        </div>
+
+        {visiveis.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-neutral-500">
+            Nenhum artigo encontrado com esses filtros.
+          </p>
+        ) : (
+          <ul role="list" className="divide-y divide-black/5">
+            {visiveis.map((post) => (
+              <li key={post.id} className={`flex flex-col gap-2 p-4 text-sm sm:px-4 sm:py-3 ${GRADE}`}>
+                <div className="min-w-0">
+                  <span className="font-medium text-[var(--abissal)]">{post.title}</span>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 sm:hidden">
+                    <span>{post.categoria?.name ?? "—"}</span>
+                    <span aria-hidden="true">·</span>
+                    <StatusBadge status={post.status} />
+                    <span aria-hidden="true">·</span>
+                    <span>{post.published_at ? formatarData(post.published_at) : "—"}</span>
+                  </div>
+                </div>
+
+                <span className="hidden text-base text-neutral-600 sm:block">{post.categoria?.name ?? "—"}</span>
+                <span className="hidden sm:block">
+                  <StatusBadge status={post.status} />
+                </span>
+                <div className="hidden sm:block">
+                  <Autor autor={post.autor} />
+                </div>
+                <span className="hidden text-neutral-600 sm:block">
+                  {post.published_at ? formatarData(post.published_at) : "—"}
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <Link
+                    href={`/admin/posts/${post.id}`}
+                    title="Editar"
+                    aria-label={`Editar artigo "${post.title}"`}
+                    className={`${ICONE_CLASSE} text-[var(--jade)]`}
+                  >
+                    <IconeEditar />
+                  </Link>
+                  {post.status === "published" ? (
+                    <button
+                      type="button"
+                      title="Despublicar"
+                      aria-label={`Despublicar artigo "${post.title}"`}
+                      disabled={pendenteId === post.id}
+                      onClick={() => setAcao({ tipo: "despublicar", post })}
+                      className={`${ICONE_CLASSE} text-neutral-600`}
+                    >
+                      <IconeOlhoFechado />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      title="Publicar"
+                      aria-label={`Publicar artigo "${post.title}"`}
+                      disabled={pendenteId === post.id}
+                      onClick={() => setAcao({ tipo: "publicar", post })}
+                      className={`${ICONE_CLASSE} text-[var(--jade)]`}
+                    >
+                      <IconeOlho />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    title="Excluir"
+                    aria-label={`Excluir artigo "${post.title}"`}
+                    disabled={pendenteId === post.id}
+                    onClick={() => setAcao({ tipo: "excluir", post })}
+                    className={`${ICONE_CLASSE} text-[var(--erro)]`}
+                  >
+                    <IconeLixeira />
+                  </button>
+                  {post.status === "published" ? (
+                    <a
+                      href={`/blog/${post.slug}/`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Abrir no site"
+                      aria-label={`Abrir artigo "${post.title}" no site (nova aba)`}
+                      className={`${ICONE_CLASSE} text-neutral-600`}
+                    >
+                      <IconeAbrir />
+                    </a>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      <ul role="list" className="divide-y divide-black/5">
-        {posts.map((post) => (
-          <li key={post.id} className={`flex flex-col gap-2 p-4 text-sm sm:px-4 sm:py-3 ${GRADE}`}>
-            <div className="min-w-0">
-              <span className="font-medium text-[var(--abissal)]">{post.title}</span>
-              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 sm:hidden">
-                <span>{post.categoria?.name ?? "—"}</span>
-                <span aria-hidden="true">·</span>
-                <StatusBadge status={post.status} />
-                <span aria-hidden="true">·</span>
-                <span>{post.published_at ? formatarData(post.published_at) : "—"}</span>
-              </div>
-            </div>
-
-            <span className="hidden text-base text-neutral-600 sm:block">{post.categoria?.name ?? "—"}</span>
-            <span className="hidden sm:block">
-              <StatusBadge status={post.status} />
-            </span>
-            <div className="hidden sm:block">
-              <Autor autor={post.autor} />
-            </div>
-            <span className="hidden text-neutral-600 sm:block">
-              {post.published_at ? formatarData(post.published_at) : "—"}
-            </span>
-
-            <div className="flex items-center gap-1">
-              <Link
-                href={`/admin/posts/${post.id}`}
-                title="Editar"
-                aria-label="Editar"
-                className={`${ICONE_CLASSE} text-[var(--jade)]`}
-              >
-                <IconeEditar />
-              </Link>
-              {post.status === "published" ? (
-                <button
-                  type="button"
-                  title="Despublicar"
-                  aria-label="Despublicar"
-                  disabled={pendenteId === post.id}
-                  onClick={() => aoDespublicar(post)}
-                  className={`${ICONE_CLASSE} text-neutral-600`}
-                >
-                  <IconeOlhoFechado />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  title="Publicar"
-                  aria-label="Publicar"
-                  disabled={pendenteId === post.id}
-                  onClick={() => aoPublicar(post)}
-                  className={`${ICONE_CLASSE} text-[var(--jade)]`}
-                >
-                  <IconeOlho />
-                </button>
-              )}
-              <button
-                type="button"
-                title="Excluir"
-                aria-label="Excluir"
-                disabled={pendenteId === post.id}
-                onClick={() => aoExcluir(post)}
-                className={`${ICONE_CLASSE} text-[var(--erro)]`}
-              >
-                <IconeLixeira />
-              </button>
-              {post.status === "published" ? (
-                <a
-                  href={`/blog/${post.slug}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Abrir no site"
-                  aria-label="Abrir no site"
-                  className={`${ICONE_CLASSE} text-neutral-600`}
-                >
-                  <IconeAbrir />
-                </a>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ConfirmarAcao
+        aberto={acao !== null}
+        titulo={textos?.titulo ?? ""}
+        descricao={acao && textos ? textos.descricao(acao.post.title) : ""}
+        rotuloConfirmar={textos?.rotulo}
+        variante={acao?.tipo === "excluir" ? "perigo" : "padrao"}
+        onConfirmar={() => acao && executar(acao.tipo, acao.post)}
+        onCancelar={() => setAcao(null)}
+      />
     </div>
   );
 }

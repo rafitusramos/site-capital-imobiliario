@@ -10,3 +10,13 @@
   --branco: #fcfaf4;
   --erro: #8a3b2e;
 }
+
+/* Foco visível para teclado em botões e links do admin (campos de texto já têm o
+   anel próprio via focus:ring). Utilitários focus-visible: de componentes, mais
+   específicos, sobrepõem esta regra. */
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible {
+  outline: 2px solid var(--jade);
+  outline-offset: 2px;
+}
