@@ -167,7 +167,7 @@ export default async function FinanciamentoPage() {
             <div className="cel reveal d3">
               <div className="rot">Entre bancos</div>
               <div className="big mono-num">
-                ~2,3<span style={{ fontSize: ".45em" }}> p.p.</span>
+                ~3,3<span style={{ fontSize: ".45em" }}> p.p.</span>
               </div>
               <div className="leg">
                 Diferença de taxa ao ano para o mesmo perfil — é aqui que a cotação trabalha.
@@ -175,7 +175,7 @@ export default async function FinanciamentoPage() {
             </div>
           </div>
           <p className="disclaimer reveal">
-            Referências de condições usuais de mercado em julho/2026; valores efetivos dependem de
+            Referências de condições usuais de mercado em outubro/2026; valores efetivos dependem de
             análise de crédito, avaliação do imóvel e instituição.
           </p>
         </div>
@@ -258,18 +258,18 @@ export default async function FinanciamentoPage() {
               <tbody>
                 <tr>
                   <td data-label="Cenário">
-                    Banco digital / balcão caro
+                    Balcão mais caro
                     <small>contratação direta, sem comparação</small>
                   </td>
                   <td data-label="Custo ao ano">
-                    <span className="mono-num">13,99% a.a. + TR</span>
+                    <span className="mono-num">15% a.a. + TR</span>
                   </td>
                   <td data-label="Parcela inicial">
-                    <span className="mono-num">R$ 10.999</span>
+                    <span className="mono-num">R$ 11.594</span>
                   </td>
                   <td data-label="Total pago">
-                    <span className="mono-num">≈ R$ 2,38 mi</span>
-                    <small>R$ 248 mil a mais que a melhor taxa</small>
+                    <span className="mono-num">≈ R$ 2,49 mi</span>
+                    <small>R$ 355 mil a mais que a melhor taxa</small>
                   </td>
                 </tr>
                 <tr>
@@ -278,14 +278,14 @@ export default async function FinanciamentoPage() {
                     <small>primeira proposta do gerente</small>
                   </td>
                   <td data-label="Custo ao ano">
-                    <span className="mono-num">12,8% a.a. + TR</span>
+                    <span className="mono-num">13,25% a.a. + TR</span>
                   </td>
                   <td data-label="Parcela inicial">
-                    <span className="mono-num">R$ 10.292</span>
+                    <span className="mono-num">R$ 10.561</span>
                   </td>
                   <td data-label="Total pago">
-                    <span className="mono-num">≈ R$ 2,26 mi</span>
-                    <small>R$ 120 mil a mais que a melhor taxa</small>
+                    <span className="mono-num">≈ R$ 2,31 mi</span>
+                    <small>R$ 169 mil a mais que a melhor taxa</small>
                   </td>
                 </tr>
                 <tr className="destaque">
@@ -309,7 +309,7 @@ export default async function FinanciamentoPage() {
           </div>
           <p className="disclaimer">
             Valores ilustrativos calculados pelo sistema SAC, sem TR, seguros e tarifas, com taxas
-            de bancos privados praticadas no mercado em julho/2026 (11,69% a 13,99% a.a.) — para
+            de bancos privados praticadas no mercado em outubro/2026 (11,69% a 15% a.a.) — para
             comparação de ordem de grandeza entre cenários. As condições efetivas dependem de
             análise de crédito, avaliação do imóvel, relacionamento e instituição. Não constitui
             oferta de crédito. Crédito sujeito a aprovação.
