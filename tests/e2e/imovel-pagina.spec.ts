@@ -125,5 +125,13 @@ test.describe("/imoveis/<slug>/ — página do primeiro imóvel da listagem", ()
     for (const id of ["fase-obra", "plantas", "realizacao"]) {
       await expect(page.locator(`#${id}`), `#${id} não deve existir em imóvel pronto`).toHaveCount(0);
     }
+
+    // Condomínio e IPTU são custos do hero; a ficha da descrição não os repete.
+    const fichaRotulos = page.locator("#descricao-unidade dt");
+    await expect(fichaRotulos.filter({ hasText: /^(Condomínio|IPTU)$/ })).toHaveCount(0);
+    const heroCustos = page.locator(".im-hero-custos");
+    if ((await heroCustos.count()) > 0) {
+      await expect(heroCustos).toContainText(/Condomínio|IPTU/);
+    }
   });
 });
