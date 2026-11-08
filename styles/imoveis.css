@@ -373,6 +373,12 @@
 .im-diferencial svg{width:26px;height:26px;color:var(--bronze);}
 .im-diferencial span{font-family:var(--sans);font-weight:600;font-size:14px;color:var(--abissal);}
 
+/* ---- Ficha da unidade (imóvel pronto) ---- */
+.im-ficha{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:var(--s3);margin-top:var(--s5);}
+.im-ficha-item{background:var(--branco);border:1px solid rgba(10,36,28,.1);border-radius:6px;padding:16px 18px;}
+.im-ficha-item dt{font-family:var(--sans);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5b615d;margin:0 0 6px;}
+.im-ficha-item dd{font-family:var(--sans);font-weight:600;font-size:18px;color:var(--abissal);margin:0;}
+
 /* ---- Localização ---- */
 .im-localizacao{margin-top:var(--s4);}
 .im-localizacao .endereco{font-family:var(--sans);font-size:15px;color:#3d423e;margin-bottom:var(--s3);}

@@ -196,3 +196,49 @@ describe("descricaoDoImovel", () => {
     );
   });
 });
+
+describe("imóvel pronto: texto com valores únicos", () => {
+  const casa = (campos: Partial<ImovelFalso> = {}) =>
+    imovelFalso({
+      titulo: "Casa no Marambaia",
+      tipo: { nome: "Casa" },
+      modalidade: "pronto",
+      area_min: null,
+      area_max: null,
+      dormitorios_min: null,
+      dormitorios_max: null,
+      area_util: 180,
+      dormitorios: 3,
+      vagas: 2,
+      ...campos,
+    });
+
+  test("description montada usa os valores únicos, não faixas", () => {
+    expect(descricaoDoImovel(casa())).toBe(
+      "Casa à venda em Marambaia, Vinhedo: 180 m², 3 dorms, 2 vagas. Fale com Rafael Teixeira.",
+    );
+  });
+
+  test("sem ficha, sobra a abertura", () => {
+    expect(descricaoDoImovel(casa({ area_util: null, dormitorios: null, vagas: null }))).toBe(
+      "Casa à venda em Marambaia, Vinhedo. Fale com Rafael Teixeira.",
+    );
+  });
+
+  test("seo_description continua mandando", () => {
+    expect(descricaoDoImovel(casa({ seo_description: "Texto  editorial\ncurado." }))).toBe(
+      "Texto editorial curado.",
+    );
+  });
+
+  test("lançamento sem modalidade mantém o texto de sempre", () => {
+    expect(descricaoDoImovel(imovelFalso())).toContain("Apartamento Lançamento em Marambaia, Vinhedo");
+  });
+
+  test("title e alt seguem a mesma regra dos demais", () => {
+    expect(tituloDoImovel(casa())).toBe(
+      "Casa no Marambaia — Casa à venda em Vinhedo | RT Capital Imobiliário",
+    );
+    expect(altDoImovel(casa())).toBe("Casa Casa no Marambaia — Marambaia, Vinhedo");
+  });
+});

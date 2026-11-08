@@ -10,6 +10,8 @@ import { useToast } from "@/lib/admin/toast";
 import { despublicarImovel, excluirImovel, publicarImovel } from "@/app/actions/admin-imoveis";
 import type { ImovelAdminResumo } from "@/lib/queries/admin-imoveis";
 import { formatarFase, formatarTipo } from "@/lib/imoveis/formato";
+import { rotuloModalidade } from "@/lib/imoveis/ficha";
+import type { ImovelModalidade } from "@/types/database";
 
 type Imovel = ImovelAdminResumo;
 
@@ -137,8 +139,17 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
   const [pendenteId, setPendenteId] = useState<string | null>(null);
   const [acao, setAcao] = useState<AcaoPendente | null>(null);
   const [consulta, setConsulta] = useState<ConsultaLista>({ busca: "", status: "todos", ordem: null });
+  const [modalidade, setModalidade] = useState<"todas" | ImovelModalidade>("todas");
 
-  const visiveis = useMemo(() => consultarLista(imoveis, consulta, CONFIG_LISTA), [imoveis, consulta]);
+  const visiveis = useMemo(
+    () =>
+      consultarLista(
+        modalidade === "todas" ? imoveis : imoveis.filter((i) => i.modalidade === modalidade),
+        consulta,
+        CONFIG_LISTA,
+      ),
+    [imoveis, consulta, modalidade],
+  );
 
   async function executar(tipo: AcaoPendente["tipo"], imovel: Imovel) {
     setAcao(null);
@@ -163,15 +174,33 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
   }
 
   if (imoveis.length === 0) {
-    return <p className="text-sm text-neutral-500">Nenhum empreendimento ainda.</p>;
+    return <p className="text-sm text-neutral-500">Nenhum imóvel ainda.</p>;
   }
 
   const textos = acao ? TEXTOS_CONFIRMACAO[acao.tipo] : null;
 
   return (
     <div>
+      <div className="mb-3 flex items-center gap-2" role="group" aria-label="Filtrar por modalidade">
+        {(["todas", "lancamento", "pronto"] as const).map((opcao) => (
+          <button
+            key={opcao}
+            type="button"
+            aria-pressed={modalidade === opcao}
+            onClick={() => setModalidade(opcao)}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+              modalidade === opcao
+                ? "border-[var(--jade)] bg-[var(--jade)] text-white"
+                : "border-neutral-300 text-neutral-600 hover:border-[var(--abissal)]"
+            }`}
+          >
+            {opcao === "todas" ? "Todos" : opcao === "pronto" ? "Imóveis prontos" : "Lançamentos"}
+          </button>
+        ))}
+      </div>
+
       <BarraLista
-        rotuloBusca="Buscar empreendimento"
+        rotuloBusca="Buscar imóvel"
         placeholderBusca="Nome ou slug"
         busca={consulta.busca}
         onBusca={(busca) => setConsulta((c) => ({ ...c, busca }))}
@@ -202,6 +231,9 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
               <li key={imovel.id} className={`flex flex-col gap-2 p-4 text-sm sm:px-4 sm:py-3 ${GRADE}`}>
                 <div className="min-w-0">
                   <span className="font-medium text-[var(--abissal)]">{imovel.titulo}</span>
+                  <span className="ml-2 inline-block rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] font-medium text-neutral-600">
+                    {rotuloModalidade(imovel.modalidade)}
+                  </span>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-neutral-500 sm:hidden">
                     <span>{imovel.cidade ?? "—"}</span>
                     <span aria-hidden="true">·</span>

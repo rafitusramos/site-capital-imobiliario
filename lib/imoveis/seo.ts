@@ -1,4 +1,9 @@
-import { formatarFaixaArea, formatarFaixaDormitorios } from "@/lib/imoveis/formato";
+import {
+  formatarFaixaArea,
+  formatarFaixaDormitorios,
+  formatarFaixaVagas,
+} from "@/lib/imoveis/formato";
+import type { ImovelModalidade } from "@/types/database";
 
 // Texto de descoberta do imóvel: `alt` das imagens e title/description da
 // página (docs/handoff-seo-onpage-descoberta.md). Tudo derivado do cadastro,
@@ -22,6 +27,11 @@ export type ImovelParaDescricao = ImovelParaTexto & {
   area_max: number | null;
   dormitorios_min: number | null;
   dormitorios_max: number | null;
+  // Unidade única (migration 026). Opcionais: só imóvel pronto preenche.
+  modalidade?: ImovelModalidade;
+  area_util?: number | null;
+  dormitorios?: number | null;
+  vagas?: number | null;
 };
 
 /**
@@ -119,15 +129,24 @@ export function descricaoDoImovel(imovel: ImovelParaDescricao): string {
   const escolhida = imovel.seo_description?.trim() || imovel.descricao_breve?.trim();
   if (escolhida) return normalizarTexto(escolhida);
 
-  const area = formatarFaixaArea(imovel.area_min, imovel.area_max);
-  const dormitorios = formatarFaixaDormitorios(
-    imovel.dormitorios_min,
-    imovel.dormitorios_max,
-  );
-  const ficha = juntar([area, dormitorios], ", ");
+  // Unidade única fala em valores, não em faixas: "180 m², 3 dorms, 2 vagas".
+  // `formatarFaixa*(x, x)` já devolve o valor único, então é o mesmo formatador.
+  const pronto = imovel.modalidade === "pronto";
+  const area = pronto
+    ? formatarFaixaArea(imovel.area_util ?? null, imovel.area_util ?? null)
+    : formatarFaixaArea(imovel.area_min, imovel.area_max);
+  const dormitorios = pronto
+    ? formatarFaixaDormitorios(imovel.dormitorios ?? null, imovel.dormitorios ?? null)
+    : formatarFaixaDormitorios(imovel.dormitorios_min, imovel.dormitorios_max);
+  const vagas = pronto ? formatarFaixaVagas(imovel.vagas ?? null, imovel.vagas ?? null) : null;
+  const ficha = juntar([area, dormitorios, vagas], ", ");
   const onde = local(imovel);
 
-  const abertura = juntar([`${imovel.tipo.nome} ${imovel.fase.nome}`, onde], " em ");
+  // Fase "Pronto para morar" não entra: a frase é "à venda", sem flexão de gênero.
+  const abertura = juntar(
+    [pronto ? `${imovel.tipo.nome} à venda` : `${imovel.tipo.nome} ${imovel.fase.nome}`, onde],
+    " em ",
+  );
   return normalizarTexto(
     juntar([ficha ? `${abertura}: ${ficha}` : abertura, "Fale com Rafael Teixeira."], ". "),
   );

@@ -42,22 +42,59 @@ function refinarFaixa<T extends Record<string, unknown>>(
   }
 }
 
-export const imovelFormSchema = z
-  .object({
-    titulo: z.string().trim().min(3, "Informe um título."),
-    slug: z
-      .string()
-      .trim()
-      .min(3, "Informe um slug.")
-      .regex(SLUG_REGEX, "Use apenas letras minúsculas, números e hífens (kebab-case)."),
-    tipo_id: z.string().uuid("Selecione o tipo do imóvel."),
-    fase_id: z.string().uuid("Selecione a fase do imóvel."),
+/** Data `AAAA-MM-DD` do input type="date", ou null. Rejeita data impossível (2026-13-45). */
+const dataOpcional = opcional.refine((valor) => {
+  if (valor === null) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) return false;
+  const data = new Date(`${valor}T00:00:00Z`);
+  return !Number.isNaN(data.getTime()) && data.toISOString().slice(0, 10) === valor;
+}, "Informe a data no formato AAAA-MM-DD.");
 
-    bairro: opcional,
-    cidade: opcional,
-    estado: opcional,
-    endereco: opcional,
-    cep: opcional,
+const booleanoOpcional = z
+  .union([z.boolean(), z.null(), z.undefined()])
+  .transform((valor) => valor ?? null);
+
+const valorMonetario = numeroOpcional.refine(
+  (valor) => valor === null || valor >= 0,
+  "O valor não pode ser negativo.",
+);
+
+/** Campos que existem nas duas modalidades. */
+const camposComuns = {
+  titulo: z.string().trim().min(3, "Informe um título."),
+  slug: z
+    .string()
+    .trim()
+    .min(3, "Informe um slug.")
+    .regex(SLUG_REGEX, "Use apenas letras minúsculas, números e hífens (kebab-case)."),
+  tipo_id: z.string().uuid("Selecione o tipo do imóvel."),
+
+  bairro: opcional,
+  cidade: opcional,
+  estado: opcional,
+  endereco: opcional,
+  cep: opcional,
+
+  valor_sob_consulta: z.boolean().default(false),
+
+  video_youtube_url: opcional,
+  // uploadDate do VideoObject (CLAUDE.md): sem ela o JSON-LD do vídeo não sai.
+  video_data_publicacao: dataOpcional.default(null),
+
+  descricao_breve: opcional,
+  descricao_completa: opcional,
+
+  seo_title: opcional,
+  seo_description: opcional,
+
+  ordem: z.number().int().default(0),
+};
+
+const lancamentoSchema = z
+  .object({
+    ...camposComuns,
+    modalidade: z.literal("lancamento"),
+    fase_id: z.string().uuid("Selecione a fase do imóvel."),
 
     area_min: numeroOpcional,
     area_max: numeroOpcional,
@@ -69,22 +106,12 @@ export const imovelFormSchema = z
     vagas_max: inteiroOpcional,
 
     valor_a_partir_de: numeroOpcional,
-    valor_sob_consulta: z.boolean().default(false),
     previsao_entrega: opcional,
-
-    video_youtube_url: opcional,
 
     construtora: opcional,
     construtora_logo_url: opcional,
 
-    descricao_breve: opcional,
-    descricao_completa: opcional,
     descricao_unidades: opcional,
-
-    seo_title: opcional,
-    seo_description: opcional,
-
-    ordem: z.number().int().default(0),
   })
   .superRefine((dados, ctx) => {
     refinarFaixa(dados, ctx, "area_min", "area_max", "A área máxima não pode ser menor que a mínima.");
@@ -105,7 +132,79 @@ export const imovelFormSchema = z
     refinarFaixa(dados, ctx, "vagas_min", "vagas_max", "O máximo de vagas não pode ser menor que o mínimo.");
   });
 
+/**
+ * Imóvel pronto = unidade única. `fase_id` é opcional aqui de propósito: quem
+ * define é o servidor (a fase `pronto`), e o trigger da migration 026 garante.
+ */
+const prontoSchema = z
+  .object({
+    ...camposComuns,
+    modalidade: z.literal("pronto"),
+    fase_id: opcional,
+
+    area_util: numeroOpcional,
+    area_total: numeroOpcional,
+    dormitorios: inteiroOpcional,
+    suites: inteiroOpcional,
+    banheiros: inteiroOpcional,
+    vagas: inteiroOpcional,
+    valor_venda: valorMonetario,
+    valor_condominio: valorMonetario,
+    valor_iptu: valorMonetario,
+    nome_condominio: opcional,
+    andar: inteiroOpcional,
+    mobiliado: booleanoOpcional,
+    ano_construcao: inteiroOpcional.refine(
+      (valor) => valor === null || (valor >= 1800 && valor <= 2100),
+      "Informe um ano entre 1800 e 2100.",
+    ),
+    exibir_endereco: z.boolean().default(false),
+  })
+  .superRefine((dados, ctx) => {
+    if (dados.fase_id !== null && !z.string().uuid().safeParse(dados.fase_id).success) {
+      ctx.addIssue({ code: "custom", path: ["fase_id"], message: "Selecione a fase do imóvel." });
+    }
+    if (dados.area_util !== null && dados.area_total !== null && dados.area_total < dados.area_util) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["area_total"],
+        message: "A área total não pode ser menor que a área útil.",
+      });
+    }
+    if (dados.dormitorios !== null && dados.suites !== null && dados.suites > dados.dormitorios) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["suites"],
+        message: "As suítes não podem passar do número de dormitórios.",
+      });
+    }
+  });
+
+/**
+ * Payload sem `modalidade` é lançamento: é o formato anterior à migration 026.
+ * O preprocess só preenche o discriminador e deixa o resto para o schema.
+ */
+export const imovelFormSchema = z.preprocess(
+  (entrada) =>
+    entrada && typeof entrada === "object" && !("modalidade" in entrada)
+      ? { ...entrada, modalidade: "lancamento" }
+      : entrada,
+  z.discriminatedUnion("modalidade", [lancamentoSchema, prontoSchema]),
+);
+
 export type ImovelFormInput = z.infer<typeof imovelFormSchema>;
+export type ImovelLancamentoInput = Extract<ImovelFormInput, { modalidade: "lancamento" }>;
+export type ImovelProntoInput = Extract<ImovelFormInput, { modalidade: "pronto" }>;
+/**
+ * O que o chamador envia: `modalidade` pode faltar em lançamento (formato
+ * anterior à 026) e `video_data_publicacao` é opcional nas duas.
+ */
+export type ImovelFormEntrada =
+  | (Omit<ImovelLancamentoInput, "modalidade" | "video_data_publicacao"> & {
+      modalidade?: "lancamento";
+      video_data_publicacao?: string | null;
+    })
+  | (Omit<ImovelProntoInput, "video_data_publicacao"> & { video_data_publicacao?: string | null });
 
 export const tipologiaSchema = z.object({
   id: z.string().uuid().optional(),

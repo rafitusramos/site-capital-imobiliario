@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import type { ImovelComCapa, ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import { ImovelCard } from "@/components/imoveis/ImovelCard";
+import { dormitoriosParaFiltro, rotuloModalidade, valorParaFiltro } from "@/lib/imoveis/ficha";
+import type { ImovelModalidade } from "@/types/database";
 
 const OPCOES_QUARTOS = ["1", "2", "3", "4+"] as const;
 
@@ -33,6 +35,7 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
   const [filtroValor, setFiltroValor] = useState("");
   const [filtroFase, setFiltroFase] = useState<string | null>(null);
   const [filtroTipo, setFiltroTipo] = useState<string | null>(null);
+  const [filtroModalidade, setFiltroModalidade] = useState<ImovelModalidade | null>(null);
 
   // Combinações distintas de cidade+estado entre os imóveis publicados
   // (ignorando os sem cidade), ordenadas alfabeticamente pelo rótulo. O
@@ -64,8 +67,16 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
     return tipos.filter((tipo) => slugsEmUso.has(tipo.slug));
   }, [imoveis, tipos]);
 
+  // "Lançamento / Pronto" só aparece quando as duas modalidades existem no
+  // acervo publicado - com uma só, o chip filtraria para o mesmo conjunto.
+  const modalidadesEmUso = useMemo(() => {
+    const emUso = new Set(imoveis.map((imovel) => imovel.modalidade));
+    return (["lancamento", "pronto"] as const).filter((m) => emUso.has(m));
+  }, [imoveis]);
+
   const filtrados = useMemo(() => {
     return imoveis.filter((imovel) => {
+      if (filtroModalidade && imovel.modalidade !== filtroModalidade) return false;
       if (filtroFase && imovel.fase?.slug !== filtroFase) return false;
       if (filtroTipo && imovel.tipo?.slug !== filtroTipo) return false;
 
@@ -75,10 +86,10 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
       }
 
       if (filtroQuartos) {
-        const min = imovel.dormitorios_min ?? imovel.dormitorios_max;
-        const max = imovel.dormitorios_max ?? imovel.dormitorios_min;
-        // Sem faixa cadastrada (as duas colunas null) não casa com nenhum filtro.
-        if (min === null || max === null) return false;
+        const faixa = dormitoriosParaFiltro(imovel);
+        // Sem dado cadastrado não casa com nenhum filtro.
+        if (faixa === null) return false;
+        const [min, max] = faixa;
         if (filtroQuartos === "4+") {
           if (max < 4) return false;
         } else if (!(min <= Number(filtroQuartos) && Number(filtroQuartos) <= max)) {
@@ -89,30 +100,31 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
       if (filtroValor) {
         // Sem preço definido (sob consulta ou valor_a_partir_de nulo) fica de
         // fora sempre que algum filtro de valor está ativo: não há valor para comparar.
-        if (imovel.valor_sob_consulta || imovel.valor_a_partir_de === null) return false;
+        const valorImovel = valorParaFiltro(imovel);
+        if (valorImovel === null) return false;
         const opcao = OPCOES_VALOR.find((item) => item.valor === filtroValor);
         if (opcao) {
           const dentroDoTeto =
             opcao.teto === null
-              ? imovel.valor_a_partir_de > 3_000_000
-              : imovel.valor_a_partir_de <= opcao.teto;
+              ? valorImovel > 3_000_000
+              : valorImovel <= opcao.teto;
           if (!dentroDoTeto) return false;
         }
       }
 
       return true;
     });
-  }, [imoveis, filtroFase, filtroTipo, filtroCidade, filtroQuartos, filtroValor]);
+  }, [imoveis, filtroModalidade, filtroFase, filtroTipo, filtroCidade, filtroQuartos, filtroValor]);
 
   const algumFiltroAtivo = Boolean(
-    filtroFase || filtroTipo || filtroCidade || filtroQuartos || filtroValor,
+    filtroModalidade || filtroFase || filtroTipo || filtroCidade || filtroQuartos || filtroValor,
   );
 
   function mensagemVazio(): string {
     if (algumFiltroAtivo) {
-      return "Nenhum empreendimento encontrado com esses filtros.";
+      return "Nenhum imóvel encontrado com esses filtros.";
     }
-    return "Nenhum empreendimento em lançamento no momento.";
+    return "Nenhum imóvel disponível no momento.";
   }
 
   function limparFiltros() {
@@ -121,12 +133,39 @@ export function ImoveisFiltro({ imoveis, tipos, fases }: ImoveisFiltroProps) {
     setFiltroValor("");
     setFiltroFase(null);
     setFiltroTipo(null);
+    setFiltroModalidade(null);
   }
 
   return (
     <>
       <section className="im-filtros-secao">
         <div className="wrap">
+          {modalidadesEmUso.length > 1 ? (
+            <div className="im-filtros">
+              <div className="blog-filtro" role="group" aria-label="Filtrar por lançamento ou imóvel pronto">
+                <button
+                  type="button"
+                  className={filtroModalidade === null ? "ativo" : undefined}
+                  aria-pressed={filtroModalidade === null}
+                  onClick={() => setFiltroModalidade(null)}
+                >
+                  Lançamento e pronto
+                </button>
+                {modalidadesEmUso.map((modalidade) => (
+                  <button
+                    key={modalidade}
+                    type="button"
+                    className={filtroModalidade === modalidade ? "ativo" : undefined}
+                    aria-pressed={filtroModalidade === modalidade}
+                    onClick={() => setFiltroModalidade(modalidade)}
+                  >
+                    {rotuloModalidade(modalidade)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
           {/* Só a fileira some quando não há nenhuma fase em uso (acervo vazio).
               Com só um valor publicado, a fileira continua — sumir por completo
               nesse caso foi bug relatado antes. */}

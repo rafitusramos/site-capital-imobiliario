@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 914 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **025**.
+Suíte em Vitest: `npm test` — 973 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **026**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -163,16 +163,48 @@ Tudo derivado do cadastro em `lib/imoveis/seo.ts`, travado em
   scroll nem de exit-intent: modal que cobre o conteúdo sem o visitante pedir é
   intersticial intrusivo, penalizado no mobile.
 - **`VideoObject` só com todos os campos obrigatórios** (`name`,
-  `description`, `thumbnailUrl`, `uploadDate`). Hoje **não é emitido**: não há
-  `uploadDate` no cadastro nem como obtê-la em build sem chamar a API do
-  YouTube. Schema incompleto cria erro de rich result novo — foi assim que o
-  `Product` sem `offers` apareceu.
+  `description`, `thumbnailUrl`, `uploadDate`). Sai de `montarVideoObjectSchema`
+  (`lib/imoveis/schema.ts`) **apenas** quando há URL de YouTube reconhecível,
+  descrição e `video_data_publicacao` (coluna da migration 026, preenchida no
+  admin ao lado da URL do vídeo). Sem a data, não é emitido: não dá para obtê-la
+  em build sem chamar a API do YouTube, e schema incompleto cria erro de rich
+  result novo — foi assim que o `Product` sem `offers` apareceu. A thumbnail é
+  `img.youtube.com/vi/<id>/hqdefault.jpg`. Vale para as duas modalidades.
+
+### Modalidade: lançamento x pronto
+`imoveis.modalidade` (migration 026; `lancamento` por padrão, então todo imóvel
+antigo segue igual) separa **empreendimento** de **imóvel pronto / unidade
+única**. É a mesma tabela, a mesma listagem `/imoveis/` (filtro "Lançamento /
+Pronto" em `ImoveisFiltro`, que só aparece com as duas modalidades publicadas)
+e a mesma rota `/imoveis/<slug>/`: **nenhuma URL nova**, layout por modalidade.
+
+- Pronto usa colunas de valor único (`area_util`, `area_total`, `dormitorios`,
+  `suites`, `banheiros`, `vagas`, `valor_venda`, `valor_condominio`, `valor_iptu`,
+  `nome_condominio`, `andar`, `mobiliado`, `ano_construcao`) no lugar das faixas
+  `*_min/_max`, e não tem tipologias, fase de obra, plantas, decorado nem
+  realização. A página mostra a "Ficha do imóvel" (`fichaDoPronto`,
+  `lib/imoveis/ficha.ts`) e "Outros imóveis".
+- **Endereço exato só com `exibir_endereco`** (padrão `false`): sem ele, nem o
+  texto nem o `q=` do mapa embutido levam o endereço — só bairro e cidade.
+- **Fase fixa**: pronto sempre tem `fase_id` = fase `pronto`. A action
+  `salvarImovel` busca e grava (descartando o que o cliente mandar) e o trigger
+  `imoveis_fase_pronto` da 026 garante no banco. A modalidade **não muda**
+  depois de criada (a action recusa): trocar deixaria colunas da outra órfãs e
+  mudaria o layout de uma URL já indexada.
+- Validação: `imovelFormSchema` é `discriminatedUnion("modalidade")`; payload sem
+  `modalidade` vale como `lancamento` (formato anterior). O editor monta o
+  payload em `lib/imoveis/formulario.ts` e os blocos de campos vivem em
+  `components/admin/imovel/` — `/admin/imoveis/novo` pergunta a modalidade antes.
+- Schema: pronto gera `Offer` simples com `valor_venda` (nunca `AggregateOffer`;
+  `valor_a_partir_de` e tipologias são ignorados) e, **além do `Product`**,
+  um nó `RealEstateListing` complementar (`montarRealEstateListingSchema`),
+  também suprimido por `valor_sob_consulta`. Lançamento nunca emite o nó.
 
 ### Dados estruturados dos imóveis
 A página de imóvel usa `@type: Product` com **`offers` obrigatório**: o Google
 exige `offers`, `review` ou `aggregateRating`, imóvel não tem os dois últimos, e
 `Product` sem nenhum deles é **erro crítico** no teste de resultados aprimorados
-— não aviso. `RealEstateListing` é camada futura complementar, não substituição.
+— não aviso. `RealEstateListing` é camada complementar (só em imóvel pronto), nunca substituição.
 
 Tudo sai de `montarOfferSchema` (`lib/imoveis/schema.ts`), módulo puro travado
 em `tests/unidade/imoveis-schema.test.ts`. `priceCurrency` é sempre `BRL`.

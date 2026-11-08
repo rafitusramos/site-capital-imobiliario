@@ -11,12 +11,12 @@ export default async function AdminImoveisPage() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-[var(--abissal)]">Empreendimentos</h1>
+        <h1 className="text-lg font-semibold text-[var(--abissal)]">Imóveis</h1>
         <Link
           href="/admin/imoveis/novo"
           className="rounded-md bg-[var(--jade)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#175840]"
         >
-          + Novo empreendimento
+          + Novo imóvel
         </Link>
       </div>
       <TabelaImoveis imoveis={imoveis} />
