@@ -21,6 +21,8 @@ test.describe("/admin/posts/<id> — editor de artigo", () => {
     const original = await resumo.inputValue();
     const urlDoEditor = page.url();
 
+    await resumo.click();
+    await resumo.press("ControlOrMeta+End");
     await resumo.pressSequentially("x");
     await expect(resumo).toHaveValue(`${original}x`);
 
