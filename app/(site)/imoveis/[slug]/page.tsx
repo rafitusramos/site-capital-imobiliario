@@ -12,14 +12,13 @@ import { GaleriaPlantas } from "@/components/imoveis/GaleriaPlantas";
 import { LeadImovelModal } from "@/components/imoveis/LeadImovelModal";
 import { ImovelCard } from "@/components/imoveis/ImovelCard";
 import { obterIcone } from "@/components/imoveis/icones";
+import { extrairIdYoutube, formatarPrecoAPartir } from "@/lib/imoveis/formato";
+import { fatosDoImovel, fichaDoPronto, precoDoImovel, valorParaFiltro } from "@/lib/imoveis/ficha";
 import {
-  extrairIdYoutube,
-  formatarFaixaArea,
-  formatarFaixaDormitorios,
-  formatarFaixaVagas,
-  formatarPrecoAPartir,
-} from "@/lib/imoveis/formato";
-import { montarOfferSchema } from "@/lib/imoveis/schema";
+  montarOfferSchema,
+  montarRealEstateListingSchema,
+  montarVideoObjectSchema,
+} from "@/lib/imoveis/schema";
 import {
   altDoImovel,
   contextoDoImovel,
@@ -148,26 +147,30 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const capa = capaDoImovel(imovel);
   const local = [imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
 
-  const area = formatarFaixaArea(imovel.area_min, imovel.area_max);
-  const dormitorios = formatarFaixaDormitorios(imovel.dormitorios_min, imovel.dormitorios_max);
-  const vagas = formatarFaixaVagas(imovel.vagas_min, imovel.vagas_max);
+  // Duas modalidades, dois layouts: lançamento tem faixas, fase de obra,
+  // plantas e realização; imóvel pronto tem a ficha de uma unidade só.
+  const pronto = imovel.modalidade === "pronto";
+  const { area, dormitorios, vagas } = fatosDoImovel(imovel);
+  const ficha = pronto ? fichaDoPronto(imovel) : [];
   // "Sob consulta" tem precedência sobre o valor: quando marcado no cadastro, o
   // preço não aparece em lugar nenhum da página.
-  const precoFormatado = imovel.valor_sob_consulta
-    ? null
-    : formatarPrecoAPartir(imovel.valor_a_partir_de);
+  const preco = precoDoImovel(imovel);
+  const valorReferencia = valorParaFiltro(imovel);
   // Leva o valor do imóvel para o simulador de financiamento já preenchido.
   // Usa a mesma condição do preço na página: "sob consulta" tem precedência
   // sobre o valor, então um imóvel marcado assim manda o visitante ao
   // simulador em branco em vez de revelar por query string o preço que a LP
   // esconde.
-  const hrefSimulador =
-    !imovel.valor_sob_consulta && imovel.valor_a_partir_de
-      ? `/financiamento/?valor=${Math.round(imovel.valor_a_partir_de)}#simulador`
-      : "/financiamento/#simulador";
+  const hrefSimulador = valorReferencia
+    ? `/financiamento/?valor=${Math.round(valorReferencia)}#simulador`
+    : "/financiamento/#simulador";
 
   const idVideo = extrairIdYoutube(imovel.video_youtube_url);
-  const enderecoMapa = imovel.endereco || local || imovel.titulo;
+  // Imóvel pronto é residência de alguém: o endereço exato só aparece (texto e
+  // mapa) quando o cadastro libera em `exibir_endereco`. Sem isso o mapa fica
+  // no nível do bairro/cidade.
+  const enderecoPublico = pronto && !imovel.exibir_endereco ? null : imovel.endereco;
+  const enderecoMapa = enderecoPublico || local || imovel.titulo;
 
   const IconeArea = obterIcone("area");
   const IconeDormitorio = obterIcone("dormitorio");
@@ -193,9 +196,31 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
     name: imovel.titulo,
     description: imovel.seo_description ?? imovel.descricao_breve ?? undefined,
     image: urlAbsoluta(capa),
-    brand: imovel.construtora ? { "@type": "Organization", name: imovel.construtora } : undefined,
+    brand:
+      !pronto && imovel.construtora
+        ? { "@type": "Organization", name: imovel.construtora }
+        : undefined,
     ...(offers ? { offers } : {}),
   };
+
+  // Camada complementar do imóvel pronto: nunca substitui o Product acima.
+  const listingJsonLd = montarRealEstateListingSchema({
+    modalidade: imovel.modalidade,
+    slug: imovel.slug,
+    titulo: imovel.titulo,
+    descricao: descricaoDoImovel(imovel),
+    imagem: urlAbsoluta(capa),
+    criadoEm: imovel.created_at,
+    offers,
+  });
+
+  // Só sai com todos os campos obrigatórios (inclui `video_data_publicacao`).
+  const videoJsonLd = montarVideoObjectSchema({
+    titulo: imovel.titulo,
+    descricao: descricaoDoImovel(imovel),
+    urlVideo: imovel.video_youtube_url,
+    dataPublicacao: imovel.video_data_publicacao,
+  });
 
   const faqJsonLd =
     imovel.faqs.length > 0
@@ -240,6 +265,18 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
       />
+      {listingJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(listingJsonLd) }}
+        />
+      ) : null}
+      {videoJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd) }}
+        />
+      ) : null}
       {faqJsonLd ? (
         <script
           type="application/ld+json"
@@ -266,7 +303,11 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               {imovel.fase.nome}
             </span>
             <h1 className="reveal d1">{imovel.titulo}</h1>
-            {local ? (
+            {pronto ? (
+              <p className="sub reveal d2">
+                {[imovel.nome_condominio, local].filter(Boolean).join(" — ")}
+              </p>
+            ) : local ? (
               <p className="sub reveal d2">
                 {imovel.fase.nome} em {local}
               </p>
@@ -288,17 +329,17 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                   <IconeVaga aria-hidden="true" /> {vagas}
                 </span>
               ) : null}
-              {imovel.previsao_entrega ? (
+              {!pronto && imovel.previsao_entrega ? (
                 <span className="im-fato">Entrega prevista: {imovel.previsao_entrega}</span>
               ) : null}
             </div>
 
             {imovel.valor_sob_consulta ? (
               <div className="im-hero-preco reveal d3">Preço: Sob consulta</div>
-            ) : precoFormatado ? (
+            ) : preco ? (
               <div className="im-hero-preco reveal d3">
-                <small>A partir de</small>
-                {precoFormatado}
+                {preco.rotulo ? <small>{preco.rotulo}</small> : null}
+                {preco.valor}
               </div>
             ) : null}
 
@@ -314,6 +355,23 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             <div className="wrap">
               <div className="eyebrow reveal">O projeto</div>
               <p className="im-projeto reveal d2">{imovel.descricao_completa}</p>
+            </div>
+          </section>
+        ) : null}
+
+        {/* 3.0 Ficha da unidade (imóvel pronto) */}
+        {pronto && ficha.length > 0 ? (
+          <section id="ficha">
+            <div className="wrap">
+              <div className="eyebrow reveal">Ficha do imóvel</div>
+              <dl className="im-ficha reveal d2">
+                {ficha.map((item) => (
+                  <div key={item.rotulo} className="im-ficha-item">
+                    <dt>{item.rotulo}</dt>
+                    <dd>{item.valor}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           </section>
         ) : null}
@@ -350,7 +408,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             <div className="reveal d2">
               <Carrossel
                 imagens={imagensEmpreendimento.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
-                ariaLabel={`Galeria do empreendimento ${imovel.titulo}`}
+                ariaLabel={`Galeria ${pronto ? "do imóvel" : "do empreendimento"} ${imovel.titulo}`}
                 contexto={contexto}
                 primeiraEager
               />
@@ -358,7 +416,8 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           </section>
         ) : null}
 
-        {/* 5. Fase da obra */}
+        {/* 5. Fase da obra (só lançamento) */}
+        {!pronto ? (
         <section id="fase-obra">
           <div className="wrap">
             <div className="eyebrow reveal">Fase da obra</div>
@@ -380,6 +439,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             </ol>
           </div>
         </section>
+        ) : null}
 
         {/* 6. Lazer e convívio */}
         {diferenciaisLazer.length > 0 ? (
@@ -401,7 +461,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         ) : null}
 
         {/* 7. As unidades */}
-        {imovel.descricao_unidades || imagensDecorado.length > 0 ? (
+        {!pronto && (imovel.descricao_unidades || imagensDecorado.length > 0) ? (
           <section id="unidades">
             <div className="wrap">
               <div className="eyebrow reveal">As unidades</div>
@@ -422,7 +482,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         ) : null}
 
         {/* 8. Plantas e quadro de áreas */}
-        {imagensPlanta.length > 0 || imovel.tipologias.length > 0 ? (
+        {!pronto && (imagensPlanta.length > 0 || imovel.tipologias.length > 0) ? (
           <section id="plantas">
             <div className="wrap">
               <div className="eyebrow reveal">Plantas e quadro de áreas</div>
@@ -516,12 +576,12 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         ) : null}
 
         {/* 10. Localização */}
-        {imovel.endereco || local ? (
+        {enderecoPublico || local ? (
           <section id="localizacao">
             <div className="wrap">
               <div className="eyebrow reveal">Localização</div>
               <div className="im-localizacao reveal d2">
-                {imovel.endereco ? <p className="endereco">{imovel.endereco}</p> : null}
+                {enderecoPublico ? <p className="endereco">{enderecoPublico}</p> : null}
                 {/* Prévia embutida sem chave de API (embed clássico do Maps). O
                     iframe não recebe cliques; o link por cima abre o mapa cheio
                     numa aba nova, para o visitante não perder a LP. */}
@@ -552,7 +612,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         ) : null}
 
         {/* 11. Realização */}
-        {imovel.construtora ? (
+        {!pronto && imovel.construtora ? (
           <section id="realizacao">
             <div className="wrap">
               <div className="eyebrow reveal">Realização</div>
@@ -585,7 +645,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         <section id="cta-final">
           <div className="wrap">
             <div className="artigo-cta reveal">
-              <h3>Quer saber mais sobre o {imovel.titulo}?</h3>
+              <h3>Quer saber mais sobre {pronto ? "este imóvel" : `o ${imovel.titulo}`}?</h3>
               <div className="im-cta-final-acoes">
                 <button
                   type="button"
@@ -603,9 +663,11 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         </section>
 
         {relacionados.length > 0 ? (
-          <section id="outros-empreendimentos">
+          <section id={pronto ? "outros-imoveis" : "outros-empreendimentos"}>
             <div className="wrap">
-              <div className="eyebrow reveal">Continue pesquisando</div>
+              <div className="eyebrow reveal">
+                {pronto ? "Outros imóveis" : "Continue pesquisando"}
+              </div>
               {/* Sem reveal na grade: quem anima é cada `ImovelCard`, para os
                   cards entrarem conforme aparecem em vez de a grade inteira
                   surgir de uma vez quando o topo dela toca a viewport. */}
@@ -622,8 +684,8 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
       {/* Barra de CTA fixa em mobile */}
       <div className="im-barra-cta">
         <div className="preco">
-          {precoFormatado ? <small>A partir de</small> : null}
-          <strong>{precoFormatado ?? "Preço: Sob consulta"}</strong>
+          {preco?.rotulo ? <small>{preco.rotulo}</small> : null}
+          <strong>{preco?.valor ?? "Preço: Sob consulta"}</strong>
         </div>
         <button type="button" className="cta" data-abrir-lead="Fale com um corretor agora">
           Fale conosco
