@@ -33,7 +33,7 @@ import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
 import type { ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/lib/validations/imovel";
 import type { ImovelDiferencialGrupo, ImovelModalidade } from "@/types/database";
-import { listaDeIcones, obterIcone } from "@/components/imoveis/icones";
+import { ICONES, obterIcone, opcoesDeIcones } from "@/components/imoveis/icones";
 import { GaleriaImovel } from "@/components/admin/GaleriaImovel";
 import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
 import { useGuardaAlteracoes } from "@/components/admin/useGuardaAlteracoes";
@@ -968,9 +968,12 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
                     className={CAMPO_INLINE}
                   >
                     <option value="">Sem ícone</option>
-                    {listaDeIcones().map((slug) => (
+                    {diferencial.icone && !(diferencial.icone in ICONES) ? (
+                      <option value={diferencial.icone}>{diferencial.icone} (fora do catálogo)</option>
+                    ) : null}
+                    {opcoesDeIcones().map(({ slug, rotulo }) => (
                       <option key={slug} value={slug}>
-                        {slug}
+                        {rotulo}
                       </option>
                     ))}
                   </select>
