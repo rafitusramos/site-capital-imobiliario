@@ -384,6 +384,8 @@ export interface Database {
           exige_motivo: boolean;
           sla_dias: number | null;
           ativo: boolean;
+          /** Editável em /admin/parametros; exceção ao espelho de lib/crm/etapas.ts (migration 025). */
+          notifica_lead: boolean;
         };
         Insert: {
           tipo: LeadTipoSlug;
@@ -398,8 +400,39 @@ export interface Database {
           exige_motivo?: boolean;
           sla_dias?: number | null;
           ativo?: boolean;
+          notifica_lead?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["crm_etapas"]["Insert"]>;
+        Relationships: [];
+      };
+      // Registro dos e-mails de lead (migration 025). Escrita só pelo servidor
+      // com a service role; leitura só admin (eh_admin()).
+      crm_emails: {
+        Row: {
+          id: string;
+          lead_id: string;
+          destinatario: string;
+          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead";
+          etapa: string | null;
+          resend_id: string | null;
+          status: "agendado" | "enviado" | "cancelado" | "falhou" | "sem-chave";
+          agendado_para: string | null;
+          erro: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          destinatario: string;
+          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead";
+          etapa?: string | null;
+          resend_id?: string | null;
+          status: "agendado" | "enviado" | "cancelado" | "falhou" | "sem-chave";
+          agendado_para?: string | null;
+          erro?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_emails"]["Insert"]>;
         Relationships: [];
       };
       // Motivos de perda/não qualificação (014_crm_pipelines.sql). Tabela

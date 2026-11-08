@@ -57,11 +57,14 @@ Já verificado no código e no banco de produção:
   base para calibrar peso nenhum; um score inventado agora só produziria um
   número em que ninguém confia. Reavaliar depois de ~100 leads fechados.
 - **Notificação de lembrete por e-mail/WhatsApp.** A spec pede indicação visual
-  no card, e é isso que será entregue. `lib/notificacoes/whatsapp.ts` existe e
-  torna isso barato numa fase 2, mas exige decidir cadência e opt-out.
+  no card, e é isso que será entregue. Lembretes por e-mail/WhatsApp seguem fora
+  (exigem decidir cadência e opt-out). **Já existe** (Fase 5, migration 025) o
+  e-mail transacional de lead novo e de mudança de etapa via Resend — ver a seção
+  "E-mails" do CLAUDE.md. WhatsApp servidor→corretor continua inexistente.
 - **Editor de motivos/etapas na interface.** As tabelas são configuráveis por
   SQL. Uma tela de administração delas é fase 2.
-- **Automações/workflows** (mover etapa dispara e-mail, etc.).
+- **Automações/workflows** em geral. Exceção parcial: mover etapa já dispara
+  e-mail ao dono (sempre) e ao lead (só etapas com `notifica_lead`), Fase 5.
 
 ---
 

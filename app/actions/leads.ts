@@ -10,7 +10,9 @@ import {
   type LeadHomeEquityInput,
   type LeadImovelInput,
 } from "@/lib/validations/lead";
-import { notificarNovoLead } from "@/lib/notificacoes/whatsapp";
+import { after } from "next/server";
+import { dispararAvisosNovoLead } from "@/lib/email/notificar";
+import { camposDoFormulario } from "@/lib/email/campos-lead";
 
 export interface CriarLeadInput {
   tipo: LeadTipo;
@@ -190,10 +192,22 @@ export async function criarLead(input: CriarLeadInput): Promise<CriarLeadResulta
   if (error) throw error;
   if (!lead) throw new Error("RPC de criação de lead não retornou dados.");
 
+  // E-mails (dono + confirmação ao lead) depois da resposta: o formulário não
+  // espera o Resend, e nenhuma falha aqui afeta o lead já criado.
   try {
-    await notificarNovoLead(lead);
-  } catch {
-    // best-effort — nunca deve derrubar a captação do lead.
+    const dados = parsed.data as Record<string, unknown>;
+    const paraEmail = {
+      id: lead.id,
+      tipo: input.tipo,
+      nome: lead.nome,
+      email: String(dados.email ?? ""),
+      telefone: lead.telefone,
+      protocolo: lead.protocolo,
+    };
+    const campos = camposDoFormulario(input.tipo, dados);
+    after(() => dispararAvisosNovoLead(paraEmail, campos));
+  } catch (e) {
+    console.error("[criarLead] não foi possível agendar os e-mails:", e);
   }
 
   return { sucesso: true, protocolo: lead.protocolo };

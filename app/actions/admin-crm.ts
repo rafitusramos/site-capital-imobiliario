@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { dispararAvisosMudancaEtapa } from "@/lib/email/notificar";
 import type { createClient } from "@/lib/supabase/server";
 import { idSchema, usuarioAutenticado } from "@/lib/admin/auth";
 import { etapaInicial } from "@/lib/crm/etapas";
@@ -273,6 +275,15 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
     return { sucesso: false, erro: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  // Estado ANTES do RPC: é dele que sai o "de" do e-mail e a decisão de não
+  // avisar quando a etapa não mudou. A leitura é só informativa — o RPC
+  // continua sendo a única forma de mover e a autoridade das regras.
+  const { data: antesDoMovimento } = await supabase
+    .from("leads")
+    .select("id, tipo, status, nome, email, telefone, protocolo")
+    .eq("id", parsed.data.leadId)
+    .maybeSingle();
+
   const { data, error } = await supabase.rpc("mover_lead_crm", {
     p_lead_id: parsed.data.leadId,
     p_etapa: parsed.data.etapa,
@@ -284,8 +295,42 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
   if (error) return { sucesso: false, erro: traduzirErro(error, "Não foi possível mover o lead.") };
   if (!data) return { sucesso: false, erro: "Lead não encontrado." };
 
+  if (antesDoMovimento && antesDoMovimento.status !== parsed.data.etapa) {
+    const quemMoveu = await nomeDeQuemMoveu(supabase, user.id, user.email);
+    const mudanca = {
+      lead: {
+        id: antesDoMovimento.id,
+        tipo: antesDoMovimento.tipo,
+        nome: antesDoMovimento.nome,
+        email: antesDoMovimento.email,
+        telefone: antesDoMovimento.telefone,
+        protocolo: antesDoMovimento.protocolo,
+      },
+      de: antesDoMovimento.status,
+      para: parsed.data.etapa as LeadEtapaSlug,
+      motivo: parsed.data.motivo,
+      motivoObs: parsed.data.motivoObs,
+      quemMoveu,
+    };
+    // Depois da resposta, e sem nunca afetar o movimento (Fase 5: e-mails).
+    try {
+      after(() => dispararAvisosMudancaEtapa(mudanca));
+    } catch (e) {
+      console.error("[moverLead] não foi possível agendar os e-mails:", e);
+    }
+  }
+
   revalidarQuadro();
   return { sucesso: true };
+}
+
+async function nomeDeQuemMoveu(
+  supabase: SupabaseServerClient,
+  userId: string,
+  email: string | undefined,
+): Promise<string> {
+  const { data } = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
+  return data?.full_name?.trim() || email || "Equipe";
 }
 
 // ---------------------------------------------------------------------------
