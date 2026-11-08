@@ -18,6 +18,10 @@ const config = [
       "next-env.d.ts",
       // Skills instaladas pelo `npx skills` — código de terceiro (ver .gitignore).
       ".agents/**",
+      // Saídas geradas pelo Playwright (relatório HTML com JS minificado,
+      // traces); não são código do projeto. Ver tests/functional-tests/README.md.
+      "tests/functional-tests/.ultimo-html/**",
+      "tests/functional-tests/.artefatos/**",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),
