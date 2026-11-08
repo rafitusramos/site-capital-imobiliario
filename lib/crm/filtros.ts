@@ -1,4 +1,5 @@
 import { estaAtrasado } from "@/lib/crm/lembretes";
+import { estadoDaEtapa } from "@/lib/crm/tempo";
 import type { LeadQuadroCRM } from "@/lib/queries/admin-crm";
 
 /**
@@ -72,12 +73,56 @@ export function filtrarAtrasados<T extends LeadQuadroCRM>(
   return leads.filter((lead) => lead.proximo_lembrete_em !== null && estaAtrasado(lead.proximo_lembrete_em, agora));
 }
 
+/**
+ * "Parado além do SLA": passou do prazo da etapa (estado "atenção" ou
+ * "parado" de `estadoDaEtapa`, lib/crm/tempo.ts). Etapa final não tem SLA e
+ * lead sem `dias_na_etapa` nunca entram — não há relógio correndo.
+ */
+export function filtrarParados<T extends LeadQuadroCRM>(leads: T[], somenteParados: boolean | undefined): T[] {
+  if (!somenteParados) return leads;
+  return leads.filter(
+    (lead) => lead.dias_na_etapa !== null && estadoDaEtapa(lead.dias_na_etapa, lead.sla_dias) !== "no-prazo",
+  );
+}
+
+/** Dia civil (AAAA-MM-DD) de um instante em São Paulo — o servidor roda em UTC, o operador não. */
+function diaEmSaoPaulo(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(iso));
+}
+
+/** Período de criação, `de`/`ate` em AAAA-MM-DD (dia de São Paulo, ambos inclusivos); `undefined` deixa o lado aberto. */
+export function filtrarPorPeriodo<T extends LeadQuadroCRM>(leads: T[], de: string | undefined, ate: string | undefined): T[] {
+  if (!de && !ate) return leads;
+  return leads.filter((lead) => {
+    const dia = diaEmSaoPaulo(lead.created_at);
+    if (de && dia < de) return false;
+    if (ate && dia > ate) return false;
+    return true;
+  });
+}
+
+/** Leads sem nenhum lembrete pendente agendado. */
+export function filtrarSemLembrete<T extends LeadQuadroCRM>(leads: T[], semLembrete: boolean | undefined): T[] {
+  if (!semLembrete) return leads;
+  return leads.filter((lead) => lead.proximo_lembrete_em === null);
+}
+
 export type FiltrosQuadro = {
   busca?: string;
   responsavelId?: string | null;
   tag?: string;
   somenteFavoritos?: boolean;
   somenteAtrasados?: boolean;
+  somenteParados?: boolean;
+  semLembrete?: boolean;
+  /** AAAA-MM-DD, dia de São Paulo. */
+  criadoDe?: string;
+  criadoAte?: string;
 };
 
 /** Aplica todos os filtros em sequência — a ordem não importa, cada um só remove itens. */
@@ -92,6 +137,9 @@ export function aplicarFiltros<T extends LeadQuadroCRM>(
   resultado = filtrarPorTag(resultado, filtros.tag);
   resultado = filtrarFavoritos(resultado, filtros.somenteFavoritos);
   resultado = filtrarAtrasados(resultado, filtros.somenteAtrasados, agora);
+  resultado = filtrarParados(resultado, filtros.somenteParados);
+  resultado = filtrarSemLembrete(resultado, filtros.semLembrete);
+  resultado = filtrarPorPeriodo(resultado, filtros.criadoDe, filtros.criadoAte);
   return resultado;
 }
 
@@ -100,6 +148,38 @@ export type CriterioOrdenacao =
   | "proximo-lembrete" // lembrete mais próximo primeiro; sem lembrete vai para o fim
   | "maior-valor" // maior valor_negocio primeiro; sem valor vai para o fim
   | "mais-recente"; // criado mais recentemente primeiro
+
+/**
+ * Estado completo da barra de filtros. Vive aqui (e não em BarraFiltros.tsx)
+ * porque lib/crm/filtros-url.ts o serializa para a URL e não pode importar
+ * componente.
+ */
+export type EstadoFiltros = {
+  busca: string;
+  /** `undefined` = todos; `null` = sem responsável; string = um corretor específico. */
+  responsavelId: string | null | undefined;
+  tag: string | undefined;
+  somenteFavoritos: boolean;
+  somenteAtrasados: boolean;
+  somenteParados: boolean;
+  semLembrete: boolean;
+  criadoDe: string | undefined;
+  criadoAte: string | undefined;
+  ordenacao: CriterioOrdenacao;
+};
+
+export const FILTROS_INICIAIS: EstadoFiltros = {
+  busca: "",
+  responsavelId: undefined,
+  tag: undefined,
+  somenteFavoritos: false,
+  somenteAtrasados: false,
+  somenteParados: false,
+  semLembrete: false,
+  criadoDe: undefined,
+  criadoAte: undefined,
+  ordenacao: "tempo-na-etapa",
+};
 
 // dias_na_etapa É campo de vw_leads_crm (e portanto de LeadQuadroCRM), mas a
 // ordenação por tempo na etapa continua recebendo um mapa auxiliar opcional:

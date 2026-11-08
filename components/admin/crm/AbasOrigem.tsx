@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
+import { soFiltros } from "@/lib/crm/filtros-url";
 import type { ContagemAbaCRM } from "@/lib/queries/admin-crm";
 import { ETAPAS_POR_TIPO } from "@/lib/crm/etapas";
 import type { LeadTipoSlug } from "@/types/database";
@@ -28,14 +29,19 @@ const ORDEM_ABAS: LeadTipoSlug[] = ["financiamento", "home-equity", "consorcio",
  */
 export function AbasOrigem({ contagens }: { contagens: ContagemAbaCRM[] }) {
   const pathname = usePathname();
+  // Trocar de aba leva os filtros (docs/crm-spec.md §3.2): todos valem em
+  // qualquer origem. `?lead=`/`?novo=` ficam para tras: sao de um lead/modal
+  // daquela aba.
+  const filtrosQuery = soFiltros(new URLSearchParams(useSearchParams()?.toString() ?? "")).toString();
   const contagemPorTipo = new Map(contagens.map((c) => [c.tipo, c.total]));
 
   return (
     <nav aria-label="Origem dos leads" className="mb-0 border-b border-black/10">
       <ul className="flex flex-wrap gap-1">
         {ORDEM_ABAS.filter((tipo) => tipo in ETAPAS_POR_TIPO).map((tipo) => {
-          const href = `/admin/crm/${tipo}`;
-          const ativa = pathname?.startsWith(href) ?? false;
+          const base = `/admin/crm/${tipo}`;
+          const href = filtrosQuery ? `${base}?${filtrosQuery}` : base;
+          const ativa = pathname?.startsWith(base) ?? false;
           const total = contagemPorTipo.get(tipo) ?? 0;
           return (
             <li key={tipo}>

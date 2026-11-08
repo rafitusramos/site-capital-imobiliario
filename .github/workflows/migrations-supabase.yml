@@ -1,0 +1,75 @@
+# Migrations do Supabase
+#
+# O que faz:
+#   - Pull request para `Preview`: `supabase db push --dry-run` (só lista o que
+#     seria aplicado; não escreve nada no banco).
+#   - Push (merge) em `Preview`, ou execução manual: `supabase db push` de verdade.
+#
+# ATENÇÃO: Preview e produção compartilham UM único banco Supabase. Mergear em
+# `Preview` aplica a migration em PRODUÇÃO.
+#
+# Secret obrigatório: SUPABASE_DB_PASSWORD — só a senha do banco (Project
+# Settings > Database > Reset database password), crua, sem codificar. A URL do
+# Session pooler é montada aqui e a senha é codificada pelo próprio workflow:
+# montar a URI à mão errou três vezes (reticências copiadas, conexão direta
+# IPv6-only, senha rejeitada). Host e usuário não são segredo.
+# Trocou a senha do banco? Só este secret precisa ser atualizado.
+#
+# Pré-requisito: a tabela `supabase_migrations.schema_migrations` precisa listar
+# a versão de TODO arquivo já aplicado em `supabase/migrations/`. Se faltar uma,
+# o push tenta rodar o arquivo de novo.
+name: Migrations Supabase
+
+on:
+  pull_request:
+    branches: [Preview]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/migrations-supabase.yml'
+  push:
+    branches: [Preview]
+    paths:
+      - 'supabase/migrations/**'
+      - '.github/workflows/migrations-supabase.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: supabase-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  migrations:
+    runs-on: ubuntu-latest
+    env:
+      # Session pooler (IPv4). A conexão direta db.<ref>.supabase.co é só IPv6,
+      # e os runners do GitHub Actions não têm IPv6.
+      POOLER_HOST: aws-1-us-west-2.pooler.supabase.com
+      POOLER_USER: postgres.lqiztovibxbrertyxead
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    steps:
+      - name: Montar URL do banco
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::Secret SUPABASE_DB_PASSWORD vazio ou ausente. Configure em Settings > Secrets and variables > Actions (só a senha do banco, sem codificar)."
+            exit 1
+          fi
+          SENHA_CODIFICADA=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$SENHA_CODIFICADA"
+          echo "SUPABASE_DB_URL=postgresql://${POOLER_USER}:${SENHA_CODIFICADA}@${POOLER_HOST}:5432/postgres" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.122.1
+
+      - name: Dry-run (pull request)
+        if: github.event_name == 'pull_request'
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+
+      - name: Aplicar migrations (push / manual)
+        if: github.event_name != 'pull_request'
+        run: supabase db push --db-url "$SUPABASE_DB_URL"

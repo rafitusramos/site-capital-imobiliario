@@ -1,12 +1,9 @@
 import Link from "next/link";
 import type { ImovelComCapa } from "@/lib/queries/imoveis";
-import {
-  formatarFaixaArea,
-  formatarFaixaDormitorios,
-  formatarFaixaVagas,
-  formatarPrecoAPartir,
-} from "@/lib/imoveis/formato";
+import { fatosDoImovel, precoDoImovel } from "@/lib/imoveis/ficha";
 import { obterIcone } from "@/components/imoveis/icones";
+import { ImagemImovel } from "@/components/imoveis/ImagemImovel";
+import { SIZES_CARD } from "@/lib/imoveis/imagem-otimizada";
 import { altDoImovel } from "@/lib/imoveis/seo";
 
 type ImovelCardProps = {
@@ -18,12 +15,9 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
   const IconeDormitorio = obterIcone("dormitorio");
   const IconeVaga = obterIcone("vaga");
 
-  const area = formatarFaixaArea(imovel.area_min, imovel.area_max);
-  const dormitorios = formatarFaixaDormitorios(imovel.dormitorios_min, imovel.dormitorios_max);
-  const vagas = formatarFaixaVagas(imovel.vagas_min, imovel.vagas_max);
-  const preco = imovel.valor_sob_consulta
-    ? null
-    : formatarPrecoAPartir(imovel.valor_a_partir_de);
+  // Lançamento mostra faixas; imóvel pronto, os valores da unidade.
+  const { area, dormitorios, vagas } = fatosDoImovel(imovel);
+  const preco = precoDoImovel(imovel);
 
   const local = [imovel.bairro, imovel.cidade].filter(Boolean).join(", ");
 
@@ -31,7 +25,13 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
     <Link className="im-card reveal" href={`/imoveis/${imovel.slug}/`}>
       <div className="im-card-capa">
         {imovel.capa ? (
-          <img src={imovel.capa} alt={altDoImovel(imovel)} loading="lazy" />
+          <ImagemImovel
+            src={imovel.capa}
+            alt={altDoImovel(imovel)}
+            fill
+            sizes={SIZES_CARD}
+            loading="lazy"
+          />
         ) : null}
         <span className="im-badge-fase" data-fase={imovel.fase?.slug}>
           {imovel.fase?.nome}
@@ -68,8 +68,8 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
           <div className="im-preco">Preço: Sob consulta</div>
         ) : preco ? (
           <div className="im-preco">
-            <small>A partir de</small>
-            {preco}
+            {preco.rotulo ? <small>{preco.rotulo}</small> : null}
+            {preco.valor}
           </div>
         ) : null}
       </div>

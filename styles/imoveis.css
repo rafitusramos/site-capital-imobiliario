@@ -84,7 +84,7 @@
 }
 .im-card:hover{transform:translateY(-3px);box-shadow:0 18px 38px -18px rgba(10,36,28,.45);}
 .im-card-capa{position:relative;aspect-ratio:16/10;background:linear-gradient(135deg,var(--abissal) 0%,#123c2e 55%,var(--jade) 130%);}
-.im-card-capa img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .45s ease;}
+.im-card-capa img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .45s ease,opacity .3s ease-out;}
 .im-card:hover .im-card-capa img{transform:scale(1.06);}
 
 .im-badge-fase{
@@ -126,23 +126,32 @@
 /* ---------------------------------------------------------------------
    CARROSSEL — foco central (docs/carousel-spec.md), paleta do site
    --------------------------------------------------------------------- */
-.im-carrossel{position:relative;margin:var(--s5) 0;}
+/* Geometria (reescrita para corrigir o corte nas bordas no mobile):
+   - O root do Embla (.im-carrossel-viewport) NÃO tem padding horizontal. O Embla
+     mede o root com offsetWidth (padding incluído) mas posiciona o trilho a
+     partir da borda de dentro do padding; com padding lateral o slide "centrado"
+     ficava deslocado para a direita pelo valor do padding e a foto ativa
+     encostava (e era cortada) na borda direita. Sem padding, centro do Embla =
+     centro visual. O peek vem da largura do slide, não de padding.
+   - A foto ativa é ampliada por transform (--escala-ativa), que não ocupa
+     espaço: o padding vertical do viewport tem de cobrir o quanto a imagem
+     cresce (25% da altura sem escala = 0,1875 × largura da imagem) + folga
+     para a sombra. É por isso que --basis e a folga andam juntos abaixo.
+   - --wrap-max espelha .wrap{max-width:1080px} de lp.css. */
+.im-carrossel{
+  --escala-ativa:1.5;
+  --wrap-max:1080px;
+  /* largura do slide sem escala (inclui os 8px de padding de cada lado) */
+  --basis:52%;
+  --folga-vertical:calc(var(--basis) * 0.1875 + 12px);
+  position:relative;margin:var(--s5) 0;
+}
 .im-carrossel:focus-visible{outline:3px solid var(--bronze);outline-offset:6px;}
-/* O padding vertical abre espaço para a central ampliada (1.5x): o transform
-   não ocupa espaço no layout, então sem essa folga o overflow:hidden cortaria
-   o topo e a base da imagem em destaque. */
-.im-carrossel-viewport{overflow:hidden;padding:clamp(36px,4.5vw,64px) 8%;}
-@media(min-width:768px){.im-carrossel-viewport{padding-left:18%;padding-right:18%;}}
-@media(min-width:1024px){.im-carrossel-viewport{padding-left:26%;padding-right:26%;}}
+.im-carrossel-viewport{overflow:hidden;padding:var(--folga-vertical) 0;}
 .im-carrossel-trilho{display:flex;touch-action:pan-y pinch-zoom;align-items:center;}
 .im-carrossel-slide{
-  /* Mesma constante usada pela legenda sobre a foto para dividir o corpo do
-     texto — ver .im-carrossel-legenda. Mudou aqui, confira lá. */
-  --escala-ativa:1.5;
   position:relative;
-  /* Base menor que a original: a central cresce 1.5x sobre as vizinhas e
-     precisa caber na área útil do viewport. */
-  flex:0 0 60%;min-width:0;padding:0 8px;
+  flex:0 0 var(--basis);min-width:0;padding:0 8px;
   transform:scale(1);opacity:.65;z-index:0;
   transition:transform .35s ease-out,opacity .35s ease-out;
 }
@@ -150,18 +159,38 @@
    do Embla): com poucos slides o cálculo por progresso de scroll dava
    escala/opacidade erradas — ver comentário de CarrosselMultiplo. */
 .im-carrossel-slide.ativo{transform:scale(var(--escala-ativa));opacity:1;z-index:2;}
-@media(min-width:768px){.im-carrossel-slide{flex-basis:50%;}}
-@media(min-width:1024px){.im-carrossel-slide{flex-basis:40%;}}
+/* Tablet: ativo ≈ 60% da largura (0,4 × 1,5). */
+@media(min-width:768px){.im-carrossel{--basis:40%;}}
+/* Desktop: a foto ativa mede 50% do max-width do .wrap (540px). Como a escala
+   também amplia os 8px de padding do slide, a largura sem escala é
+   50% × wrap ÷ escala + 16px (o padding). Com 1024px de viewport o conteúdo
+   do .wrap tem 976px (24px de padding de cada lado): a ativa (540px) deixa
+   ~218px de cada lado para as vizinhas, então nada é cortado. Vizinhas continuam aparecendo nas
+   laterais. Em px absolutos, e não em % do viewport, para não crescer com
+   a tela. */
+@media(min-width:1024px){
+  .im-carrossel{
+    --basis:calc(var(--wrap-max) * 0.5 / var(--escala-ativa) + 16px);
+    --folga-vertical:calc(var(--wrap-max) * 0.5 / var(--escala-ativa) * 0.1875 + 12px);
+  }
+}
 @media(prefers-reduced-motion:reduce){.im-carrossel-slide{transition:none;}}
 
+/* Cantos arredondados que de fato recortam: overflow:hidden + radius num
+   elemento escalado por transform falha no Safari/iOS sem criar um contexto de
+   empilhamento próprio (isolation + translateZ). */
 .im-carrossel-slide-botao{
   position:relative;
   display:block;width:100%;padding:0;margin:0;border:none;background:none;cursor:pointer;
-  border-radius:8px;overflow:hidden;box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
+  border-radius:8px;overflow:hidden;isolation:isolate;transform:translateZ(0);
+  box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
 }
 .im-carrossel-slide-botao img{
-  display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:var(--abissal);
+  display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;background:var(--abissal);
 }
+/* Caixa reservada enquanto o slide ainda não baixou a foto: mesma proporção e
+   cor de fundo da imagem, então nada se mexe quando ela chega. */
+.im-carrossel-reserva{display:block;width:100%;aspect-ratio:4/3;background:var(--abissal);}
 
 .im-carrossel-seta{
   position:absolute;top:50%;transform:translateY(-50%);z-index:2;
@@ -186,12 +215,15 @@
 .im-carrossel-unica{
   --escala-ativa:1; /* figura sem transform — ver .im-carrossel-legenda */
   position:relative;
-  max-width:min(640px,90%);margin:var(--s5) auto;text-align:center;
+  max-width:min(640px,calc(100% - 32px));margin:var(--s5) auto;text-align:center;
+  /* Recorta imagem e legenda juntas nos mesmos cantos, sem depender de o
+     radius de cada filho bater com o do pai. */
+  border-radius:8px;overflow:hidden;isolation:isolate;
+  box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
 }
-.im-carrossel-unica img{
-  display:block;width:100%;aspect-ratio:4/3;object-fit:cover;
-  border-radius:8px;box-shadow:0 16px 40px -18px rgba(10,36,28,.4);
-}
+.im-carrossel-unica img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;background:var(--abissal);}
+/* Desktop: mesma largura da foto ativa do carrossel (50% do .wrap). */
+@media(min-width:1024px){.im-carrossel-unica{max-width:calc(1080px * 0.5);}}
 
 /* ---- Legenda sobre a foto ----
    O ambiente cadastrado no admin é impresso NA foto, não abaixo dela: na LP a
@@ -305,6 +337,9 @@
 .im-hero-fatos .im-fato svg{width:19px;height:19px;color:var(--bronze);flex:none;}
 .im-hero-preco{font-family:var(--display);font-weight:400;font-size:clamp(24px,4vw,32px);color:var(--branco);margin-top:var(--s3);}
 .im-hero-preco small{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--areia);}
+/* Condomínio e IPTU do imóvel pronto: secundários ao preço, na mesma voz do rótulo. */
+.im-hero-custos{list-style:none;margin:var(--s2) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:4px 20px;font-family:var(--sans);font-size:14px;color:var(--marfim);}
+.im-hero-custos span{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--areia);margin-right:4px;}
 
 /* Archivo (--sans) em vez da serifada: decisão do Rafael, lê melhor nos
    blocos descritivos longos do projeto e das unidades. */
@@ -352,7 +387,7 @@
 /* ---- Planta ampliada (lightbox) ---- */
 .im-planta-scrim{position:fixed;inset:0;z-index:140;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(23,26,23,.55);}
 .im-planta-caixa{position:relative;max-width:min(960px,100%);max-height:90vh;display:flex;flex-direction:column;align-items:center;gap:12px;}
-.im-planta-caixa img{max-width:100%;max-height:80vh;object-fit:contain;border-radius:8px;background:var(--branco);box-shadow:0 24px 60px -20px rgba(0,0,0,.5);}
+.im-planta-caixa img{width:auto;height:auto;max-width:100%;max-height:80vh;object-fit:contain;border-radius:8px;background:var(--branco);box-shadow:0 24px 60px -20px rgba(0,0,0,.5);}
 .im-planta-legenda{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--branco);}
 .im-planta-fechar{position:absolute;top:-12px;right:-12px;z-index:2;width:44px;height:44px;border-radius:50%;border:none;background:var(--branco);color:var(--abissal);font-family:var(--mono);font-size:24px;line-height:1;cursor:pointer;box-shadow:0 8px 20px -8px rgba(0,0,0,.5);}
 .im-planta-fechar:hover{background:var(--areia);}
@@ -372,6 +407,12 @@
 .im-diferencial{display:flex;flex-direction:column;align-items:flex-start;gap:10px;background:var(--branco);border:1px solid rgba(10,36,28,.1);border-radius:6px;padding:20px;}
 .im-diferencial svg{width:26px;height:26px;color:var(--bronze);}
 .im-diferencial span{font-family:var(--sans);font-weight:600;font-size:14px;color:var(--abissal);}
+
+/* ---- Ficha da unidade (imóvel pronto) ---- */
+.im-ficha{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:var(--s3);margin-top:var(--s5);}
+.im-ficha-item{background:var(--branco);border:1px solid rgba(10,36,28,.1);border-radius:6px;padding:16px 18px;}
+.im-ficha-item dt{font-family:var(--sans);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#5b615d;margin:0 0 6px;}
+.im-ficha-item dd{font-family:var(--sans);font-weight:600;font-size:18px;color:var(--abissal);margin:0;}
 
 /* ---- Localização ---- */
 .im-localizacao{margin-top:var(--s4);}
@@ -415,3 +456,10 @@
 body:has(.im-lp-com-barra)::before{content:none;}
 .im-lp-com-barra{padding-bottom:84px;background:var(--marfim);}
 @media(min-width:900px){.im-lp-com-barra{padding-bottom:0;}}
+
+/* ---- Fade-in das fotos de imóvel (ImagemImovel) ----
+   Só esconde com JS ativo: sem script a foto aparece normal. O componente vira
+   data-fade="1" no onLoad (ou no mount, se a foto já estava em cache). */
+img[data-fade]{transition:opacity .3s ease-out;}
+@media (scripting:enabled){img[data-fade="0"]{opacity:0;}}
+@media(prefers-reduced-motion:reduce){img[data-fade],.im-card-capa img{transition:none;}}

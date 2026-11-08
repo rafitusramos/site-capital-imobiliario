@@ -1,5 +1,6 @@
 import { SITE_URL } from "@/lib/site";
-import type { ImovelStatus } from "@/types/database";
+import { extrairIdYoutube } from "@/lib/imoveis/formato";
+import type { ImovelModalidade, ImovelStatus } from "@/types/database";
 
 // Dados estruturados da página de imóvel (docs/handoff-schema-offers-imoveis.md).
 //
@@ -52,6 +53,9 @@ export type ImovelParaOffer = {
   valor_a_partir_de: number | null;
   valor_sob_consulta: boolean;
   tipologias: { valor_a_partir_de: number | null }[];
+  /** Ausente = lançamento (formato anterior à migration 026). */
+  modalidade?: ImovelModalidade;
+  valor_venda?: number | null;
 };
 
 export type OfferSchema = {
@@ -83,14 +87,23 @@ export function montarOfferSchema(imovel: ImovelParaOffer): OfferSchema | null {
   // contraria a política de dados estruturados do Google, que exige marcação
   // representativa do conteúdo visível — e ainda entregaria de graça, na SERP,
   // o preço que o cadastro decidiu não expor.
-  if (imovel.valor_sob_consulta || !imovel.valor_a_partir_de) return null;
+  if (imovel.valor_sob_consulta) return null;
 
-  const piso = imovel.valor_a_partir_de;
   const base = {
     priceCurrency: "BRL",
     availability: disponibilidadeSchema(imovel.status, imovel.fase.slug),
     url: `${SITE_URL}/imoveis/${imovel.slug}/`,
   } as const;
+
+  // Unidade única: um preço só, sempre `Offer` simples — não há tipologias
+  // nem faixa, e `valor_a_partir_de` não é usado nessa modalidade.
+  if (imovel.modalidade === "pronto") {
+    if (!imovel.valor_venda) return null;
+    return { "@type": "Offer", price: imovel.valor_venda, ...base };
+  }
+
+  if (!imovel.valor_a_partir_de) return null;
+  const piso = imovel.valor_a_partir_de;
 
   const precosTipologias = imovel.tipologias
     .map((tipologia) => tipologia.valor_a_partir_de)
@@ -109,5 +122,60 @@ export function montarOfferSchema(imovel: ImovelParaOffer): OfferSchema | null {
     highPrice: teto,
     offerCount: imovel.tipologias.length,
     ...base,
+  };
+}
+
+/**
+ * `RealEstateListing` do imóvel pronto: camada COMPLEMENTAR ao `Product`
+ * (CLAUDE.md), nunca substituta. Só sai com `offers` — o mesmo bloco do
+ * Product, então "sob consulta" também some daqui — e só para unidade única;
+ * empreendimento em lançamento não é um anúncio de imóvel.
+ */
+export function montarRealEstateListingSchema(entrada: {
+  modalidade: ImovelModalidade;
+  slug: string;
+  titulo: string;
+  descricao: string;
+  imagem?: string;
+  /** timestamptz do cadastro; vira a data de publicação do anúncio. */
+  criadoEm: string;
+  offers: OfferSchema | null;
+}) {
+  if (entrada.modalidade !== "pronto" || !entrada.offers) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "RealEstateListing",
+    name: entrada.titulo,
+    description: entrada.descricao,
+    url: `${SITE_URL}/imoveis/${entrada.slug}/`,
+    image: entrada.imagem,
+    datePosted: entrada.criadoEm.slice(0, 10),
+    offers: entrada.offers,
+  };
+}
+
+/**
+ * `VideoObject` só com TODOS os campos obrigatórios (name, description,
+ * thumbnailUrl, uploadDate): schema incompleto cria erro de rich result novo.
+ * `uploadDate` vem de `video_data_publicacao`; sem ela, retorna `null`.
+ */
+export function montarVideoObjectSchema(entrada: {
+  titulo: string;
+  descricao: string | null;
+  urlVideo: string | null;
+  /** AAAA-MM-DD */
+  dataPublicacao: string | null;
+}) {
+  const id = extrairIdYoutube(entrada.urlVideo);
+  const descricao = entrada.descricao?.trim();
+  if (!id || !descricao || !entrada.dataPublicacao || !entrada.titulo.trim()) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    name: `Vídeo do ${entrada.titulo}`,
+    description: descricao,
+    thumbnailUrl: `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+    uploadDate: entrada.dataPublicacao,
+    embedUrl: `https://www.youtube.com/embed/${id}`,
   };
 }

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { decimalParaPercentual } from "@/lib/parametros/taxa";
 import { TAXAS_PADRAO } from "@/lib/queries/parametros";
 import { ParametrosForm } from "@/components/admin/ParametrosForm";
+import { EmailsCrmForm } from "@/components/admin/EmailsCrmForm";
 
 export const metadata: Metadata = { title: "Taxas dos Simuladores · Admin" };
 
@@ -32,6 +33,18 @@ export default async function ParametrosPage() {
     nomeAutor = perfil?.full_name ?? null;
   }
 
+  const { data: etapasDb } = await supabase
+    .from("crm_etapas")
+    .select("tipo, slug, label, ordem, notifica_lead")
+    .eq("ativo", true)
+    .order("ordem");
+  const etapasEmail = (etapasDb ?? []).map((e) => ({
+    tipo: e.tipo,
+    slug: e.slug,
+    label: e.label,
+    notificaLead: e.notifica_lead,
+  }));
+
   const valoresIniciais = {
     financiamentoTaxaAnual: decimalParaPercentual(
       data ? Number(data.financiamento_taxa_anual) : TAXAS_PADRAO.financiamentoTaxaAnual,
@@ -57,6 +70,14 @@ export default async function ParametrosPage() {
         atualizadoEm={data?.updated_at ?? null}
         atualizadoPorNome={nomeAutor}
       />
+
+      <h2 className="mb-2 mt-10 text-lg font-semibold text-[var(--abissal)]">E-mails do CRM</h2>
+      <p className="mb-6 max-w-2xl text-sm text-neutral-500">
+        Você recebe um e-mail a cada lead novo e a cada mudança de etapa. Aqui você escolhe em quais
+        etapas o próprio lead também recebe um aviso. O aviso sai 10 minutos depois da mudança; se o
+        lead for movido de novo nesse intervalo (inclusive ao desfazer), o aviso anterior é cancelado.
+      </p>
+      <EmailsCrmForm etapas={etapasEmail} />
     </div>
   );
 }

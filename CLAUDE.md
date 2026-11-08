@@ -37,18 +37,33 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 758 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
-no SQL Editor do Supabase; a última é a **021**.
+Suíte em Vitest: `npm test` — 1068 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **028**.
+
+**Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
+o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
+**`Preview` e produção usam o MESMO banco** — mergear em `Preview` aplica em produção.
+Arquivo novo: prefixo numérico `NNN_nome.sql` seguindo a sequência e **sem
+`begin;`/`commit;`** (a CLI já abre uma transação por arquivo). SQL Editor só como
+fallback — e, se usar, registre a versão em `supabase_migrations.schema_migrations`,
+ou o próximo push tenta rodar o arquivo de novo.
 
 ### CRM
 Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 (financiamento, home-equity, consórcio, imóveis). A especificação completa é
 `docs/crm-spec.md`, citada nos comentários do módulo inteiro por seção.
 
+- Lead em `ganho`/`perdido` (não `nao-qualificado`) há mais de 30 dias é arquivado
+  sozinho, todo dia às 03:00 BRT, pela função `arquivar_leads_finais_antigos` +
+  job pg_cron `crm-arquivar-finais-antigos` (migration 023). `arquivado_por` nulo
+  = sistema; `restaurarLead` grava `restaurado_em` para o job não re-arquivar.
+- Contagens do cabeçalho (por etapa e por aba) vêm do RPC `contar_leads_crm`
+  (migration 022), **nunca** somadas em JS: o max-rows do PostgREST truncaria em silêncio.
 - `lib/crm/etapas.ts` **espelha** os seeds de `crm_etapas` da migration 014. Os
   dois têm de andar juntos: mudou label, cor, ordem, SLA ou `exige_motivo` numa
-  ponta, refaça na outra.
+  ponta, refaça na outra. **Exceção: `notifica_lead`** (migration 025) é lido do
+  banco em tempo de execução e editado em `/admin/parametros`; **não** entra em
+  `etapas.ts`, e a seed da 025 não precisa ser espelhada lá.
 - Trocar um lead de etapa passa **sempre** pelo RPC `mover_lead_crm`, nunca por
   update solto. É lá que vivem o motivo obrigatório de perdido/não-qualificado
   e a concorrência otimista — e vale igual para o arrastar e para os botões do
@@ -61,6 +76,36 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 - Tags vivem no catálogo compartilhado `crm_tags`, com FK em `lead_tags`: não
   existe tag solta por lead. Criar tag pela interface exige admin (RLS
   `crm_tags_admin_write`).
+
+### E-mails
+Provider **Resend** (`lib/email/`). Variáveis só de servidor (nunca `NEXT_PUBLIC_`),
+documentadas em `.env.local.example`: `RESEND_API_KEY`, `EMAIL_REMETENTE`,
+`EMAIL_ADMIN`. O domínio remetente precisa estar verificado no Resend.
+
+- **Sem `RESEND_API_KEY` é no-op** (`enviar.ts` loga uma vez e devolve
+  `sem-chave`), e o wrapper **nunca lança**: falha vira `console.error` +
+  resultado. E-mail jamais pode derrubar a captação de lead nem o movimento de etapa.
+- Dono recebe e-mail em **todo lead novo** e em **toda mudança de etapa**. O lead
+  recebe confirmação ao entrar e, na mudança de etapa, **só se a etapa destino tem
+  `crm_etapas.notifica_lead = true`** (ligado por etapa em `/admin/parametros`;
+  etapas sem texto em `templates/etapa-lead.ts` ficam desabilitadas lá).
+- Os dois disparos rodam em `after()` (`criarLead`, `moverLead`). `moverLead` lê
+  o status **antes** do RPC `mover_lead_crm` (que segue sendo a única forma de mover);
+  etapa igual à atual não envia nada.
+- **Aviso ao lead é agendado +10 min** (`scheduledAt` do Resend). Qualquer movimento
+  posterior do mesmo lead — inclusive o "desfazer" do quadro, que também chama
+  `moverLead` — **cancela primeiro** os `etapa-lead` ainda `agendado` com horário
+  futuro (`cancelarAgendados`) e só depois agenda o novo. Se o Resend recusar o
+  cancelamento (já enviado), a linha não é marcada `cancelado`.
+- Cada tentativa vira linha em `crm_emails` (migration 025), escrita com a service
+  role (sem policy de escrita para `authenticated`; leitura só `eh_admin()`).
+  `agendado` não vira `enviado` sozinho (sem webhook): compare `agendado_para` com agora.
+- Templates em `lib/email/templates/` são funções puras; todo dado do visitante passa
+  por `escaparHtml`. Copy para o lead nunca promete aprovação de crédito.
+- `TEXTO_CONSENTIMENTO` não muda por causa disto: são e-mails transacionais sobre o
+  pedido da própria pessoa. A regra de só mudá-lo com a CAPI continua valendo.
+- `enviado_whatsapp` em `leads` ficou sem uso (a coluna foi mantida; o stub de
+  WhatsApp foi removido).
 
 ### Imagens de imóveis
 Toda imagem enviada em `/admin` para as 3 galerias e para as plantas da aba
@@ -86,6 +131,22 @@ para fazer numa imagem servida em página pública.
   texto. O PNG é a fonte da verdade, mas **o servidor não o lê do disco**: usa
   `lib/imoveis/marca-dagua-asset.ts`, gerado por `scripts/gerar-asset-marca.mjs`
   com os bytes em base64. Trocou o PNG, rode o script.
+
+- **Fotos servidas por `next/image`** (`components/imoveis/ImagemImovel.tsx`), só as
+  do bucket público `imovel-images`: `images.remotePatterns` em `next.config.ts` (host
+  derivado de `NEXT_PUBLIC_SUPABASE_URL`) e predicado `ehImagemOtimizavel`
+  (`lib/imoveis/imagem-otimizada.ts`); URL fora do bucket vai `unoptimized`. A lista
+  `deviceSizes`/`imageSizes` é curta de propósito: cada largura x formato é uma
+  transformação e o Hobby tem cota mensal; não acrescente tamanho sem motivo. Os
+  `sizes` espelham o CSS (a foto ativa do carrossel é escalada 1.5x). og:image,
+  JSON-LD e sitemap seguem com a URL original do Supabase, nunca `/_next/image`.
+  Uploads novos saem com `cacheControl` de 1 ano (nome UUID imutável); os antigos
+  seguem com 1h.
+- **Carregamento do carrossel é por proximidade, não `loading="lazy"`**: lazy nativo
+  dentro do `overflow:hidden` do Embla nunca dispara. Um IntersectionObserver
+  (`rootMargin` 600px) liga `perto`; antes disso só o slide 0 da primeira galeria
+  tem `<img>`, o resto é a caixa `.im-carrossel-reserva`. O fade-in é CSS
+  (`img[data-fade]`), ativo só com `@media (scripting: enabled)`.
 
 ### Texto de descoberta (alt, title, description)
 Tudo derivado do cadastro em `lib/imoveis/seo.ts`, travado em
@@ -118,16 +179,73 @@ Tudo derivado do cadastro em `lib/imoveis/seo.ts`, travado em
   scroll nem de exit-intent: modal que cobre o conteúdo sem o visitante pedir é
   intersticial intrusivo, penalizado no mobile.
 - **`VideoObject` só com todos os campos obrigatórios** (`name`,
-  `description`, `thumbnailUrl`, `uploadDate`). Hoje **não é emitido**: não há
-  `uploadDate` no cadastro nem como obtê-la em build sem chamar a API do
-  YouTube. Schema incompleto cria erro de rich result novo — foi assim que o
-  `Product` sem `offers` apareceu.
+  `description`, `thumbnailUrl`, `uploadDate`). Sai de `montarVideoObjectSchema`
+  (`lib/imoveis/schema.ts`) **apenas** quando há URL de YouTube reconhecível,
+  descrição e `video_data_publicacao` (coluna da migration 026, preenchida no
+  admin ao lado da URL do vídeo). Sem a data, não é emitido: não dá para obtê-la
+  em build sem chamar a API do YouTube, e schema incompleto cria erro de rich
+  result novo — foi assim que o `Product` sem `offers` apareceu. A thumbnail é
+  `img.youtube.com/vi/<id>/hqdefault.jpg`. Vale para as duas modalidades.
+
+### Modalidade: lançamento x pronto
+`imoveis.modalidade` (migration 026; `lancamento` por padrão, então todo imóvel
+antigo segue igual) separa **empreendimento** de **imóvel pronto / unidade
+única**. É a mesma tabela, a mesma listagem `/imoveis/` (filtro "Lançamento /
+Pronto" em `ImoveisFiltro`, que só aparece com as duas modalidades publicadas)
+e a mesma rota `/imoveis/<slug>/`: **nenhuma URL nova**, layout por modalidade.
+
+- Pronto usa colunas de valor único (`area_util`, `area_total`, `dormitorios`,
+  `suites`, `banheiros`, `vagas`, `valor_venda`, `valor_condominio`, `valor_iptu`,
+  `nome_condominio`, `andar`, `mobiliado`, `ano_construcao`) no lugar das faixas
+  `*_min/_max`, e não tem tipologias, fase de obra, plantas, decorado nem
+  realização. A página mostra a "Ficha do imóvel" (`fichaDoPronto`,
+  `lib/imoveis/ficha.ts`) e "Outros imóveis". Ordem das seções: vídeo, fotos da
+  unidade, descrição da unidade, fotos do condomínio, o condomínio, lazer,
+  diferenciais, localização, CTA final, outros imóveis, FAQ.
+- **Capa do pronto** (`imoveis.capa_origem`, migration 028): `unidade` (padrão,
+  grupo `decorado`) ou `condominio` (grupo `empreendimento`), escolhida em "Foto
+  de capa" nos dados gerais (`CamposPronto`). Se o grupo escolhido está vazio, cai
+  para o outro. `capaDaPagina`/`capaDoCard` (`lib/imoveis/capa.ts`) e
+  `grupoDaCapa`/`achatarGaleria` (`lib/imoveis/galeria.ts`) recebem a origem;
+  lançamento a ignora.
+- **Endereço exato só com `exibir_endereco`** (padrão `false`): sem ele, nem o
+  texto nem o `q=` do mapa embutido levam o endereço — só bairro e cidade.
+- Imóvel removido ou despublicado (ex.: vendido): `/imoveis/<slug>/` faz redirect
+  permanente (308) para `/imoveis/` — nunca 404. Não é preciso cadastrar redirect
+  por slug. Vale também para slug desconhecido ou malformado; a page e o
+  `generateMetadata` chamam `permanentRedirect`, travado em
+  `tests/unidade/imovel-removido-redirect.test.ts`.
+- **Fase fixa**: pronto sempre tem `fase_id` = fase `pronto`. A action
+  `salvarImovel` busca e grava (descartando o que o cliente mandar) e o trigger
+  `imoveis_fase_pronto` da 026 garante no banco. A modalidade **não muda**
+  depois de criada (a action recusa): trocar deixaria colunas da outra órfãs e
+  mudaria o layout de uma URL já indexada.
+- Validação: `imovelFormSchema` é `discriminatedUnion("modalidade")`; payload sem
+  `modalidade` vale como `lancamento` (formato anterior). O editor monta o
+  payload em `lib/imoveis/formulario.ts` e os blocos de campos vivem em
+  `components/admin/imovel/` — `/admin/imoveis/novo` pergunta a modalidade antes.
+- **Galerias do pronto** reaproveitam os grupos do banco, sem migration de grupo:
+  `decorado` = **Fotos da unidade** (aparece primeiro no admin e na página) e
+  `empreendimento` = **Fotos do condomínio**; planta/implantação não existem para
+  pronto. A capa (hero, og:image, card) é a primeira foto da unidade, caindo para a
+  do condomínio (`lib/imoveis/capa.ts`; `achatarGaleria(grupos, modalidade)` marca
+  o `destaque` no grupo certo). `descricao_unidade` (migration 027, só pronto) é a
+  "Descrição da unidade"; no pronto `descricao_completa` passa a ser a descrição do
+  **condomínio**. Ordem da página: vídeo, fotos da unidade, descrição da unidade
+  (texto + ficha), fotos do condomínio, o condomínio, localização, lazer,
+  diferenciais, CTA, outros imóveis, FAQ. O hero mostra "Valor de venda" e, abaixo,
+  condomínio e IPTU por mês (mesmo com o valor "sob consulta"). A ficha da descrição
+  **não** repete condomínio nem IPTU (só o hero os mostra).
+- Schema: pronto gera `Offer` simples com `valor_venda` (nunca `AggregateOffer`;
+  `valor_a_partir_de` e tipologias são ignorados) e, **além do `Product`**,
+  um nó `RealEstateListing` complementar (`montarRealEstateListingSchema`),
+  também suprimido por `valor_sob_consulta`. Lançamento nunca emite o nó.
 
 ### Dados estruturados dos imóveis
 A página de imóvel usa `@type: Product` com **`offers` obrigatório**: o Google
 exige `offers`, `review` ou `aggregateRating`, imóvel não tem os dois últimos, e
 `Product` sem nenhum deles é **erro crítico** no teste de resultados aprimorados
-— não aviso. `RealEstateListing` é camada futura complementar, não substituição.
+— não aviso. `RealEstateListing` é camada complementar (só em imóvel pronto), nunca substituição.
 
 Tudo sai de `montarOfferSchema` (`lib/imoveis/schema.ts`), módulo puro travado
 em `tests/unidade/imoveis-schema.test.ts`. `priceCurrency` é sempre `BRL`.
@@ -152,6 +270,24 @@ em `tests/unidade/imoveis-schema.test.ts`. `priceCurrency` é sempre `BRL`.
   comercial, não técnica.
 - `priceValidUntil` fica fora de propósito: não há regra de validade no
   cadastro, e data vencida derruba o rich result. Campo ausente > campo vencido.
+
+### Inventário de JSON-LD por rota
+Tudo sai de construtores puros em `lib/seo/` (travados em
+`tests/unidade/seo-estruturados.test.ts`). O layout declara `#negocio`,
+`#rafael` e `#website` (sem `SearchAction`: não há busca no site).
+
+- `/financiamento/`, `/home_equity/`: Service (`areaServed` de `CIDADES_ATENDIDAS`
+  via `areaServida`), BreadcrumbList e FAQPage. O FAQ visível e o JSON-LD saem do
+  mesmo array em `lib/seo/faqs-landings.ts` — edite lá, nunca no JSX. Fecham com
+  o bloco "Leia também" (3 posts mais recentes da categoria).
+- `/sobre/`: BreadcrumbList. `/blog/`: BreadcrumbList + ItemList (ordem exibida).
+  `/imoveis/`: BreadcrumbList + ItemList. Artigo e imóvel: ver seções acima.
+- Sitemap: posts (capa) e imóveis (capa + galerias) levam `images`.
+- **`title.template` não foi adotado**: os sufixos das páginas divergem ("— Rafael
+  Teixeira · Capital Imobiliário", "| Rafael Teixeira", "| RT Capital Imobiliário",
+  artigo sem sufixo). Um template único mudaria o `<title>` final de várias.
+- Rótulos de seção da página de imóvel são `<h2 class="eyebrow">` (regra
+  `h2.eyebrow` em `lp.css` zera o estilo de h2).
 
 ### Simuladores
 Financiamento (`/financiamento/`) e home equity (`/home_equity/`). O de
@@ -327,17 +463,29 @@ Financiamento, Home Equity, Consórcio, Imóveis.
   deixa a lista pela metade se uma falhar. Tipologias, diferenciais, FAQs,
   imagens do imóvel e tags do lead vão por RPC `security invoker` (migration
   021), uma transação por coleção.
+- A tabela `supabase_migrations.schema_migrations` tinha versões por timestamp (apply
+  via MCP) e não listava as migrations aplicadas à mão; a `018b` existia só em
+  produção (hoje `0181_*`). Versão ausente ali = `db push` reexecuta o arquivo.
 - `eslint .` tem de sair com zero erro e zero aviso — é assim que a suíte está
   hoje. Regra desligada exige comentário com o motivo e a condição de voltar,
   no próprio `eslint.config.mjs`. Não silencie aviso sem justificar.
 
 ## Como trabalhar comigo neste projeto
 
-Toda melhoria ou ajuste segue três etapas, cada uma com seu modelo:
+Toda melhoria ou ajuste segue cinco etapas, cada uma com seu modelo:
 
-1. **Planejar — Opus 5.** Levantamento, decisões de arquitetura, especificação.
-2. **Desenvolver — Sonnet 5.** A implementação derivada do plano roda em subagente Sonnet 5.
-3. **Validar — Opus 5.** Revisar o que o subagente entregou antes de dar como pronto.
+1. **Planejar — Opus 5.5.** Levantamento, decisões de arquitetura, especificação.
+2. **Desenvolver — subagente Sonnet 5.5.** A implementação derivada do plano.
+3. **Publicar a branch.** PR aberto e deploy de preview da Vercel verde.
+4. **Testar — novo subagente Sonnet 5.5.** Roda `npm run e2e` contra a URL do deploy da
+   branch (`E2E_BASE_URL=<deploy>`), com as skills `playwright-e2e` e
+   `superpowers:test-driven-development`, e salva o relatório em `tests/functional-tests/`.
+5. **Validar — Opus 5.5.** Revisa o relatório; só com veredito APROVADO faz o merge em `Preview`.
+
+Segurança dos testes: todo deploy usa o MESMO banco de produção, então a suíte é somente
+leitura (nada de excluir, mover lead, publicar, salvar ou enviar formulário público) — política
+completa em `tests/functional-tests/README.md`. Os specs de admin precisam de um usuário de QA
+dedicado em `.env.e2e.local` (modelo: `.env.e2e.local.example`); sem ele são pulados.
 
 Para qualquer diretiva de design, carregar **sempre** as duas skills: `frontend-design`
 (web design) e `ui-ux-pro-max`.
@@ -364,3 +512,4 @@ Criadas depois, também não podem quebrar (linkadas no rodapé e citadas em
 documento legal): `/politica-de-privacidade/` e `/termos-de-uso/`.
 
 O inventário completo de URLs é o `app/sitemap.ts`.
+Slugs de imóvel (`/imoveis/<slug>/`) são cobertos pela regra de redirect 308 para `/imoveis/` quando o imóvel é removido ou despublicado (ver "Modalidade").

@@ -92,3 +92,16 @@ export const RAFAEL_NODE = {
     { "@type": "Organization", name: "XP Investimentos" },
   ],
 };
+
+/**
+ * WebSite — o site como entidade. Sem SearchAction: não há busca interna.
+ * `publisher` referencia #negocio, declarado no mesmo grafo do layout.
+ */
+export const WEBSITE_NODE = {
+  "@type": "WebSite",
+  "@id": `${SITE_URL}/#website`,
+  name: "Rafael Teixeira · Capital Imobiliário",
+  url: `${SITE_URL}/`,
+  inLanguage: "pt-BR",
+  publisher: { "@id": `${SITE_URL}/#negocio` },
+};

@@ -27,3 +27,10 @@ next-env.d.ts
 # .claude/skills/tdd/, então continua rastreada.
 /.agents/
 /.claude/skills/ui-ux-pro-max
+
+# Testes funcionais (Playwright) — estado de login e artefatos de cada execução.
+# O relatório .md de cada rodada É versionado; o resto é descartável.
+/.auth/
+/tests/functional-tests/.ultimo-html/
+/tests/functional-tests/.ultimo-resultado.json
+/tests/functional-tests/.artefatos/

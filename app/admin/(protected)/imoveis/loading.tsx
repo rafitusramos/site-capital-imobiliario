@@ -1,7 +1,7 @@
 /**
- * Esqueleto da tabela de empreendimentos — mesma densidade/largura do
+ * Esqueleto da tabela de imóveis — mesma densidade/largura do
  * conteúdo real (components/admin/TabelaImoveis.tsx): cabeçalho de 6 colunas
- * (Empreendimento, Cidade, Tipo, Fase, Status, Ações) e linhas com a mesma
+ * (Imóvel, Cidade, Tipo, Fase, Status, Ações) e linhas com a mesma
  * altura. Padrão de app/admin/(protected)/crm/[origem]/loading.tsx.
  */
 export default function CarregandoImoveis() {
@@ -36,7 +36,7 @@ export default function CarregandoImoveis() {
           ))}
         </ul>
       </div>
-      <span className="sr-only">Carregando os empreendimentos…</span>
+      <span className="sr-only">Carregando os imóveis…</span>
     </div>
   );
 }

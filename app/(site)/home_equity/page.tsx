@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { SimuladorHomeEquity } from "@/components/home-equity/SimuladorHomeEquity";
 import { obterTaxasSimulador } from "@/lib/queries/parametros";
 import { SITE_URL } from "@/lib/site";
+import { areaServida } from "@/lib/seo/area";
+import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
+import { montarFaqPage } from "@/lib/seo/faq";
+import { FAQ_HOME_EQUITY } from "@/lib/seo/faqs-landings";
+import { postsParaLeituraOuVazio } from "@/lib/queries/posts-seguro";
+import { LeiaTambem } from "@/components/blog/LeiaTambem";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 
 // A página é estática por padrão; sem revalidate, a taxa lida em build time
@@ -45,24 +51,17 @@ const servicoJsonLd = {
       name: "Home equity — crédito com garantia de imóvel",
       serviceType: "Intermediação de crédito com garantia de imóvel",
       provider: { "@id": `${SITE_URL}/#negocio` },
-      areaServed: [
-        { "@type": "City", name: "Vinhedo" },
-        { "@type": "City", name: "Valinhos" },
-        { "@type": "City", name: "Louveira" },
-        { "@type": "City", name: "Jundiaí" },
-        { "@type": "City", name: "Campinas" },
-        { "@type": "City", name: "Itatiba" },
-        { "@type": "City", name: "Indaiatuba" },
-        { "@type": "City", name: "Sumaré" },
-      ],
+      areaServed: areaServida(),
       description:
         "Crédito de longo prazo com garantia de imóvel para pessoa física ou jurídica, com foco em imóveis de alto padrão em Vinhedo e região. Análise multibanco com recomendação do menor crédito que resolve o objetivo do cliente. Análise sem custo.",
     },
-  ],
+    montarBreadcrumb([{ nome: "Home equity" }]),
+    montarFaqPage(FAQ_HOME_EQUITY),
+  ].filter(Boolean),
 };
 
 export default async function HomeEquityPage() {
-  const taxas = await obterTaxasSimulador();
+  const [taxas, posts] = await Promise.all([obterTaxasSimulador(), postsParaLeituraOuVazio()]);
 
   return (
     <>
@@ -381,83 +380,16 @@ export default async function HomeEquityPage() {
         <div className="wrap">
           <div className="eyebrow reveal">Perguntas diretas</div>
           <h2 className="reveal d1">Antes de decidir, as dúvidas reais</h2>
-          <details>
-            <summary>Perco a propriedade do imóvel?</summary>
-            <div className="resp">
-              Não. Você permanece dono e com posse plena. O imóvel fica alienado fiduciariamente à
-              instituição durante o contrato — a mesma estrutura de um financiamento imobiliário
-              comum. Quitou, a garantia é baixada.
-            </div>
-          </details>
-          <details>
-            <summary>Quanto do valor do imóvel consigo liberar?</summary>
-            <div className="resp">
-              Em geral até 60% do valor de avaliação, variando por instituição e perfil. Minha
-              recomendação parte sempre do menor crédito que resolve o seu objetivo — não do
-              máximo que o banco libera.
-            </div>
-          </details>
-          <details>
-            <summary>Minha empresa fatura mais de R$ 4,8 milhões. Tenho alternativa ao Pronampe?</summary>
-            <div className="resp">
-              O Pronampe é restrito a empresas até esse faturamento. Acima dele, as opções usuais
-              são capital de giro a taxas altas ou crédito estruturado com garantias — e é
-              exatamente onde o home equity costuma ser a estrutura mais eficiente: custo menor,
-              prazo maior e valores compatíveis com operações relevantes.
-            </div>
-          </details>
-          <details>
-            <summary>Qual o risco real da operação?</summary>
-            <div className="resp">
-              O risco é a garantia: em caso de inadimplência prolongada, a instituição pode
-              executar o imóvel. Por isso a etapa de diagnóstico avalia sua capacidade de
-              pagamento em cenário de estresse antes de qualquer proposta. Se a conta não fecha
-              com folga, eu digo.
-            </div>
-          </details>
-          <details>
-            <summary>Qual a diferença entre home equity e financiamento imobiliário?</summary>
-            <div className="resp">
-              No financiamento imobiliário, você pega dinheiro emprestado para comprar um imóvel.
-              No home equity, você usa um imóvel que já é seu como garantia para pegar dinheiro
-              emprestado para qualquer finalidade — quitar dívidas, investir, reformar, entre
-              outras.
-            </div>
-          </details>
-          <details>
-            <summary>Quais são as taxas de juros?</summary>
-            <div className="resp">
-              As taxas começam a partir de 1,09% a.m. + IPCA. A taxa exata depende do banco, do
-              seu perfil de crédito, do valor do imóvel e da relação entre o valor do crédito e o
-              valor do imóvel (LTV).
-            </div>
-          </details>
-          <details>
-            <summary>Quanto tempo demora para liberar o crédito?</summary>
-            <div className="resp">
-              O prazo médio é de 20 a 40 dias úteis, desde a simulação até a liberação do crédito
-              na conta. O acompanhamento de cada etapa ajuda a manter o processo dentro desse
-              prazo.
-            </div>
-          </details>
-          <details>
-            <summary>Que tipos de imóvel são aceitos?</summary>
-            <div className="resp">
-              Casas, apartamentos, salas comerciais e terrenos urbanos. O imóvel precisa ter
-              matrícula regular e estar em área urbana. Imóveis rurais geralmente não são
-              aceitos.
-            </div>
-          </details>
-          <details>
-            <summary>Como a Capital Imobiliário consegue taxas melhores?</summary>
-            <div className="resp">
-              Porque comparamos simultaneamente as condições de mais de 30 bancos para o seu
-              perfil. Essa concorrência entre instituições resulta em ofertas melhores do que você
-              conseguiria indo sozinho a um único banco.
-            </div>
-          </details>
+          {FAQ_HOME_EQUITY.map((item) => (
+            <details key={item.pergunta}>
+              <summary>{item.pergunta}</summary>
+              <div className="resp">{item.resposta}</div>
+            </details>
+          ))}
         </div>
       </section>
+
+      <LeiaTambem posts={posts} categoriaSlug="home-equity" />
     </>
   );
 }

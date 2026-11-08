@@ -57,11 +57,14 @@ Já verificado no código e no banco de produção:
   base para calibrar peso nenhum; um score inventado agora só produziria um
   número em que ninguém confia. Reavaliar depois de ~100 leads fechados.
 - **Notificação de lembrete por e-mail/WhatsApp.** A spec pede indicação visual
-  no card, e é isso que será entregue. `lib/notificacoes/whatsapp.ts` existe e
-  torna isso barato numa fase 2, mas exige decidir cadência e opt-out.
+  no card, e é isso que será entregue. Lembretes por e-mail/WhatsApp seguem fora
+  (exigem decidir cadência e opt-out). **Já existe** (Fase 5, migration 025) o
+  e-mail transacional de lead novo e de mudança de etapa via Resend — ver a seção
+  "E-mails" do CLAUDE.md. WhatsApp servidor→corretor continua inexistente.
 - **Editor de motivos/etapas na interface.** As tabelas são configuráveis por
   SQL. Uma tela de administração delas é fase 2.
-- **Automações/workflows** (mover etapa dispara e-mail, etc.).
+- **Automações/workflows** em geral. Exceção parcial: mover etapa já dispara
+  e-mail ao dono (sempre) e ao lead (só etapas com `notifica_lead`), Fase 5.
 
 ---
 
@@ -137,11 +140,25 @@ de origem e nada é gravado.
 **Mudar etapa pelo formulário:** o `select` de etapa dispara o mesmo diálogo de
 motivo quando aplicável.
 
+
+### 1.5 Arquivamento automático
+
+Lead em `ganho` ou `perdido` (**não** `nao-qualificado`) há mais de 30 dias é
+arquivado sozinho. Vive na migration 023: função
+`arquivar_leads_finais_antigos()` + job pg_cron `crm-arquivar-finais-antigos`,
+todo dia às 03:00 de São Paulo (06:00 UTC).
+
+- Os 30 dias contam de `status_alterado_em` (renovado a cada troca de etapa).
+- Arquivado pelo sistema = `arquivado_por` nulo; a tela de arquivados mostra
+  "Arquivado automaticamente".
+- Lead restaurado à mão (`restaurado_em`) não é re-arquivado até mudar de
+  etapa de novo e voltar a ficar mais de 30 dias numa etapa final.
+
 ---
 
 ## 2. Banco de dados
 
-Quatro migrations, aplicadas à mão no SQL Editor do Supabase, **nesta ordem**.
+Quatro migrations, aplicadas pelo workflow `migrations-supabase` (merge em `Preview`; mesmo banco da produção), **nesta ordem**.
 A numeração continua de onde a 013 parou.
 
 ### 2.1 `014_crm_pipelines.sql`
@@ -306,6 +323,22 @@ create view public.vw_crm_timeline as
     left join public.crm_etapas e on e.tipo = l.tipo and e.slug = h.status_novo
     left join public.profiles p on p.id = h.alterado_por;
 ```
+
+> **Atualização (`024_crm_produtividade.sql`).** A view acima é a da `015` e só
+> unia interações e etapas, apesar de o parágrafo prometer lembretes. A `024` a
+> recria com dois ramos de `crm_lembretes` — `lembrete-agendado` (em
+> `created_at`) e `lembrete-concluido` (em `concluido_em`), ambos com
+> `natureza = 'lembrete'` — e acrescenta duas colunas **no fim**: `item_id` (id da
+> linha de origem, para a interface saber qual interação editar/apagar) e
+> `editada_em`. As nove colunas anteriores não mudam de ordem nem de tipo.
+> `security_invoker` é reafirmado. **Reagendamento não aparece**: a tabela guarda
+> só a data vigente; mostrar remarcações exigiria uma tabela de eventos.
+>
+> **Editar/apagar interação.** `lead_interacoes_crud` (`for all`) foi trocada por
+> quatro policies. `select` e `insert` mantêm a regra de antes (quem enxerga o
+> lead); `update` e `delete` exigem, além disso, ser o **autor** ou **admin** e a
+> interação não ser `automatica`. Coluna nova `lead_interacoes.editada_em` marca
+> a edição para a linha do tempo exibir "editada".
 
 **Quadro** — uma consulta serve o board inteiro. O `left join lateral` traz o
 próximo lembrete sem N+1, e o filtro de arquivados mora **na view**, não em cada
@@ -570,7 +603,7 @@ components/admin/crm/
   NovaInteracao.tsx          composer + lembrete opcional
   DialogoMotivo.tsx          motivo obrigatório
   ConfirmarAcao.tsx          confirmação reutilizável
-  EstadoVazio.tsx
+  EstadoVazio.tsx            quadro sem lead: mensagem acima das colunas, que continuam visíveis junto com a barra de filtros
   icones.tsx                 catálogo SVG (sem emoji, padrão do projeto)
 
 components/admin/Toaster.tsx  + lib/admin/toast.ts   (novo, usado por todo o admin)
@@ -587,7 +620,27 @@ Sem Redux, sem Zustand, sem React Query. React 19 já dá o necessário:
   Busca, filtro e ordenação acontecem **em memória** (`lib/crm/filtros.ts`) —
   resposta instantânea, sem round-trip por tecla digitada.
 - Mover card usa **`useOptimistic`**: o card salta de coluna imediatamente,
-  a server action confirma, e o `catch` reverte com toast de erro.
+  a server action confirma, e o `catch` reverte com toast de erro. **Favoritar**
+  segue o mesmo molde (mesmo reducer, ação `favoritar`): a estrela vira na hora e
+  volta com toast se a action falhar.
+- **Filtros na URL.** O estado dos filtros nasce dos search params e é
+  espelhado de volta com `history.replaceState` (sem nova entrada no histórico):
+  recarregar ou mandar o link reproduz a visão. Serialização pura em
+  `lib/crm/filtros-url.ts`; valor inválido é ignorado. Parâmetros: `q` (busca),
+  `resp` (uuid ou `sem`), `tag`, `fav=1`, `atrasados=1` (lembrete vencido),
+  `parados=1` (passou do SLA da etapa: estado `atencao` ou `parado` de
+  `estadoDaEtapa`), `sem_lembrete=1`, `de`/`ate` (criação, `AAAA-MM-DD` no dia de
+  São Paulo, ambos inclusivos) e `ordem`. Todos valem em qualquer origem, então
+  as abas de origem levam os filtros junto; `lead`/`novo` não (são de um
+  modal daquela aba), mas abrir e fechar o modal preserva os filtros.
+- **Exportar CSV** (botão só para admin): feito **no cliente** a partir das
+  linhas já carregadas, filtradas e ordenadas como o operador as vê
+  (`lib/crm/csv.ts`). Server action exigiria reimplementar os filtros no
+  servidor sem ganho de segurança: os dados já chegaram ao navegador sob RLS, e o
+  botão escondido é conforto de interface, não barreira. Formato para Excel
+  pt-BR: UTF-8 com BOM, separador `;`, CRLF, decimal com vírgula e sem milhar,
+  datas `dd/mm/aaaa hh:mm` de São Paulo; texto que começa com `= + - @` ganha
+  apóstrofo (CSV injection).
 - Depois de cada mutação bem-sucedida, `revalidatePath('/admin/crm/[origem]',
   'page')` para que um F5 conte a verdade.
 - **A linha do tempo não vem com o quadro.** É carregada sob demanda ao abrir o
@@ -653,9 +706,11 @@ Todas retornam `AcaoResultado` (o tipo já existente em
 | `moverLead` | `leadId, etapa, motivo?, motivoObs?, updatedAt` | RPC `mover_lead_crm`; traduz `MOTIVO_OBRIGATORIO`, `ETAPA_INVALIDA`, `LEAD_DESATUALIZADO` em mensagem pt-BR |
 | `criarLead` | comum + origem | cria `leads` + linha de detalhe da origem; etapa = `is_inicial` do pipeline |
 | `atualizarLead` | comum + origem + extras | upsert na tabela de detalhe (lead manual pode não ter linha) |
-| `arquivarLead` / `restaurarLead` | `leadId` | grava/limpa `arquivado_em` + `arquivado_por` |
-| `excluirLead` | `leadId, motivo?` | só `admin`; grava `crm_exclusoes` antes do delete em cascata |
+| `arquivarLead` / `restaurarLead` | `leadId` | grava/limpa `arquivado_em` + `arquivado_por`; `restaurarLead` também grava `restaurado_em` (§1.5) |
+| `excluirLead` | `leadId, motivo` | só `admin`; motivo **obrigatório** (mín. 5, máx. 500 — evidência de LGPD em `crm_exclusoes.motivo`); grava `crm_exclusoes` antes do delete em cascata |
 | `registrarInteracao` | `leadId, tipo, conteudo, lembrete?` | RPC transacional |
+| `editarInteracao` | `interacaoId, conteudo` | só o autor ou `admin`, nunca interação `automatica`; grava `editada_em`; RLS da `024` impõe o mesmo |
+| `excluirInteracao` | `interacaoId` | mesma regra de `editarInteracao` |
 | `concluirLembrete` / `reagendarLembrete` | `lembreteId[, novaData]` | |
 | `alternarFavorito` | `leadId` | |
 | `definirTags` | `leadId, slugs[]` | máx. 8; substitui o conjunto |
@@ -686,7 +741,8 @@ não confia na formatação do cliente).
 | `dormitorios_min` | inteiro, 0–20 |
 | `lembrete.agendado_para` | futuro na criação; passado permitido só ao reagendar |
 | `lembrete.descricao` | mín. 3, máx. 200 |
-| `interacao.conteudo` | mín. 1, máx. 5000 |
+| `interacao.conteudo` | mín. 1, máx. 5000 (também na edição) |
+| `exclusao.motivo` | trim, mín. 5, máx. 500 |
 | tags | máx. 8 por lead, slugs precisam existir |
 
 ---
@@ -787,11 +843,12 @@ custar um byte a mais de download.
 | 7 | Mudar etapa pelo formulário, não arrastando | Mesmo RPC, mesma exigência de motivo |
 | 8 | Lembrete "hoje 14:00" perto da meia-noite | `timestamptz` no banco; atraso e rótulo calculados em `America/Sao_Paulo` |
 | 9 | Excluir lead com lembrete e histórico | Cascata; `crm_exclusoes` guarda protocolo e autor, sem dado pessoal |
-| 10 | Coluna com centenas de cards | Teto de 500 por coluna com "carregar mais"; a contagem do cabeçalho vem de agregação separada e continua verdadeira |
+| 10 | Coluna com centenas de cards | Teto de 500 por coluna; a contagem do cabeçalho vem de agregação separada no banco (RPC `contar_leads_crm`, migration 022) e continua verdadeira. **"Carregar mais" adiado de propósito** até o volume se aproximar do teto de 500 por etapa (hoje são poucos leads) |
 | 11 | Nome ou e-mail muito longo | `truncate` + `title` com o valor inteiro |
 | 12 | Voltar de `ganho` para `contrato` | Permitido e registrado no histórico |
 | 13 | Sequência de protocolo na virada do ano | `RT-2027-0042` continua a numeração; a sequência é global. Não é bug — está documentado |
 | 14 | Etapa desativada com leads dentro | A coluna continua aparecendo enquanto tiver lead, marcada como inativa; não some com lead dentro |
+| 15 | Lead restaurado da lixeira que já passou de 30 dias em `ganho`/`perdido` | `restaurado_em` o protege do job (§1.5) até ele mudar de etapa de novo |
 
 ---
 
@@ -842,14 +899,16 @@ existindo**.
 | `tests/unidade/crm-etapas.test.ts` | integridade dos 4 pipelines, etapa inicial única, quais exigem motivo |
 | `tests/unidade/crm-lembretes.test.ts` | atraso, rótulo relativo, virada de dia em `America/Sao_Paulo` |
 | `tests/unidade/crm-calculos.test.ts` | LTV, valor do negócio por origem, soma de coluna |
-| `tests/unidade/crm-filtros.test.ts` | busca, filtros combinados, ordenações |
+| `tests/unidade/crm-filtros.test.ts` | busca, filtros combinados (incl. parados além do SLA, período, sem lembrete), ordenações |
+| `tests/unidade/crm-filtros-url.test.ts` | filtros ida e volta pela URL, valor inválido ignorado, parâmetros alheios preservados |
+| `tests/unidade/crm-csv.test.ts` | escape de `;`, aspas, quebra de linha, CSV injection, BOM, formato do quadro |
 | `tests/acoes/admin-crm.test.ts` | ações com `tests/apoio/supabase-falso.ts`: sessão expirada, update sem linha afetada, tradução dos erros do RPC |
 
 ---
 
 ## 9. Ordem de execução (Fase 2)
 
-1. Migrations 014 → 017, aplicadas à mão no SQL Editor, na ordem. Conferir cada
+1. Migrations 014 → 017, aplicadas em ordem pelo workflow `migrations-supabase`. Conferir cada
    uma antes da seguinte.
 2. `types/database.ts` atualizado à mão (convenção do projeto): remover
    `LeadStatusSlug`/`lead_status`, acrescentar `crm_etapas`, `crm_lembretes`,

@@ -1,5 +1,8 @@
 export type ProfileRole = "admin" | "corretor";
 export type PostStatus = "draft" | "published" | "archived";
+export type ImovelModalidade = "lancamento" | "pronto";
+/** Grupo de fotos que dá a capa do imóvel pronto (migration 028). */
+export type ImovelCapaOrigem = "unidade" | "condominio";
 export type ImovelStatus = "ativo" | "reservado" | "vendido" | "inativo";
 export type ImovelImagemGrupo = "empreendimento" | "decorado" | "planta" | "implantacao";
 export type ImovelDiferencialGrupo = "lazer" | "diferencial";
@@ -200,12 +203,30 @@ export interface Database {
           descricao_breve: string | null;
           descricao_completa: string | null;
           descricao_unidades: string | null;
+          descricao_unidade: string | null;
           seo_title: string | null;
           seo_description: string | null;
           ordem: number;
           latitude: number | null;
           longitude: number | null;
           video_youtube_url: string | null;
+          modalidade: ImovelModalidade;
+          area_util: number | null;
+          area_total: number | null;
+          dormitorios: number | null;
+          suites: number | null;
+          banheiros: number | null;
+          vagas: number | null;
+          valor_venda: number | null;
+          valor_condominio: number | null;
+          valor_iptu: number | null;
+          nome_condominio: string | null;
+          andar: number | null;
+          mobiliado: boolean | null;
+          ano_construcao: number | null;
+          exibir_endereco: boolean;
+          capa_origem: ImovelCapaOrigem;
+          video_data_publicacao: string | null;
           status: ImovelStatus;
           corretor_id: string | null;
           created_at: string;
@@ -238,12 +259,30 @@ export interface Database {
           descricao_breve?: string | null;
           descricao_completa?: string | null;
           descricao_unidades?: string | null;
+          descricao_unidade?: string | null;
           seo_title?: string | null;
           seo_description?: string | null;
           ordem?: number;
           latitude?: number | null;
           longitude?: number | null;
           video_youtube_url?: string | null;
+          modalidade?: ImovelModalidade;
+          area_util?: number | null;
+          area_total?: number | null;
+          dormitorios?: number | null;
+          suites?: number | null;
+          banheiros?: number | null;
+          vagas?: number | null;
+          valor_venda?: number | null;
+          valor_condominio?: number | null;
+          valor_iptu?: number | null;
+          nome_condominio?: string | null;
+          andar?: number | null;
+          mobiliado?: boolean | null;
+          ano_construcao?: number | null;
+          exibir_endereco?: boolean;
+          capa_origem?: ImovelCapaOrigem;
+          video_data_publicacao?: string | null;
           status?: ImovelStatus;
           corretor_id?: string | null;
           created_at?: string;
@@ -384,6 +423,8 @@ export interface Database {
           exige_motivo: boolean;
           sla_dias: number | null;
           ativo: boolean;
+          /** Editável em /admin/parametros; exceção ao espelho de lib/crm/etapas.ts (migration 025). */
+          notifica_lead: boolean;
         };
         Insert: {
           tipo: LeadTipoSlug;
@@ -398,8 +439,39 @@ export interface Database {
           exige_motivo?: boolean;
           sla_dias?: number | null;
           ativo?: boolean;
+          notifica_lead?: boolean;
         };
         Update: Partial<Database["public"]["Tables"]["crm_etapas"]["Insert"]>;
+        Relationships: [];
+      };
+      // Registro dos e-mails de lead (migration 025). Escrita só pelo servidor
+      // com a service role; leitura só admin (eh_admin()).
+      crm_emails: {
+        Row: {
+          id: string;
+          lead_id: string;
+          destinatario: string;
+          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead";
+          etapa: string | null;
+          resend_id: string | null;
+          status: "agendado" | "enviado" | "cancelado" | "falhou" | "sem-chave";
+          agendado_para: string | null;
+          erro: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          lead_id: string;
+          destinatario: string;
+          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead";
+          etapa?: string | null;
+          resend_id?: string | null;
+          status: "agendado" | "enviado" | "cancelado" | "falhou" | "sem-chave";
+          agendado_para?: string | null;
+          erro?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["crm_emails"]["Insert"]>;
         Relationships: [];
       };
       // Motivos de perda/não qualificação (014_crm_pipelines.sql). Tabela
@@ -568,6 +640,9 @@ export interface Database {
           // é ação separada, registrada em crm_exclusoes.
           arquivado_em: string | null;
           arquivado_por: string | null;
+          // Preenchido por restaurarLead; o arquivamento automático (023) ignora
+          // leads restaurados depois da última mudança de etapa.
+          restaurado_em: string | null;
           // Extensibilidade sem migration: campos com `fonte: "extra"` em
           // lib/crm/campos.ts gravam aqui (docs/crm-spec.md §3.4).
           campos_extras: Record<string, unknown>;
@@ -598,6 +673,7 @@ export interface Database {
           favorito?: boolean;
           arquivado_em?: string | null;
           arquivado_por?: string | null;
+          restaurado_em?: string | null;
           campos_extras?: Record<string, unknown>;
           status_alterado_em?: string;
           created_at?: string;
@@ -822,6 +898,8 @@ export interface Database {
           // saíram daqui.
           automatica: boolean;
           created_at: string;
+          // Preenchida por editarInteracao (migration 024); nula = nunca editada.
+          editada_em: string | null;
         };
         Insert: {
           id?: string;
@@ -831,6 +909,7 @@ export interface Database {
           autor_id?: string | null;
           automatica?: boolean;
           created_at?: string;
+          editada_em?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["lead_interacoes"]["Insert"]>;
         Relationships: [];
@@ -883,20 +962,25 @@ export interface Database {
         };
         Relationships: [];
       };
-      // Linha do tempo unificada (interações + transições de etapa),
-      // carregada sob demanda ao abrir o modal do lead — nunca junto do
+      // Linha do tempo unificada (interações, transições de etapa e
+      // lembretes — estes a partir da migration 024), carregada sob demanda ao abrir o modal do lead — nunca junto do
       // quadro (015_crm_interacoes_lembretes.sql).
       vw_crm_timeline: {
         Row: {
           lead_id: string;
           ocorrido_em: string;
-          natureza: "interacao" | "etapa";
+          natureza: "interacao" | "etapa" | "lembrete";
           tipo: string;
           tipo_label: string | null;
           corpo: string | null;
           automatica: boolean;
           autor_id: string | null;
           autor_nome: string | null;
+          // Colunas acrescentadas ao FIM pela migration 024. `item_id` é o id da
+          // linha de origem (interação, lembrete ou histórico de etapa);
+          // `editada_em` só vem preenchida em interação editada.
+          item_id: string | null;
+          editada_em: string | null;
         };
         Relationships: [];
       };
@@ -1011,6 +1095,14 @@ export interface Database {
       salvar_imovel_tipologias: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
       salvar_imovel_diferenciais: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
       salvar_imovel_faqs: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
+      // Contagens do CRM agrupadas no banco (022_crm_contagens.sql); bigint e
+      // numeric podem chegar como string do PostgREST — converter com Number().
+      contar_leads_crm: {
+        Args: { p_tipo?: string | null };
+        Returns: { tipo: string; status: string; total: number | string; soma_valor_negocio: number | string }[];
+      };
+      // Só o pg_cron chama (023_crm_arquivamento_automatico.sql); devolve quantos arquivou.
+      arquivar_leads_finais_antigos: { Args: Record<PropertyKey, never>; Returns: number };
       definir_tags_lead: { Args: { p_lead_id: string; p_tags: string[] }; Returns: undefined };
       // true só quando o usuário autenticado tem profiles.role = 'admin'.
       // SECURITY DEFINER com search_path fixo (017_crm_funcoes_rls.sql) —

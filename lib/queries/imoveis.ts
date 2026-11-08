@@ -1,4 +1,5 @@
 import { createStaticClient } from "@/lib/supabase/static";
+import { capaDoCard } from "@/lib/imoveis/capa";
 import type { Database } from "@/types/database";
 
 type Imovel = Database["public"]["Tables"]["imoveis"]["Row"];
@@ -46,17 +47,6 @@ const SELECT_COMPLETO = `*, ${SELECT_DOMINIOS},
   diferenciais:imovel_diferenciais(*),
   faqs:imovel_faqs(*)`;
 
-/** Capa do card: a imagem marcada como destaque, ou a de menor ordem. */
-function capaDeImagens(
-  imagens: Pick<ImovelImagem, "url" | "ordem" | "destaque">[] | null | undefined,
-): string | null {
-  if (!imagens || imagens.length === 0) return null;
-  const destaque = imagens.find((imagem) => imagem.destaque);
-  if (destaque) return destaque.url;
-  const ordenadas = [...imagens].sort((a, b) => a.ordem - b.ordem);
-  return ordenadas[0]?.url ?? null;
-}
-
 function ordenarColecoes(imovel: ImovelCompleto): ImovelCompleto {
   return {
     ...imovel,
@@ -84,7 +74,10 @@ export async function getImoveisPublicados(): Promise<ImovelComCapa[]> {
     fase: ImovelFaseEmbed;
     imagens: ImovelImagem[];
   })[];
-  return imoveis.map(({ imagens, ...imovel }) => ({ ...imovel, capa: capaDeImagens(imagens) }));
+  return imoveis.map(({ imagens, ...imovel }) => ({
+    ...imovel,
+    capa: capaDoCard(imagens, imovel.modalidade, imovel.capa_origem),
+  }));
 }
 
 export async function getImovelBySlug(slug: string): Promise<ImovelCompleto | null> {
@@ -123,7 +116,10 @@ export async function getImoveisRelacionados(
     fase: ImovelFaseEmbed;
     imagens: ImovelImagem[];
   })[];
-  return imoveis.map(({ imagens, ...imovel }) => ({ ...imovel, capa: capaDeImagens(imagens) }));
+  return imoveis.map(({ imagens, ...imovel }) => ({
+    ...imovel,
+    capa: capaDoCard(imagens, imovel.modalidade, imovel.capa_origem),
+  }));
 }
 
 /** Tipos e fases ativos, ordenados — alimenta os filtros da home e os selects do admin. */
@@ -141,4 +137,29 @@ export async function getTiposEFases(): Promise<{
   if (erroFases) throw erroFases;
 
   return { tipos: tipos ?? [], fases: fases ?? [] };
+}
+
+/** Slug, data de alteração e imagens (todas as galerias) dos imóveis ativos — para o sitemap. */
+export async function getImoveisParaSitemap(): Promise<
+  { slug: string; updated_at: string; imagens: { url: string }[] }[]
+> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase
+    .from("imoveis")
+    .select("slug, updated_at, imagens:imovel_imagens(url, ordem)")
+    .eq("status", "ativo")
+    .order("ordem", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  const linhas = (data ?? []) as unknown as {
+    slug: string;
+    updated_at: string;
+    imagens: { url: string; ordem: number }[] | null;
+  }[];
+  return linhas.map((linha) => ({
+    slug: linha.slug,
+    updated_at: linha.updated_at,
+    imagens: [...(linha.imagens ?? [])].sort((a, b) => a.ordem - b.ordem),
+  }));
 }

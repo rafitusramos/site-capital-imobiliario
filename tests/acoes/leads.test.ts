@@ -3,9 +3,13 @@ import { criarSupabaseFalso } from "@/tests/apoio/supabase-falso";
 
 vi.mock("next/headers", () => ({ headers: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
+vi.mock("next/server", () => ({ after: vi.fn() }));
+vi.mock("@/lib/email/notificar", () => ({ dispararAvisosNovoLead: vi.fn() }));
 
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { after } from "next/server";
+import { dispararAvisosNovoLead } from "@/lib/email/notificar";
 import { criarLead, type CriarLeadInput } from "@/app/actions/leads";
 
 function mockHeaders(valores: Record<string, string> = {}) {
@@ -424,5 +428,56 @@ describe("criarLead — consentimento LGPD", () => {
     expect(resultado.sucesso).toBe(true);
     const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_imovel");
     expect((chamada!.params as Record<string, unknown>).p_consentimento_lgpd).toBe(true);
+  });
+});
+
+describe("criarLead — e-mails", () => {
+  function sucessoFinanciamento() {
+    const falso = montarAdmin();
+    mockHeaders();
+    falso.programarRpc("registrar_tentativa_lead", { data: true, error: null });
+    falso.programarRpc("criar_lead_financiamento", {
+      data: { id: "lead-1", protocolo: "FIN-0001", nome: "Maria Silva", telefone: "19997834187", email: "maria@example.com" },
+      error: null,
+    });
+    return falso;
+  }
+  const entrada = () => ({
+    tipo: "financiamento" as const,
+    dados: dadosFinanciamento(),
+    paginaUrl: "/financiamento",
+    consentimentoLgpd: true,
+  });
+
+  test("agenda os avisos em after() sem esperar por eles na resposta", async () => {
+    sucessoFinanciamento();
+    const agendados: Array<() => unknown> = [];
+    vi.mocked(after).mockImplementation(((cb: () => unknown) => {
+      agendados.push(cb);
+    }) as never);
+
+    const resultado = await criarLead(entrada());
+
+    expect(resultado).toEqual({ sucesso: true, protocolo: "FIN-0001" });
+    expect(dispararAvisosNovoLead).not.toHaveBeenCalled();
+    expect(agendados).toHaveLength(1);
+
+    await agendados[0]();
+    expect(dispararAvisosNovoLead).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "lead-1", tipo: "financiamento", email: "maria@example.com", protocolo: "FIN-0001" }),
+      expect.arrayContaining([expect.objectContaining({ rotulo: "Cidade", valor: "Vinhedo" })]),
+    );
+  });
+
+  test("falha ao agendar os avisos não derruba a captação", async () => {
+    sucessoFinanciamento();
+    vi.mocked(after).mockImplementation((() => {
+      throw new Error("fora do escopo da requisição");
+    }) as never);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const resultado = await criarLead(entrada());
+
+    expect(resultado).toEqual({ sucesso: true, protocolo: "FIN-0001" });
   });
 });

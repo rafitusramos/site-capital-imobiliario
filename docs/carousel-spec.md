@@ -157,13 +157,57 @@ system e das restrições do repo (ver `CLAUDE.md`):
   Archivo "direto" e da paleta de referência.
 - **CSS em arquivo próprio (`styles/imoveis.css`)**, não classes Tailwind — o projeto não usa
   Tailwind nas páginas públicas (só no admin).
-- **`<img>` simples com `aspect-ratio` fixo em CSS**, não `next/image` — o restante do codebase
-  usa `<img>` puro (`components/blog/post-card.tsx`, `app/(site)/blog/[slug]/page.tsx`) e
-  `next.config.ts` não declara `images.remotePatterns` para o domínio do Supabase Storage. A
-  proteção contra CLS vem do `aspect-ratio` no lugar das dimensões do `next/image`.
+- **`next/image` via `ImagemImovel`** (ver "Estratégia de carregamento" abaixo). A proteção
+  contra CLS vem do `aspect-ratio` 4/3 em CSS mais `width`/`height` (1400x900) no componente.
 - **Sem plugin de autoplay** (`embla-carousel-autoplay` não foi instalado e não deve ser
   adicionado): autoplay numa galeria de imóvel atrapalha a leitura das fotos e conflita com
   `prefers-reduced-motion` — decisão consciente, não uma omissão.
 - **Galeria de uma única foto não usa Embla**: com 1 imagem não há o que rolar; o componente
   renderiza um `<figure className="im-carrossel-unica">` simples, sem setas e sem região de
   carrossel.
+## Tamanhos e geometria (implementação em `styles/imoveis.css`)
+
+- **Root do Embla sem padding horizontal.** O Embla mede o root com `offsetWidth`
+  (padding incluído) mas posiciona o trilho a partir da borda de dentro do padding.
+  Com padding lateral (versão antiga: 8% / 18% / 26%) o slide centrado saía
+  deslocado para a direita pelo valor do padding, e no mobile a foto ativa e a
+  legenda encostavam na borda do `overflow:hidden` e eram cortadas. O *peek* vem
+  agora da largura do slide (`--basis`), não de padding.
+- **Largura do slide sem escala (`--basis`)**: mobile `52%` do viewport; ≥768px
+  `40%`; ≥1024px `calc(1080px × 0.5 / 1.5 + 16px)` = 376px. A foto ativa mede
+  `1.5 × (basis − 16px)`.
+- **Desktop (≥1024px): a foto ativa mede 50% do max-width do `.wrap`** (1080px,
+  `--wrap-max`, espelho de `lp.css`), ou seja, 540px. Em viewport de 1024px o
+  conteúdo do `.wrap` tem 976px (padding de 24px), então sobram ~218px de cada
+  lado para as vizinhas aparecerem, sem corte. O `+ 16px` é o padding de 8px
+  de cada lado do slide, que também é ampliado pela escala. A foto única
+  (`.im-carrossel-unica`) usa a mesma largura nesse breakpoint.
+- **Padding vertical do viewport (`--folga-vertical`)** = quanto a foto cresce com
+  a escala (25% da altura sem escala = `0.1875 × largura`) + 12px de folga para a
+  sombra. Mudou `--basis` ou `--escala-ativa`, a folga acompanha por fórmula.
+- **Cantos**: 8px no botão do slide e na figura única, com `overflow:hidden` +
+  `isolation:isolate` (+ `translateZ(0)` no botão do slide) para o recorte
+  funcionar também em elemento escalado no Safari/iOS. Imagem e legenda são
+  recortadas juntas.
+
+## Estratégia de carregamento das fotos
+
+- **Por que não `loading="lazy"` nativo**: dentro do `overflow:hidden` do viewport do Embla
+  a imagem lazy nunca dispara o carregamento. O gatilho é nosso: um `IntersectionObserver` na
+  raiz do carrossel (`rootMargin: "600px 0px"`) liga a flag `perto` (uma vez; depois desconecta).
+- **Antes de `perto`** (estado inicial, igual no servidor e no cliente, então a hidratação
+  bate): só o slide 0 da primeira galeria (`primeiraEager`) tem `<img>`, com
+  `fetchPriority="high"`. Os demais slides renderizam `.im-carrossel-reserva`, caixa 4/3 na cor
+  `--abissal` sem requisição.
+- **Depois de `perto`**: todos os slides renderizam (navegar nunca cai num slide vazio). Ativo
+  e vizinhos imediatos usam a prioridade padrão; o resto `fetchPriority="low"`
+  (`prioridadeDoSlide`). Sem `IntersectionObserver`, `perto` liga no mount (carrega tudo).
+- **Foto única, card e lightbox**: fora do Embla, lazy nativo funciona (card, foto única que
+  não é a primeira). A planta ampliada só existe depois do clique.
+- **`sizes`** (constantes em `lib/imoveis/imagem-otimizada.ts`): carrossel
+  `(min-width:1024px) 540px, (min-width:768px) 60vw, 78vw`, de `--basis` x `--escala-ativa`
+  (mobile 0,52vw x 1,5; tablet 0,40vw x 1,5; desktop 50% de 1080px). Mudou `--basis` ou a
+  escala, mude os `sizes`.
+- **Chegada suave**: placeholder `--abissal` na proporção final; a foto sobe de `opacity` 0 a 1
+  em 300ms no `onLoad` (e no mount, se `img.complete`, para foto em cache). Sem transição com
+  `prefers-reduced-motion` e sem esconder nada quando o JS está desligado.

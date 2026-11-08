@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Carrossel, type ImagemCarrossel } from "@/components/imoveis/Carrossel";
+import { ImagemImovel } from "@/components/imoveis/ImagemImovel";
+import { SIZES_LIGHTBOX } from "@/lib/imoveis/imagem-otimizada";
 import { altDaImagem } from "@/lib/imoveis/seo";
 
 type GaleriaPlantasProps = {
@@ -79,7 +81,15 @@ export function GaleriaPlantas({ imagens, ariaLabel, contexto }: GaleriaPlantasP
             >
               ×
             </button>
-            <img src={imagemAmpliada.url} alt={altDaImagem(imagemAmpliada.ambiente, contexto)} />
+            {/* Só existe depois do clique: a planta ampliada carrega sob demanda. */}
+            <ImagemImovel
+              src={imagemAmpliada.url}
+              alt={altDaImagem(imagemAmpliada.ambiente, contexto)}
+              width={1400}
+              height={900}
+              sizes={SIZES_LIGHTBOX}
+              priority
+            />
             {imagemAmpliada.ambiente ? (
               <p className="im-planta-legenda">{imagemAmpliada.ambiente}</p>
             ) : null}

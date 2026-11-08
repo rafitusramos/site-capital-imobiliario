@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { SimuladorFinanciamento } from "@/components/financiamento/SimuladorFinanciamento";
 import { obterTaxasSimulador } from "@/lib/queries/parametros";
 import { SITE_URL } from "@/lib/site";
+import { areaServida } from "@/lib/seo/area";
+import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
+import { montarFaqPage } from "@/lib/seo/faq";
+import { FAQ_FINANCIAMENTO } from "@/lib/seo/faqs-landings";
+import { postsParaLeituraOuVazio } from "@/lib/queries/posts-seguro";
+import { LeiaTambem } from "@/components/blog/LeiaTambem";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 
 // A página é estática por padrão; sem revalidate, a taxa lida em build time
@@ -45,24 +51,17 @@ const servicoJsonLd = {
       name: "Financiamento imobiliário SBPE — cotação multibanco",
       serviceType: "Intermediação de financiamento imobiliário",
       provider: { "@id": `${SITE_URL}/#negocio` },
-      areaServed: [
-        { "@type": "City", name: "Vinhedo" },
-        { "@type": "City", name: "Valinhos" },
-        { "@type": "City", name: "Louveira" },
-        { "@type": "City", name: "Jundiaí" },
-        { "@type": "City", name: "Campinas" },
-        { "@type": "City", name: "Itatiba" },
-        { "@type": "City", name: "Indaiatuba" },
-        { "@type": "City", name: "Sumaré" },
-      ],
+      areaServed: areaServida(),
       description:
         "Pré-aprovação de crédito, cotação simultânea em múltiplos bancos e comparação por Custo Efetivo Total (taxa, seguros e tarifas), com acompanhamento até o registro do imóvel. Análise sem custo.",
     },
-  ],
+    montarBreadcrumb([{ nome: "Financiamento imobiliário" }]),
+    montarFaqPage(FAQ_FINANCIAMENTO),
+  ].filter(Boolean),
 };
 
 export default async function FinanciamentoPage() {
-  const taxas = await obterTaxasSimulador();
+  const [taxas, posts] = await Promise.all([obterTaxasSimulador(), postsParaLeituraOuVazio()]);
 
   return (
     <>
@@ -168,7 +167,7 @@ export default async function FinanciamentoPage() {
             <div className="cel reveal d3">
               <div className="rot">Entre bancos</div>
               <div className="big mono-num">
-                ~2,3<span style={{ fontSize: ".45em" }}> p.p.</span>
+                ~3,3<span style={{ fontSize: ".45em" }}> p.p.</span>
               </div>
               <div className="leg">
                 Diferença de taxa ao ano para o mesmo perfil — é aqui que a cotação trabalha.
@@ -176,7 +175,7 @@ export default async function FinanciamentoPage() {
             </div>
           </div>
           <p className="disclaimer reveal">
-            Referências de condições usuais de mercado em julho/2026; valores efetivos dependem de
+            Referências de condições usuais de mercado em outubro/2026; valores efetivos dependem de
             análise de crédito, avaliação do imóvel e instituição.
           </p>
         </div>
@@ -259,18 +258,18 @@ export default async function FinanciamentoPage() {
               <tbody>
                 <tr>
                   <td data-label="Cenário">
-                    Banco digital / balcão caro
+                    Balcão mais caro
                     <small>contratação direta, sem comparação</small>
                   </td>
                   <td data-label="Custo ao ano">
-                    <span className="mono-num">13,99% a.a. + TR</span>
+                    <span className="mono-num">15% a.a. + TR</span>
                   </td>
                   <td data-label="Parcela inicial">
-                    <span className="mono-num">R$ 10.999</span>
+                    <span className="mono-num">R$ 11.594</span>
                   </td>
                   <td data-label="Total pago">
-                    <span className="mono-num">≈ R$ 2,38 mi</span>
-                    <small>R$ 248 mil a mais que a melhor taxa</small>
+                    <span className="mono-num">≈ R$ 2,49 mi</span>
+                    <small>R$ 355 mil a mais que a melhor taxa</small>
                   </td>
                 </tr>
                 <tr>
@@ -279,14 +278,14 @@ export default async function FinanciamentoPage() {
                     <small>primeira proposta do gerente</small>
                   </td>
                   <td data-label="Custo ao ano">
-                    <span className="mono-num">12,8% a.a. + TR</span>
+                    <span className="mono-num">13,25% a.a. + TR</span>
                   </td>
                   <td data-label="Parcela inicial">
-                    <span className="mono-num">R$ 10.292</span>
+                    <span className="mono-num">R$ 10.561</span>
                   </td>
                   <td data-label="Total pago">
-                    <span className="mono-num">≈ R$ 2,26 mi</span>
-                    <small>R$ 120 mil a mais que a melhor taxa</small>
+                    <span className="mono-num">≈ R$ 2,31 mi</span>
+                    <small>R$ 169 mil a mais que a melhor taxa</small>
                   </td>
                 </tr>
                 <tr className="destaque">
@@ -310,7 +309,7 @@ export default async function FinanciamentoPage() {
           </div>
           <p className="disclaimer">
             Valores ilustrativos calculados pelo sistema SAC, sem TR, seguros e tarifas, com taxas
-            de bancos privados praticadas no mercado em julho/2026 (11,69% a 13,99% a.a.) — para
+            de bancos privados praticadas no mercado em outubro/2026 (11,69% a 15% a.a.) — para
             comparação de ordem de grandeza entre cenários. As condições efetivas dependem de
             análise de crédito, avaliação do imóvel, relacionamento e instituição. Não constitui
             oferta de crédito. Crédito sujeito a aprovação.
@@ -357,83 +356,16 @@ export default async function FinanciamentoPage() {
         <div className="wrap">
           <div className="eyebrow reveal">Perguntas diretas</div>
           <h2 className="reveal d1">Antes de decidir, as dúvidas reais</h2>
-          <details>
-            <summary>Preciso já ter escolhido o imóvel para começar?</summary>
-            <div className="resp">
-              Não — e o ideal é começar antes. A pré-aprovação de crédito vale por cerca de 90
-              dias e define seu teto real de compra. Negociar um imóvel com carta pré-aprovada na
-              mão é negociar de outra posição.
-            </div>
-          </details>
-          <details>
-            <summary>Qual a entrada mínima?</summary>
-            <div className="resp">
-              Em geral 20% do valor do imóvel. Alguns bancos, em programas especiais como o
-              Santander Select, chegam a financiar até 90% — os demais 10% de entrada podem,
-              inclusive, ser compostos com FGTS, dentro das regras de uso do fundo.
-            </div>
-          </details>
-          <details>
-            <summary>Posso usar meu FGTS?</summary>
-            <div className="resp">
-              Sim, se você tem 3 anos de trabalho sob o regime do FGTS (somando períodos), não
-              possui outro imóvel residencial na mesma cidade e o imóvel é residencial urbano
-              dentro do teto do SFH — hoje R$ 2,25 milhões. O fundo pode entrar na entrada e,
-              depois, a cada 2 anos, para amortizar o saldo.
-            </div>
-          </details>
-          <details>
-            <summary>SAC ou Price: qual escolher?</summary>
-            <div className="resp">
-              No SAC a parcela começa maior e cai todo mês, com menos juros no total do contrato.
-              Na Price a parcela é fixa, mais leve no início, mas o custo total é maior. A escolha
-              certa depende do seu fluxo de renda — essa conta faz parte do diagnóstico.
-            </div>
-          </details>
-          <details>
-            <summary>Quais os custos além da entrada?</summary>
-            <div className="resp">
-              ITBI (imposto municipal de transmissão) e registro em cartório, que juntos somam por
-              volta de 4% a 5% do valor do imóvel, além da tarifa de avaliação do banco. Esses
-              valores precisam estar reservados fora da entrada — e entram no planejamento desde a
-              primeira conversa.
-            </div>
-          </details>
-          <details>
-            <summary>Sou autônomo ou empresário. Consigo financiar?</summary>
-            <div className="resp">
-              Sim. A comprovação de renda muda de formato: extratos bancários, declaração de
-              imposto de renda, pró-labore, faturamento da empresa ou DECORE. Cada banco pesa
-              esses documentos de um jeito — mais um motivo para cotar em vários.
-            </div>
-          </details>
-          <details>
-            <summary>Posso somar renda com outra pessoa?</summary>
-            <div className="resp">
-              Sim. A composição de renda com cônjuge, companheiro ou familiar é aceita pela
-              maioria dos bancos e aumenta o valor financiável. Os participantes entram juntos na
-              análise de crédito e no contrato.
-            </div>
-          </details>
-          <details>
-            <summary>Quanto tempo demora até as chaves?</summary>
-            <div className="resp">
-              A pré-aprovação sai em horas ou poucos dias, dependendo do banco. Da proposta aceita
-              até o registro e a liberação do recurso, o processo completo costuma levar de 30 a
-              60 dias — e o acompanhamento de cada etapa serve para mantê-lo nesse prazo.
-            </div>
-          </details>
-          <details>
-            <summary>E se as taxas caírem depois que eu assinar?</summary>
-            <div className="resp">
-              Existe a portabilidade de crédito: você transfere o saldo devedor para outro banco
-              com taxa menor, sem refazer a compra. Quem financia hoje garante o preço do imóvel
-              de hoje — e mantém a porta aberta para reduzir a taxa amanhã. Esse monitoramento faz
-              parte do acompanhamento pós-contrato.
-            </div>
-          </details>
+          {FAQ_FINANCIAMENTO.map((item) => (
+            <details key={item.pergunta}>
+              <summary>{item.pergunta}</summary>
+              <div className="resp">{item.resposta}</div>
+            </details>
+          ))}
         </div>
       </section>
+
+      <LeiaTambem posts={posts} categoriaSlug="financiamento" />
     </>
   );
 }

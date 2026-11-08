@@ -2,6 +2,8 @@ import { describe, expect, test } from "vitest";
 import {
   disponibilidadeSchema,
   montarOfferSchema,
+  montarRealEstateListingSchema,
+  montarVideoObjectSchema,
   type ImovelParaOffer,
 } from "@/lib/imoveis/schema";
 
@@ -144,5 +146,126 @@ describe("montarOfferSchema", () => {
       }),
     );
     expect(offer?.availability).toBe("https://schema.org/PreOrder");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Imóvel pronto (unidade única) — migration 026
+// ---------------------------------------------------------------------------
+
+describe("montarOfferSchema — imóvel pronto", () => {
+  const pronto = (campos: Partial<ImovelParaOffer> = {}) =>
+    imovelFalso({
+      modalidade: "pronto",
+      valor_a_partir_de: null,
+      valor_venda: 1250000,
+      fase: { slug: "pronto" },
+      ...campos,
+    });
+
+  test("usa valor_venda como price de um Offer simples", () => {
+    expect(montarOfferSchema(pronto())).toEqual({
+      "@type": "Offer",
+      price: 1250000,
+      priceCurrency: "BRL",
+      availability: "https://schema.org/InStock",
+      url: "https://rtcapitalimobiliario.com.br/imoveis/um-imovel/",
+    });
+  });
+
+  test("ignora valor_a_partir_de e tipologias: unidade única nunca é faixa", () => {
+    const offer = montarOfferSchema(
+      pronto({ valor_a_partir_de: 100, tipologias: [{ valor_a_partir_de: 9000000 }] }),
+    );
+    expect(offer?.["@type"]).toBe("Offer");
+    expect(offer?.price).toBe(1250000);
+  });
+
+  test("sem valor_venda não há offer", () => {
+    expect(montarOfferSchema(pronto({ valor_venda: null }))).toBeNull();
+  });
+
+  test("valor_sob_consulta tem precedência sobre o valor", () => {
+    expect(montarOfferSchema(pronto({ valor_sob_consulta: true }))).toBeNull();
+  });
+
+  test("vendido continua SoldOut", () => {
+    expect(montarOfferSchema(pronto({ status: "vendido" }))?.availability).toBe(
+      "https://schema.org/SoldOut",
+    );
+  });
+
+  test("lançamento ignora valor_venda", () => {
+    const offer = montarOfferSchema(imovelFalso({ modalidade: "lancamento", valor_venda: 1 }));
+    expect(offer?.price).toBe(500000);
+  });
+});
+
+describe("montarRealEstateListingSchema", () => {
+  const base = {
+    modalidade: "pronto" as const,
+    slug: "casa-marambaia",
+    titulo: "Casa no Marambaia",
+    descricao: "Casa pronta para morar.",
+    imagem: "https://exemplo.com/capa.webp",
+    criadoEm: "2026-03-15T12:00:00+00:00",
+  };
+
+  test("é complementar: carrega o mesmo offer e a data de publicação em AAAA-MM-DD", () => {
+    const offers = montarOfferSchema(
+      imovelFalso({ modalidade: "pronto", valor_a_partir_de: null, valor_venda: 900000 }),
+    );
+    const no = montarRealEstateListingSchema({ ...base, offers });
+    expect(no).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "RealEstateListing",
+      name: "Casa no Marambaia",
+      url: "https://rtcapitalimobiliario.com.br/imoveis/casa-marambaia/",
+      datePosted: "2026-03-15",
+      offers: { price: 900000 },
+    });
+  });
+
+  test("sem offer (sob consulta ou sem preço) não emite o nó", () => {
+    expect(montarRealEstateListingSchema({ ...base, offers: null })).toBeNull();
+  });
+
+  test("lançamento nunca emite RealEstateListing", () => {
+    const offers = montarOfferSchema(imovelFalso());
+    expect(montarRealEstateListingSchema({ ...base, modalidade: "lancamento", offers })).toBeNull();
+  });
+});
+
+describe("montarVideoObjectSchema", () => {
+  const completo = {
+    titulo: "Casa no Marambaia",
+    descricao: "Tour pela casa.",
+    urlVideo: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    dataPublicacao: "2026-02-01",
+  };
+
+  test("com todos os campos obrigatórios, monta o VideoObject", () => {
+    expect(montarVideoObjectSchema(completo)).toEqual({
+      "@context": "https://schema.org",
+      "@type": "VideoObject",
+      name: "Vídeo do Casa no Marambaia",
+      description: "Tour pela casa.",
+      thumbnailUrl: "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+      uploadDate: "2026-02-01",
+      embedUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+    });
+  });
+
+  test("sem uploadDate não emite (schema incompleto cria erro novo)", () => {
+    expect(montarVideoObjectSchema({ ...completo, dataPublicacao: null })).toBeNull();
+  });
+
+  test("sem URL reconhecível não emite", () => {
+    expect(montarVideoObjectSchema({ ...completo, urlVideo: "https://vimeo.com/123" })).toBeNull();
+    expect(montarVideoObjectSchema({ ...completo, urlVideo: null })).toBeNull();
+  });
+
+  test("sem descrição não emite", () => {
+    expect(montarVideoObjectSchema({ ...completo, descricao: "  " })).toBeNull();
   });
 });

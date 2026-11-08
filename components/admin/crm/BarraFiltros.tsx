@@ -1,27 +1,21 @@
 "use client";
 
 import { forwardRef } from "react";
-import type { CriterioOrdenacao } from "@/lib/crm/filtros";
-import { IconeBusca, IconeEstrela, IconeEstrelaPreenchida, IconeFiltro, IconeAlerta } from "@/components/admin/crm/icones";
+import { FILTROS_INICIAIS, type CriterioOrdenacao, type EstadoFiltros } from "@/lib/crm/filtros";
+import {
+  IconeBusca,
+  IconeEstrela,
+  IconeEstrelaPreenchida,
+  IconeFiltro,
+  IconeAlerta,
+  IconeRelogio,
+  IconeBaixar,
+} from "@/components/admin/crm/icones";
 
-export type EstadoFiltros = {
-  busca: string;
-  /** `undefined` = todos; `null` = sem responsável; string = um corretor específico. */
-  responsavelId: string | null | undefined;
-  tag: string | undefined;
-  somenteFavoritos: boolean;
-  somenteAtrasados: boolean;
-  ordenacao: CriterioOrdenacao;
-};
-
-export const FILTROS_INICIAIS: EstadoFiltros = {
-  busca: "",
-  responsavelId: undefined,
-  tag: undefined,
-  somenteFavoritos: false,
-  somenteAtrasados: false,
-  ordenacao: "tempo-na-etapa",
-};
+// O estado e o valor inicial moram em lib/crm/filtros.ts (a serialização para
+// a URL, em filtros-url.ts, precisa deles sem importar componente).
+export { FILTROS_INICIAIS };
+export type { EstadoFiltros };
 
 export type AcaoFiltros =
   | { tipo: "BUSCA"; valor: string }
@@ -29,6 +23,10 @@ export type AcaoFiltros =
   | { tipo: "TAG"; valor: string | undefined }
   | { tipo: "FAVORITOS"; valor: boolean }
   | { tipo: "ATRASADOS"; valor: boolean }
+  | { tipo: "PARADOS"; valor: boolean }
+  | { tipo: "SEM_LEMBRETE"; valor: boolean }
+  | { tipo: "CRIADO_DE"; valor: string | undefined }
+  | { tipo: "CRIADO_ATE"; valor: string | undefined }
   | { tipo: "ORDENACAO"; valor: CriterioOrdenacao }
   | { tipo: "LIMPAR" };
 
@@ -45,6 +43,14 @@ export function reducerFiltros(estado: EstadoFiltros, acao: AcaoFiltros): Estado
       return { ...estado, somenteFavoritos: acao.valor };
     case "ATRASADOS":
       return { ...estado, somenteAtrasados: acao.valor };
+    case "PARADOS":
+      return { ...estado, somenteParados: acao.valor };
+    case "SEM_LEMBRETE":
+      return { ...estado, semLembrete: acao.valor };
+    case "CRIADO_DE":
+      return { ...estado, criadoDe: acao.valor };
+    case "CRIADO_ATE":
+      return { ...estado, criadoAte: acao.valor };
     case "ORDENACAO":
       return { ...estado, ordenacao: acao.valor };
     case "LIMPAR":
@@ -72,6 +78,9 @@ export type BarraFiltrosProps = {
   dispatch: (acao: AcaoFiltros) => void;
   corretores: { id: string; full_name: string }[];
   tags: { slug: string; label: string }[];
+  /** Só admin recebe o botão (QuadroCRM decide); exporta o que está na tela, já filtrado. */
+  onExportar?: () => void;
+  totalVisivel?: number;
 };
 
 /**
@@ -84,7 +93,7 @@ export type BarraFiltrosProps = {
  * ref para focar o input a partir do documento inteiro.
  */
 export const BarraFiltros = forwardRef<HTMLInputElement, BarraFiltrosProps>(function BarraFiltros(
-  { filtros, dispatch, corretores, tags },
+  { filtros, dispatch, corretores, tags, onExportar, totalVisivel },
   refBusca,
 ) {
   return (
@@ -171,6 +180,69 @@ export const BarraFiltros = forwardRef<HTMLInputElement, BarraFiltrosProps>(func
         <IconeAlerta className="h-4 w-4" />
         Atrasados
       </button>
+
+      <button
+        type="button"
+        onClick={() => dispatch({ tipo: "PARADOS", valor: !filtros.somenteParados })}
+        aria-pressed={filtros.somenteParados}
+        title="Passou do prazo (SLA) da etapa em que está"
+        className={`${ALTERNADOR_BASE} ${
+          filtros.somenteParados
+            ? "border-[var(--erro)] bg-[var(--erro)]/10 text-[var(--erro)]"
+            : "border-neutral-300 text-neutral-600 hover:bg-black/5"
+        }`}
+      >
+        <IconeRelogio className="h-4 w-4" />
+        Parados além do SLA
+      </button>
+
+      <button
+        type="button"
+        onClick={() => dispatch({ tipo: "SEM_LEMBRETE", valor: !filtros.semLembrete })}
+        aria-pressed={filtros.semLembrete}
+        className={`${ALTERNADOR_BASE} ${
+          filtros.semLembrete
+            ? "border-[var(--bronze)] bg-[var(--bronze)]/10 text-[var(--bronze)]"
+            : "border-neutral-300 text-neutral-600 hover:bg-black/5"
+        }`}
+      >
+        Sem lembrete
+      </button>
+
+      <fieldset className="flex items-center gap-1.5 text-sm text-neutral-500">
+        <legend className="sr-only">Período de criação</legend>
+        <label htmlFor="filtro-de">Criado de</label>
+        <input
+          id="filtro-de"
+          type="date"
+          value={filtros.criadoDe ?? ""}
+          max={filtros.criadoAte}
+          onChange={(e) => dispatch({ tipo: "CRIADO_DE", valor: e.target.value || undefined })}
+          className={CAMPO}
+        />
+        <label htmlFor="filtro-ate">até</label>
+        <input
+          id="filtro-ate"
+          type="date"
+          value={filtros.criadoAte ?? ""}
+          min={filtros.criadoDe}
+          onChange={(e) => dispatch({ tipo: "CRIADO_ATE", valor: e.target.value || undefined })}
+          className={CAMPO}
+        />
+      </fieldset>
+
+      {onExportar ? (
+        <button
+          type="button"
+          onClick={onExportar}
+          disabled={totalVisivel === 0}
+          title="Baixa os leads que estão na tela (com os filtros aplicados)"
+          className={`${ALTERNADOR_BASE} border-neutral-300 text-neutral-600 hover:bg-black/5 disabled:opacity-50`}
+        >
+          <IconeBaixar className="h-4 w-4" />
+          Exportar CSV
+        </button>
+      ) : null}
 
       <label className="ml-auto flex items-center gap-1.5 text-sm text-neutral-500">
         <IconeFiltro className="h-4 w-4" aria-hidden="true" />

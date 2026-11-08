@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/queries/posts";
-import { getImoveisPublicados } from "@/lib/queries/imoveis";
+import { getImoveisParaSitemap } from "@/lib/queries/imoveis";
 import { SITE_URL } from "@/lib/site";
+import { imagensDoImovel, imagensDoPost } from "@/lib/seo/sitemap-imagens";
 
 // lastModified das páginas fixas: mantido À MÃO, não gerado. Cada data é a
 // do último commit que alterou o CONTEÚDO visível daquela página — nunca
@@ -25,7 +26,7 @@ const LAST_MODIFIED_FIXAS: Record<string, string> = {
 };
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [posts, imoveis] = await Promise.all([getPublishedPosts(), getImoveisPublicados()]);
+  const [posts, imoveis] = await Promise.all([getPublishedPosts(), getImoveisParaSitemap()]);
 
   const paginasFixas: MetadataRoute.Sitemap = Object.entries(LAST_MODIFIED_FIXAS).map(
     ([caminho, data]) => ({
@@ -37,11 +38,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const paginasPosts: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}/`,
     lastModified: post.updated_at,
+    images: imagensDoPost(post),
   }));
 
   const paginasImoveis: MetadataRoute.Sitemap = imoveis.map((imovel) => ({
     url: `${SITE_URL}/imoveis/${imovel.slug}/`,
     lastModified: imovel.updated_at,
+    images: imagensDoImovel(imovel),
   }));
 
   return [...paginasFixas, ...paginasPosts, ...paginasImoveis];

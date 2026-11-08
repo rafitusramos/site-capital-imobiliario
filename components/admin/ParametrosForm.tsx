@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { salvarParametros } from "@/app/actions/admin-parametros";
+import { useToast } from "@/lib/admin/toast";
 import { formatarAtualizacao } from "@/lib/parametros/atualizacao";
 
 type Valores = {
@@ -26,25 +27,22 @@ export function ParametrosForm({
   const router = useRouter();
   const [valores, setValores] = useState<Valores>(valoresIniciais);
   const [salvando, setSalvando] = useState(false);
-  const [erro, setErro] = useState<string | null>(null);
-  const [mensagem, setMensagem] = useState<string | null>(null);
+  const { mostrarToast } = useToast();
 
   function setValor<K extends keyof Valores>(campo: K, valor: number) {
     setValores((atual) => ({ ...atual, [campo]: valor }));
   }
 
   async function salvar() {
-    setErro(null);
-    setMensagem(null);
     setSalvando(true);
     const resultado = await salvarParametros(valores);
     setSalvando(false);
 
     if (!resultado.sucesso) {
-      setErro(resultado.erro ?? "Não foi possível salvar as taxas.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar as taxas.");
       return;
     }
-    setMensagem("Taxas salvas.");
+    mostrarToast("sucesso", "Taxas salvas.");
     // Refaz a leitura no servidor (page.tsx) para trazer o updated_at e o
     // nome de quem editou já refletindo o salvamento que acabou de ocorrer.
     router.refresh();
@@ -108,9 +106,6 @@ export function ParametrosForm({
         Última atualização: {formatarAtualizacao(atualizadoEm)}
         {atualizadoPorNome ? ` · por ${atualizadoPorNome}` : ""}
       </p>
-
-      {erro ? <p className="mb-3 text-sm text-[var(--erro)]">{erro}</p> : null}
-      {mensagem ? <p className="mb-3 text-sm text-[var(--jade)]">{mensagem}</p> : null}
 
       <button
         type="button"

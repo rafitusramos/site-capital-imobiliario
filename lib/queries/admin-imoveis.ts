@@ -46,7 +46,7 @@ function ordenarColecoes(imovel: ImovelComColecoesAdmin): ImovelComColecoesAdmin
   };
 }
 
-/** Todos os empreendimentos, qualquer status — só para uso no admin. */
+/** Todos os imóveis, qualquer status — só para uso no admin. */
 export async function getImoveisAdmin(): Promise<ImovelAdminResumo[]> {
   const supabase = await createClient();
   const { data, error } = await supabase

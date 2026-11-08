@@ -2,6 +2,8 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { dispararAvisosMudancaEtapa } from "@/lib/email/notificar";
 import type { createClient } from "@/lib/supabase/server";
 import { idSchema, usuarioAutenticado } from "@/lib/admin/auth";
 import { etapaInicial } from "@/lib/crm/etapas";
@@ -14,6 +16,8 @@ import {
   criarLeadHomeEquitySchema,
   criarLeadImovelSchema,
   criarTagSchema,
+  editarInteracaoSchema,
+  motivoExclusaoSchema,
   definirTagsSchema,
   lembreteReagendarSchema,
   moverLeadBaseSchema,
@@ -271,6 +275,15 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
     return { sucesso: false, erro: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
+  // Estado ANTES do RPC: é dele que sai o "de" do e-mail e a decisão de não
+  // avisar quando a etapa não mudou. A leitura é só informativa — o RPC
+  // continua sendo a única forma de mover e a autoridade das regras.
+  const { data: antesDoMovimento } = await supabase
+    .from("leads")
+    .select("id, tipo, status, nome, email, telefone, protocolo")
+    .eq("id", parsed.data.leadId)
+    .maybeSingle();
+
   const { data, error } = await supabase.rpc("mover_lead_crm", {
     p_lead_id: parsed.data.leadId,
     p_etapa: parsed.data.etapa,
@@ -282,8 +295,42 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
   if (error) return { sucesso: false, erro: traduzirErro(error, "Não foi possível mover o lead.") };
   if (!data) return { sucesso: false, erro: "Lead não encontrado." };
 
+  if (antesDoMovimento && antesDoMovimento.status !== parsed.data.etapa) {
+    const quemMoveu = await nomeDeQuemMoveu(supabase, user.id, user.email);
+    const mudanca = {
+      lead: {
+        id: antesDoMovimento.id,
+        tipo: antesDoMovimento.tipo,
+        nome: antesDoMovimento.nome,
+        email: antesDoMovimento.email,
+        telefone: antesDoMovimento.telefone,
+        protocolo: antesDoMovimento.protocolo,
+      },
+      de: antesDoMovimento.status,
+      para: parsed.data.etapa as LeadEtapaSlug,
+      motivo: parsed.data.motivo,
+      motivoObs: parsed.data.motivoObs,
+      quemMoveu,
+    };
+    // Depois da resposta, e sem nunca afetar o movimento (Fase 5: e-mails).
+    try {
+      after(() => dispararAvisosMudancaEtapa(mudanca));
+    } catch (e) {
+      console.error("[moverLead] não foi possível agendar os e-mails:", e);
+    }
+  }
+
   revalidarQuadro();
   return { sucesso: true };
+}
+
+async function nomeDeQuemMoveu(
+  supabase: SupabaseServerClient,
+  userId: string,
+  email: string | undefined,
+): Promise<string> {
+  const { data } = await supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle();
+  return data?.full_name?.trim() || email || "Equipe";
 }
 
 // ---------------------------------------------------------------------------
@@ -478,7 +525,9 @@ export async function restaurarLead(leadId: string): Promise<AcaoResultado> {
 
   const { data, error } = await supabase
     .from("leads")
-    .update({ arquivado_em: null, arquivado_por: null })
+    // restaurado_em impede o job de arquivamento automático (migration 023) de
+    // re-arquivar na noite seguinte um lead que a pessoa acabou de resgatar.
+    .update({ arquivado_em: null, arquivado_por: null, restaurado_em: new Date().toISOString() })
     .eq("id", leadId)
     .select("id");
 
@@ -504,15 +553,23 @@ export async function restaurarLead(leadId: string): Promise<AcaoResultado> {
  * action — a única ação deste arquivo que precisa disso, porque é a única
  * em que a RLS sozinha não impõe a regra de negócio.
  *
+ * O motivo é obrigatório (mínimo 5 caracteres): `crm_exclusoes.motivo` é a
+ * evidência de LGPD da exclusão (§2.3/§3.5) e ficava sempre vazio.
+ *
  * Grava `crm_exclusoes` (protocolo, tipo, quem, motivo) ANTES do delete em
  * cascata (regra dura do escopo) — depois de apagado não haveria mais de
  * onde ler protocolo/tipo para o registro.
  */
-export async function excluirLead(leadId: string, motivo?: string): Promise<AcaoResultado> {
+export async function excluirLead(leadId: string, motivo: string): Promise<AcaoResultado> {
   const { supabase, user } = await usuarioAutenticado();
   if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
 
   if (!idSchema.safeParse(leadId).success) return { sucesso: false, erro: "Lead inválido." };
+
+  const motivoParsed = motivoExclusaoSchema.safeParse(motivo);
+  if (!motivoParsed.success) {
+    return { sucesso: false, erro: motivoParsed.error.issues[0]?.message ?? "Informe o motivo da exclusão." };
+  }
 
   const { data: perfil, error: erroPerfil } = await supabase
     .from("profiles")
@@ -536,7 +593,7 @@ export async function excluirLead(leadId: string, motivo?: string): Promise<Acao
     protocolo: lead.protocolo,
     tipo: lead.tipo,
     excluido_por: user.id,
-    motivo: motivo ?? null,
+    motivo: motivoParsed.data,
   });
   if (erroRegistro) return { sucesso: false, erro: "Não foi possível registrar a exclusão." };
 
@@ -582,6 +639,104 @@ export async function registrarInteracao(input: RegistrarInteracaoInput): Promis
 
   if (error) return { sucesso: false, erro: traduzirErro(error, "Não foi possível registrar a interação.") };
   if (!data) return { sucesso: false, erro: "Não foi possível registrar a interação." };
+
+  revalidarQuadro();
+  return { sucesso: true };
+}
+
+// ---------------------------------------------------------------------------
+// editarInteracao / excluirInteracao
+// ---------------------------------------------------------------------------
+
+const ERRO_NAO_AUTOR = "Só o autor ou um administrador pode alterar esta interação.";
+
+/**
+ * Lê a interação e decide se o usuário pode mexer nela: só o autor ou um
+ * admin, e nunca as automáticas (log do sistema não é texto de ninguém). A
+ * RLS da migration 024 impõe a mesma regra no banco; checar aqui devolve uma
+ * mensagem clara em vez de "zero linhas".
+ */
+async function autorizarAlteracaoInteracao(
+  supabase: SupabaseServerClient,
+  userId: string,
+  interacaoId: string,
+): Promise<{ erro: string } | null> {
+  const { data: interacao, error } = await supabase
+    .from("lead_interacoes")
+    .select("autor_id, automatica")
+    .eq("id", interacaoId)
+    .maybeSingle();
+  if (error) {
+    console.error("[autorizarAlteracaoInteracao] falha ao ler a interação:", error);
+    return { erro: "Não foi possível ler a interação." };
+  }
+  if (!interacao) return { erro: "Interação não encontrada." };
+  if (interacao.automatica) return { erro: "Registros automáticos do sistema não podem ser alterados." };
+
+  if (interacao.autor_id !== userId) {
+    const { data: perfil, error: erroPerfil } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle();
+    if (erroPerfil) {
+      console.error("[autorizarAlteracaoInteracao] falha ao ler o perfil:", erroPerfil);
+      return { erro: "Não foi possível confirmar sua permissão." };
+    }
+    if (perfil?.role !== "admin") return { erro: ERRO_NAO_AUTOR };
+  }
+  return null;
+}
+
+export interface EditarInteracaoInput {
+  interacaoId: string;
+  conteudo: string;
+}
+
+export async function editarInteracao(input: EditarInteracaoInput): Promise<AcaoResultado> {
+  const { supabase, user } = await usuarioAutenticado();
+  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+
+  const parsed = editarInteracaoSchema.safeParse(input);
+  if (!parsed.success) return { sucesso: false, erro: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+
+  const negado = await autorizarAlteracaoInteracao(supabase, user.id, parsed.data.interacaoId);
+  if (negado) return { sucesso: false, erro: negado.erro };
+
+  const { data, error } = await supabase
+    .from("lead_interacoes")
+    .update({ conteudo: parsed.data.conteudo, editada_em: new Date().toISOString() })
+    .eq("id", parsed.data.interacaoId)
+    .select("id");
+  if (error) {
+    console.error("[editarInteracao] falha no update:", error);
+    return { sucesso: false, erro: "Não foi possível salvar a interação." };
+  }
+  if (!data || data.length === 0) {
+    return { sucesso: false, erro: "Interação não encontrada ou você não tem permissão para alterá-la." };
+  }
+
+  revalidarQuadro();
+  return { sucesso: true };
+}
+
+export async function excluirInteracao(interacaoId: string): Promise<AcaoResultado> {
+  const { supabase, user } = await usuarioAutenticado();
+  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+
+  if (!idSchema.safeParse(interacaoId).success) return { sucesso: false, erro: "Interação inválida." };
+
+  const negado = await autorizarAlteracaoInteracao(supabase, user.id, interacaoId);
+  if (negado) return { sucesso: false, erro: negado.erro };
+
+  const { data, error } = await supabase.from("lead_interacoes").delete().eq("id", interacaoId).select("id");
+  if (error) {
+    console.error("[excluirInteracao] falha no delete:", error);
+    return { sucesso: false, erro: "Não foi possível apagar a interação." };
+  }
+  if (!data || data.length === 0) {
+    return { sucesso: false, erro: "Interação não encontrada ou você não tem permissão para apagá-la." };
+  }
 
   revalidarQuadro();
   return { sucesso: true };

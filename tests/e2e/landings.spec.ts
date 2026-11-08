@@ -1,0 +1,95 @@
+import { expect, test } from "@playwright/test";
+import { LandingPage, SimuladorFinanciamento } from "./paginas/landing.page";
+import { lerJsonLd, tiposJsonLd } from "./apoio/pagina";
+
+// Nenhum formulário é enviado aqui: enviar cria lead real e dispara e-mail.
+
+for (const caminho of ["/financiamento/", "/home_equity/"]) {
+  test.describe(`${caminho} — landing`, () => {
+    test("FAQ tem 9 perguntas e cada uma abre e fecha", async ({ page }) => {
+      const landing = new LandingPage(page, caminho);
+      await landing.goto();
+
+      await expect(landing.faqs).toHaveCount(9);
+      for (let i = 0; i < 9; i++) {
+        const item = landing.faqs.nth(i);
+        await item.scrollIntoViewIfNeeded();
+        await item.locator("summary").click();
+        await expect(item, `pergunta ${i + 1} abre`).toHaveJSProperty("open", true);
+        await item.locator("summary").click();
+        await expect(item, `pergunta ${i + 1} fecha`).toHaveJSProperty("open", false);
+      }
+    });
+
+    test("JSON-LD tem Service, BreadcrumbList e FAQPage", async ({ page }) => {
+      await new LandingPage(page, caminho).goto();
+      const tipos = tiposJsonLd(await lerJsonLd(page));
+      for (const tipo of ["Service", "BreadcrumbList", "FAQPage"]) {
+        expect(tipos, `JSON-LD ${tipo}`).toContain(tipo);
+      }
+    });
+
+    test('bloco "Leia também" tem 3 artigos do blog', async ({ page }) => {
+      const landing = new LandingPage(page, caminho);
+      await landing.goto();
+      expect(await landing.artigosLeiaTambem()).toHaveLength(3);
+    });
+  });
+}
+
+test.describe("/financiamento/ — taxas de mercado de outubro/2026", () => {
+  test.beforeEach(async ({ page }) => {
+    await new LandingPage(page, "/financiamento/").goto();
+  });
+
+  test('card "Entre bancos" mostra ~3,3 p.p.', async ({ page }) => {
+    const card = page.locator(".cel").filter({ hasText: "Entre bancos" });
+    await expect(card).toContainText("~3,3 p.p.");
+  });
+
+  // Linhas da tabela por texto (no mobile a tabela vira cards; toContainText independe do layout).
+  const linhas = [
+    { cenario: "Balcão mais caro", taxa: "15% a.a. + TR", parcela: "R$ 11.594", total: "≈ R$ 2,49 mi", nota: "R$ 355 mil a mais que a melhor taxa" },
+    { cenario: "Taxa média de balcão", taxa: "13,25% a.a. + TR", parcela: "R$ 10.561", total: "≈ R$ 2,31 mi", nota: "R$ 169 mil a mais que a melhor taxa" },
+    { cenario: "Melhor taxa em cotação", taxa: "11,69% a.a. + TR", parcela: "R$ 9.627", total: "≈ R$ 2,14 mi", nota: "" },
+  ];
+  for (const l of linhas) {
+    test(`tabela comparativa: linha "${l.cenario}"`, async ({ page }) => {
+      const linha = page.locator("table.tabela tbody tr").filter({ hasText: l.cenario });
+      await expect(linha).toHaveCount(1);
+      for (const trecho of [l.taxa, l.parcela, l.total, l.nota].filter(Boolean)) {
+        await expect(linha, trecho).toContainText(trecho);
+      }
+    });
+  }
+
+  test('avisos citam "outubro/2026" e a página não tem valores antigos', async ({ page }) => {
+    const avisos = page.locator("p.disclaimer");
+    await expect(avisos).toHaveCount(2);
+    for (let i = 0; i < 2; i++) {
+      await expect(avisos.nth(i), `aviso ${i + 1}`).toContainText("outubro/2026");
+    }
+    await expect(avisos.last()).toContainText("(11,69% a 15% a.a.)");
+
+    const texto = (await page.locator("body").textContent()) ?? "";
+    for (const velho of ["julho/2026", "13,99%", "2,3 p.p."]) {
+      expect(texto, `não deve conter "${velho}"`).not.toContain(velho);
+    }
+  });
+});
+
+test.describe("/financiamento/ — simulador", () => {
+  test("alternar de SAC para PRICE muda o texto da parcela", async ({ page }) => {
+    await new LandingPage(page, "/financiamento/").goto();
+    const simulador = new SimuladorFinanciamento(page);
+
+    await simulador.parcela.scrollIntoViewIfNeeded();
+    await expect(simulador.sac).toHaveAttribute("aria-checked", "true");
+    const antes = (await simulador.parcela.textContent()) ?? "";
+    expect(antes).toMatch(/R\$/);
+
+    await simulador.escolher(simulador.price);
+    await expect(simulador.parcela).not.toHaveText(antes);
+    await expect(page.getByText("Parcela fixa aproximada")).toBeVisible();
+  });
+});
