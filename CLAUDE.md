@@ -38,8 +38,15 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 renderização.
 
 Suíte em Vitest: `npm test` — 776 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
-no SQL Editor do Supabase; a última é a **023**.
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **023**.
+
+**Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
+o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
+**`Preview` e produção usam o MESMO banco** — mergear em `Preview` aplica em produção.
+Arquivo novo: prefixo numérico `NNN_nome.sql` seguindo a sequência e **sem
+`begin;`/`commit;`** (a CLI já abre uma transação por arquivo). SQL Editor só como
+fallback — e, se usar, registre a versão em `supabase_migrations.schema_migrations`,
+ou o próximo push tenta rodar o arquivo de novo.
 
 ### CRM
 Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
@@ -333,6 +340,9 @@ Financiamento, Home Equity, Consórcio, Imóveis.
   deixa a lista pela metade se uma falhar. Tipologias, diferenciais, FAQs,
   imagens do imóvel e tags do lead vão por RPC `security invoker` (migration
   021), uma transação por coleção.
+- A tabela `supabase_migrations.schema_migrations` tinha versões por timestamp (apply
+  via MCP) e não listava as migrations aplicadas à mão; a `018b` existia só em
+  produção (hoje `0181_*`). Versão ausente ali = `db push` reexecuta o arquivo.
 - `eslint .` tem de sair com zero erro e zero aviso — é assim que a suíte está
   hoje. Regra desligada exige comentário com o motivo e a condição de voltar,
   no próprio `eslint.config.mjs`. Não silencie aviso sem justificar.

@@ -40,14 +40,14 @@
 -- independentemente de RLS) e tem o EXECUTE revogado de todo mundo: só o
 -- pg_cron (rodando como postgres) e o SQL Editor a chamam.
 --
--- Rodar no SQL Editor do Supabase, depois de 022_crm_contagens.sql.
+-- Aplicada pelo workflow migrations-supabase (supabase db push), que já roda
+-- cada arquivo numa transação: por isso não há begin/commit aqui.
 -- Idempotente: pode ser rodada de novo (reagenda o job sem duplicar).
 --
 -- COMO VERIFICAR: bloco comentado no fim deste arquivo.
 -- COMO DESFAZER:  bloco comentado no fim deste arquivo.
 -- =====================================================================
 
-begin;
 
 alter table public.leads add column if not exists restaurado_em timestamptz;
 
@@ -102,10 +102,9 @@ select cron.schedule(
   $$select public.arquivar_leads_finais_antigos()$$
 );
 
-commit;
 
 -- =====================================================================
--- COMO VERIFICAR (rodar à mão no SQL Editor, depois do commit)
+-- COMO VERIFICAR (rodar à mão no SQL Editor, depois de aplicada)
 -- =====================================================================
 -- 1) O job está agendado?
 --    select * from cron.job where jobname = 'crm-arquivar-finais-antigos';

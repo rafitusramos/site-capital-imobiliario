@@ -155,7 +155,7 @@ todo dia às 03:00 de São Paulo (06:00 UTC).
 
 ## 2. Banco de dados
 
-Quatro migrations, aplicadas à mão no SQL Editor do Supabase, **nesta ordem**.
+Quatro migrations, aplicadas pelo workflow `migrations-supabase` (merge em `Preview`; mesmo banco da produção), **nesta ordem**.
 A numeração continua de onde a 013 parou.
 
 ### 2.1 `014_crm_pipelines.sql`
@@ -864,7 +864,7 @@ existindo**.
 
 ## 9. Ordem de execução (Fase 2)
 
-1. Migrations 014 → 017, aplicadas à mão no SQL Editor, na ordem. Conferir cada
+1. Migrations 014 → 017, aplicadas em ordem pelo workflow `migrations-supabase`. Conferir cada
    uma antes da seguinte.
 2. `types/database.ts` atualizado à mão (convenção do projeto): remover
    `LeadStatusSlug`/`lead_status`, acrescentar `crm_etapas`, `crm_lembretes`,

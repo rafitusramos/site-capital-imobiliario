@@ -28,10 +28,10 @@
 -- quadro daquela origem. Não depende da ordem de etapas: quem completa as
 -- etapas zeradas é a aplicação (lib/queries/admin-crm.ts).
 --
--- Rodar no SQL Editor do Supabase, depois de 021_rpc_colecoes_atomicas.sql.
+-- Aplicada pelo workflow migrations-supabase (supabase db push), que já roda
+-- cada arquivo numa transação: por isso não há begin/commit aqui.
 -- =====================================================================
 
-begin;
 
 create or replace function public.contar_leads_crm(p_tipo text default null)
 returns table (tipo text, status text, total bigint, soma_valor_negocio numeric)
@@ -50,7 +50,6 @@ $$;
 revoke execute on function public.contar_leads_crm(text) from public, anon;
 grant execute on function public.contar_leads_crm(text) to authenticated;
 
-commit;
 
 -- =====================================================================
 -- FIM — 022_crm_contagens.sql
