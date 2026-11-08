@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1011 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 1018 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **028**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
@@ -466,11 +466,20 @@ Financiamento, Home Equity, Consórcio, Imóveis.
 
 ## Como trabalhar comigo neste projeto
 
-Toda melhoria ou ajuste segue três etapas, cada uma com seu modelo:
+Toda melhoria ou ajuste segue cinco etapas, cada uma com seu modelo:
 
-1. **Planejar — Opus 5.** Levantamento, decisões de arquitetura, especificação.
-2. **Desenvolver — Sonnet 5.** A implementação derivada do plano roda em subagente Sonnet 5.
-3. **Validar — Opus 5.** Revisar o que o subagente entregou antes de dar como pronto.
+1. **Planejar — Opus 5.5.** Levantamento, decisões de arquitetura, especificação.
+2. **Desenvolver — subagente Sonnet 5.5.** A implementação derivada do plano.
+3. **Publicar a branch.** PR aberto e deploy de preview da Vercel verde.
+4. **Testar — novo subagente Sonnet 5.5.** Roda `npm run e2e` contra a URL do deploy da
+   branch (`E2E_BASE_URL=<deploy>`), com as skills `playwright-e2e` e
+   `superpowers:test-driven-development`, e salva o relatório em `tests/functional-tests/`.
+5. **Validar — Opus 5.5.** Revisa o relatório; só com veredito APROVADO faz o merge em `Preview`.
+
+Segurança dos testes: todo deploy usa o MESMO banco de produção, então a suíte é somente
+leitura (nada de excluir, mover lead, publicar, salvar ou enviar formulário público) — política
+completa em `tests/functional-tests/README.md`. Os specs de admin precisam de um usuário de QA
+dedicado em `.env.e2e.local` (modelo: `.env.e2e.local.example`); sem ele são pulados.
 
 Para qualquer diretiva de design, carregar **sempre** as duas skills: `frontend-design`
 (web design) e `ui-ux-pro-max`.
