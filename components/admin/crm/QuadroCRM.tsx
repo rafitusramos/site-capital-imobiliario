@@ -25,7 +25,7 @@ import { ColunaEtapa } from "@/components/admin/crm/ColunaEtapa";
 import { CardLead, type TagCatalogo } from "@/components/admin/crm/CardLead";
 import { BarraFiltros, FILTROS_INICIAIS, reducerFiltros } from "@/components/admin/crm/BarraFiltros";
 import { DialogoMotivo, type MotivoOpcao } from "@/components/admin/crm/DialogoMotivo";
-import { ConfirmarAcao } from "@/components/admin/crm/ConfirmarAcao";
+import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
 import { EstadoVazio } from "@/components/admin/crm/EstadoVazio";
 import { ModalLead } from "@/components/admin/crm/ModalLead";
 import { NovoLeadModal } from "@/components/admin/crm/NovoLeadModal";

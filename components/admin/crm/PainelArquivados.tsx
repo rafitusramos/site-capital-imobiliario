@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { excluirLead, restaurarLead } from "@/app/actions/admin-crm";
 import { useToast } from "@/lib/admin/toast";
 import { mascaraTelefone } from "@/lib/mascaras";
-import { ConfirmarAcao } from "@/components/admin/crm/ConfirmarAcao";
+import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
 import { EstadoVazio } from "@/components/admin/crm/EstadoVazio";
 import type { LeadArquivado } from "@/lib/queries/admin-crm";
 
