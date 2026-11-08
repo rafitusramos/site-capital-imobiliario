@@ -1,5 +1,5 @@
 import type { ImagemInput } from "@/lib/validations/imovel";
-import type { ImovelImagemGrupo } from "@/types/database";
+import type { ImovelImagemGrupo, ImovelModalidade } from "@/types/database";
 
 /**
  * Regra de negócio da aba Galeria do editor de imóveis, isolada de React e
@@ -13,27 +13,73 @@ import type { ImovelImagemGrupo } from "@/types/database";
  * lugar, em vez de espalhadas pelos handlers de drag da UI.
  */
 
-export const GRUPOS_GALERIA: { id: ImovelImagemGrupo; nome: string; descricao: string }[] = [
+export type GrupoGaleriaInfo = {
+  id: ImovelImagemGrupo;
+  nome: string;
+  descricao: string;
+  /** Convite exibido enquanto o grupo está vazio. */
+  convite: string;
+};
+
+export const GRUPOS_GALERIA: GrupoGaleriaInfo[] = [
   {
     id: "empreendimento",
     nome: "Empreendimento",
     descricao: "Fachada e áreas comuns. A primeira imagem é a capa do site.",
+    convite: "Envie as primeiras fotos da fachada e das áreas comuns.",
   },
   {
     id: "decorado",
     nome: "Decorado",
     descricao: "Fotos do apartamento decorado, ambiente por ambiente.",
+    convite: "Envie as primeiras fotos do decorado.",
   },
   {
     id: "planta",
     nome: "Plantas",
     descricao: "Plantas baixas das tipologias.",
+    convite: "Envie as primeiras plantas baixas.",
   },
 ];
+
+// Imóvel pronto reaproveita os mesmos grupos do banco (sem mudar o check da
+// migration 007): `decorado` guarda as fotos da unidade e `empreendimento` as
+// do condomínio. A unidade vem primeiro porque é ela que vende — e a primeira
+// foto dela é a capa.
+export const GRUPOS_GALERIA_PRONTO: GrupoGaleriaInfo[] = [
+  {
+    id: "decorado",
+    nome: "Fotos da unidade",
+    descricao: "Ambientes do imóvel. A primeira imagem é a capa do site.",
+    convite: "Envie as fotos dos ambientes do imóvel.",
+  },
+  {
+    id: "empreendimento",
+    nome: "Fotos do condomínio",
+    descricao: "Fachada e áreas comuns do condomínio.",
+    convite: "Envie as fotos da fachada e das áreas comuns do condomínio.",
+  },
+];
+
+/** Seções da aba Galeria, na ordem em que aparecem. */
+export function gruposDaGaleria(modalidade: ImovelModalidade = "lancamento"): GrupoGaleriaInfo[] {
+  return modalidade === "pronto" ? GRUPOS_GALERIA_PRONTO : GRUPOS_GALERIA;
+}
 // `implantacao` continua válido no banco (check constraint da migration 007) e
 // no tipo, mas saiu da lista: a página pública nunca renderizou esse grupo, e
 // cadastrar imagem que ninguém vê só gera trabalho perdido. Para trazer de
 // volta, basta reinserir aqui — e fazer a página pública consumir o grupo.
+
+/**
+ * Grupo cuja primeira imagem é a capa: fachada no lançamento; foto da unidade
+ * no pronto (condomínio se a unidade ainda não tem foto).
+ */
+export function grupoDaCapa<T extends ImagemInput>(
+  grupos: GaleriaAgrupada<T>,
+  modalidade: ImovelModalidade = "lancamento",
+): ImovelImagemGrupo {
+  return modalidade === "pronto" && grupos.decorado.length > 0 ? "decorado" : "empreendimento";
+}
 
 /**
  * Genérico em `T` (sempre um subtipo de `ImagemInput`) para servir tanto o
@@ -68,9 +114,13 @@ export function agruparImagens<T extends ImagemInput>(imagens: T[]): GaleriaAgru
  * Aqui `ordem` é reatribuída como o índice da imagem dentro do seu grupo, e
  * `destaque` passa a ser `true` só para a primeira imagem de `empreendimento`.
  */
-export function achatarGaleria<T extends ImagemInput>(grupos: GaleriaAgrupada<T>): T[] {
+export function achatarGaleria<T extends ImagemInput>(
+  grupos: GaleriaAgrupada<T>,
+  modalidade: ImovelModalidade = "lancamento",
+): T[] {
   const achatada: T[] = [];
-  const exibidos = GRUPOS_GALERIA.map((g) => g.id);
+  const exibidos = gruposDaGaleria(modalidade).map((g) => g.id);
+  const capa = grupoDaCapa(grupos, modalidade);
 
   // Grupos fora de GRUPOS_GALERIA (hoje só `implantacao`) não têm seção na tela,
   // mas precisam sair daqui mesmo assim: `salvarImagens` reconcilia a coleção
@@ -85,7 +135,7 @@ export function achatarGaleria<T extends ImagemInput>(grupos: GaleriaAgrupada<T>
       achatada.push({
         ...imagem,
         ordem: indice,
-        destaque: grupoId === "empreendimento" && indice === 0,
+        destaque: grupoId === capa && indice === 0,
       } as T);
     });
   }

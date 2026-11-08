@@ -38,10 +38,10 @@ const EXTENSAO_POR_MIME: Record<string, string> = {
   "image/gif": "gif",
 };
 const TIPOS_IMAGEM_PERMITIDOS = new Set(Object.keys(EXTENSAO_POR_MIME));
-const ERRO_ID_INVALIDO = "Empreendimento inválido.";
+const ERRO_ID_INVALIDO = "Imóvel inválido.";
 const ERRO_MODALIDADE_TROCADA =
   "A modalidade (lançamento ou pronto) não pode ser alterada depois de criado. Crie outro cadastro.";
-const ERRO_NAO_ENCONTRADO = "Empreendimento não encontrado ou sem permissão para alterá-lo.";
+const ERRO_NAO_ENCONTRADO = "Imóvel não encontrado ou sem permissão para alterá-lo.";
 
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -105,7 +105,7 @@ function revalidarImoveis(slug: string) {
   revalidatePath("/sitemap.xml");
 }
 
-/** Cria ou atualiza os dados gerais de um empreendimento (nunca mexe em `status`). */
+/** Cria ou atualiza os dados gerais de um imóvel (nunca mexe em `status`). */
 export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResultado> {
   const { supabase, user, erro: erroAcesso } = await exigirAdmin();
   if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
@@ -146,7 +146,7 @@ export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResult
       .maybeSingle();
     if (erroAnterior) {
       console.error("[salvarImovel] leitura do slug anterior:", erroAnterior);
-      return { sucesso: false, erro: "Não foi possível salvar o empreendimento." };
+      return { sucesso: false, erro: "Não foi possível salvar o imóvel." };
     }
     if (!anterior) return { sucesso: false, erro: ERRO_NAO_ENCONTRADO };
     // Trocar a modalidade deixaria colunas da outra órfãs (faixas x unidade
@@ -166,8 +166,8 @@ export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResult
         sucesso: false,
         erro:
           error.code === "23505"
-            ? "Já existe um empreendimento com esse slug."
-            : "Não foi possível salvar o empreendimento.",
+            ? "Já existe um imóvel com esse slug."
+            : "Não foi possível salvar o imóvel.",
       };
     }
     if (!atualizados || atualizados.length === 0) return { sucesso: false, erro: ERRO_NAO_ENCONTRADO };
@@ -178,7 +178,7 @@ export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResult
   }
 
   // O default da coluna `status` é 'ativo' — sem forçar 'inativo' aqui,
-  // todo empreendimento novo nasceria publicado.
+  // todo imóvel novo nasceria publicado.
   const { data, error } = await supabase
     .from("imoveis")
     .insert({ ...dadosGravacao, status: "inativo" } as never)
@@ -191,8 +191,8 @@ export async function salvarImovel(input: SalvarImovelInput): Promise<AcaoResult
       sucesso: false,
       erro:
         error.code === "23505"
-          ? "Já existe um empreendimento com esse slug."
-          : "Não foi possível criar o empreendimento.",
+          ? "Já existe um imóvel com esse slug."
+          : "Não foi possível criar o imóvel.",
     };
   }
 
@@ -222,11 +222,11 @@ async function alterarStatus(
 }
 
 export async function publicarImovel(id: string, slug: string): Promise<AcaoResultado> {
-  return alterarStatus("publicarImovel", id, slug, "ativo", "Não foi possível publicar o empreendimento.");
+  return alterarStatus("publicarImovel", id, slug, "ativo", "Não foi possível publicar o imóvel.");
 }
 
 export async function despublicarImovel(id: string, slug: string): Promise<AcaoResultado> {
-  return alterarStatus("despublicarImovel", id, slug, "inativo", "Não foi possível despublicar o empreendimento.");
+  return alterarStatus("despublicarImovel", id, slug, "inativo", "Não foi possível despublicar o imóvel.");
 }
 
 export async function excluirImovel(id: string, slug: string): Promise<AcaoResultado> {
@@ -237,7 +237,7 @@ export async function excluirImovel(id: string, slug: string): Promise<AcaoResul
   const { data, error } = await supabase.from("imoveis").delete().eq("id", id).select("id");
   if (error) {
     console.error("[excluirImovel]", error);
-    return { sucesso: false, erro: "Não foi possível excluir o empreendimento." };
+    return { sucesso: false, erro: "Não foi possível excluir o imóvel." };
   }
   if (!data || data.length === 0) return { sucesso: false, erro: ERRO_NAO_ENCONTRADO };
 
@@ -274,8 +274,8 @@ type RpcColecao =
   | "salvar_imovel_faqs";
 
 const MENSAGENS_RPC: Record<string, string> = {
-  IMOVEL_NAO_ENCONTRADO: "Empreendimento não encontrado ou sem permissão para alterá-lo.",
-  ITEM_NAO_ENCONTRADO: "Um dos itens não pertence a este empreendimento. Recarregue a página.",
+  IMOVEL_NAO_ENCONTRADO: "Imóvel não encontrado ou sem permissão para alterá-lo.",
+  ITEM_NAO_ENCONTRADO: "Um dos itens não pertence a este imóvel. Recarregue a página.",
 };
 
 async function salvarColecao(

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 import {
   GRUPOS_GALERIA,
+  gruposDaGaleria,
   agruparImagens,
   achatarGaleria,
   moverDentroDoGrupo,
@@ -339,5 +340,48 @@ describe("grupo fora de GRUPOS_GALERIA", () => {
       ordem: 0,
       destaque: false,
     });
+  });
+});
+
+describe("galeria por modalidade (imóvel pronto)", () => {
+  test("pronto: dois grupos, unidade primeiro, com os rótulos do cadastro", () => {
+    const grupos = gruposDaGaleria("pronto");
+    expect(grupos.map((g) => g.id)).toEqual(["decorado", "empreendimento"]);
+    expect(grupos.map((g) => g.nome)).toEqual(["Fotos da unidade", "Fotos do condomínio"]);
+    expect(grupos[0].convite).toBe("Envie as fotos dos ambientes do imóvel.");
+    expect(grupos[1].convite).toBe("Envie as fotos da fachada e das áreas comuns do condomínio.");
+  });
+
+  test("lançamento: grupos inalterados (sem planta removida)", () => {
+    expect(gruposDaGaleria("lancamento")).toEqual(GRUPOS_GALERIA);
+    expect(gruposDaGaleria("lancamento").map((g) => g.id)).toEqual(["empreendimento", "decorado", "planta"]);
+  });
+
+  test("achatarGaleria no pronto marca a capa na primeira foto da unidade", () => {
+    const grupos = grupoVazio();
+    grupos.decorado = [imagem({ url: "u1.jpg", grupo: "decorado" }), imagem({ url: "u2.jpg", grupo: "decorado" })];
+    grupos.empreendimento = [imagem({ url: "c1.jpg", grupo: "empreendimento" })];
+    const plana = achatarGaleria(grupos, "pronto");
+    expect(plana.filter((i) => i.destaque).map((i) => i.url)).toEqual(["u1.jpg"]);
+  });
+
+  test("achatarGaleria no pronto sem fotos da unidade usa a primeira do condomínio", () => {
+    const grupos = grupoVazio();
+    grupos.empreendimento = [imagem({ url: "c1.jpg", grupo: "empreendimento" })];
+    const plana = achatarGaleria(grupos, "pronto");
+    expect(plana.filter((i) => i.destaque).map((i) => i.url)).toEqual(["c1.jpg"]);
+  });
+
+  test("achatarGaleria sem modalidade segue como lançamento", () => {
+    const grupos = grupoVazio();
+    grupos.decorado = [imagem({ url: "u1.jpg", grupo: "decorado" })];
+    grupos.empreendimento = [imagem({ url: "c1.jpg", grupo: "empreendimento" })];
+    expect(achatarGaleria(grupos).filter((i) => i.destaque).map((i) => i.url)).toEqual(["c1.jpg"]);
+  });
+
+  test("achatarGaleria no pronto preserva plantas/implantação ocultas", () => {
+    const grupos = grupoVazio();
+    grupos.planta = [imagem({ url: "p.jpg", grupo: "planta" })];
+    expect(achatarGaleria(grupos, "pronto").map((i) => i.url)).toEqual(["p.jpg"]);
   });
 });

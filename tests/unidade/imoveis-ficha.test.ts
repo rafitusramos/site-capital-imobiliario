@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import {
   dormitoriosParaFiltro,
   fatosDoImovel,
+  custosMensaisDoPronto,
   fichaDoPronto,
   precoDoImovel,
   rotuloModalidade,
@@ -91,9 +92,9 @@ describe("fatosDoImovel", () => {
 });
 
 describe("precoDoImovel", () => {
-  test("pronto: preço sem 'a partir de'", () => {
+  test("pronto: rótulo 'Valor de venda'", () => {
     expect(precoDoImovel({ modalidade: "pronto", valor_sob_consulta: false, valor_venda: 1250000, valor_a_partir_de: null })).toEqual({
-      rotulo: null,
+      rotulo: "Valor de venda",
       valor: expect.stringMatching(/1\.250\.000/),
     });
   });
@@ -131,5 +132,16 @@ describe("valorParaFiltro", () => {
   });
   test("sob consulta não tem valor para comparar", () => {
     expect(valorParaFiltro({ modalidade: "pronto", valor_sob_consulta: true, valor_venda: 900000, valor_a_partir_de: null })).toBeNull();
+  });
+});
+
+describe("custosMensaisDoPronto", () => {
+  test("condomínio e IPTU com /mês, na ordem, só o que existe", () => {
+    expect(custosMensaisDoPronto({ valor_condominio: 900, valor_iptu: 450 })).toEqual([
+      { rotulo: "Condomínio", valor: expect.stringMatching(/R\$\s900\/mês/) },
+      { rotulo: "IPTU", valor: expect.stringMatching(/R\$\s450\/mês/) },
+    ]);
+    expect(custosMensaisDoPronto({ valor_condominio: null, valor_iptu: 450 }).map((i) => i.rotulo)).toEqual(["IPTU"]);
+    expect(custosMensaisDoPronto({ valor_condominio: null, valor_iptu: null })).toEqual([]);
   });
 });

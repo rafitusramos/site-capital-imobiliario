@@ -39,24 +39,24 @@ type AcaoPendente = { tipo: "publicar" | "despublicar" | "excluir"; imovel: Imov
 const VERBO = { publicar: "publicar", despublicar: "despublicar", excluir: "excluir" } as const;
 
 const MENSAGEM_OK = {
-  publicar: "Empreendimento publicado.",
-  despublicar: "Empreendimento despublicado — voltou para rascunho.",
-  excluir: "Empreendimento excluído.",
+  publicar: "Imóvel publicado.",
+  despublicar: "Imóvel despublicado — voltou para rascunho.",
+  excluir: "Imóvel excluído.",
 } as const;
 
 const TEXTOS_CONFIRMACAO = {
   publicar: {
-    titulo: "Publicar empreendimento?",
+    titulo: "Publicar imóvel?",
     rotulo: "Publicar",
     descricao: (nome: string) => `"${nome}" passa a aparecer no site público.`,
   },
   despublicar: {
-    titulo: "Despublicar empreendimento?",
+    titulo: "Despublicar imóvel?",
     rotulo: "Despublicar",
     descricao: (nome: string) => `"${nome}" sai do site público e volta para rascunho.`,
   },
   excluir: {
-    titulo: "Excluir empreendimento?",
+    titulo: "Excluir imóvel?",
     rotulo: "Excluir",
     descricao: (nome: string) => `"${nome}" será excluído e a URL deixa de existir. Essa ação não pode ser desfeita.`,
   },
@@ -162,7 +162,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
           : await excluirImovel(imovel.id, imovel.slug);
     setPendenteId(null);
     if (!resultado.sucesso) {
-      mostrarToast("erro", resultado.erro ?? `Não foi possível ${VERBO[tipo]} o empreendimento.`);
+      mostrarToast("erro", resultado.erro ?? `Não foi possível ${VERBO[tipo]} o imóvel.`);
       return;
     }
     mostrarToast("sucesso", MENSAGEM_OK[tipo]);
@@ -213,7 +213,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
 
       <div className="rounded-lg border border-black/10 bg-white">
         <div className={`hidden border-b border-black/10 bg-neutral-50 px-4 py-3 text-xs font-medium uppercase tracking-wide text-neutral-500 ${GRADE}`}>
-          <CabecalhoOrdenavel coluna="titulo" rotulo="Empreendimento" ordem={consulta.ordem} onOrdenar={ordenar} />
+          <CabecalhoOrdenavel coluna="titulo" rotulo="Imóvel" ordem={consulta.ordem} onOrdenar={ordenar} />
           <CabecalhoOrdenavel coluna="cidade" rotulo="Cidade" ordem={consulta.ordem} onOrdenar={ordenar} />
           <span>Tipo</span>
           <CabecalhoOrdenavel coluna="fase" rotulo="Fase" ordem={consulta.ordem} onOrdenar={ordenar} />
@@ -223,7 +223,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
 
         {visiveis.length === 0 ? (
           <p className="px-4 py-8 text-center text-sm text-neutral-500">
-            Nenhum empreendimento encontrado com esses filtros.
+            Nenhum imóvel encontrado com esses filtros.
           </p>
         ) : (
           <ul role="list" className="divide-y divide-black/5">
@@ -254,7 +254,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
                   <Link
                     href={`/admin/imoveis/${imovel.id}`}
                     title="Editar"
-                    aria-label={`Editar empreendimento "${imovel.titulo}"`}
+                    aria-label={`Editar imóvel "${imovel.titulo}"`}
                     className={`${ICONE_CLASSE} text-[var(--jade)]`}
                   >
                     <IconeEditar />
@@ -263,7 +263,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
                     <button
                       type="button"
                       title="Despublicar"
-                      aria-label={`Despublicar empreendimento "${imovel.titulo}"`}
+                      aria-label={`Despublicar imóvel "${imovel.titulo}"`}
                       disabled={pendenteId === imovel.id}
                       onClick={() => setAcao({ tipo: "despublicar", imovel })}
                       className={`${ICONE_CLASSE} text-neutral-600`}
@@ -274,7 +274,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
                     <button
                       type="button"
                       title="Publicar"
-                      aria-label={`Publicar empreendimento "${imovel.titulo}"`}
+                      aria-label={`Publicar imóvel "${imovel.titulo}"`}
                       disabled={pendenteId === imovel.id}
                       onClick={() => setAcao({ tipo: "publicar", imovel })}
                       className={`${ICONE_CLASSE} text-[var(--jade)]`}
@@ -285,7 +285,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
                   <button
                     type="button"
                     title="Excluir"
-                    aria-label={`Excluir empreendimento "${imovel.titulo}"`}
+                    aria-label={`Excluir imóvel "${imovel.titulo}"`}
                     disabled={pendenteId === imovel.id}
                     onClick={() => setAcao({ tipo: "excluir", imovel })}
                     className={`${ICONE_CLASSE} text-[var(--erro)]`}
@@ -298,7 +298,7 @@ export function TabelaImoveis({ imoveis }: { imoveis: Imovel[] }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Abrir no site"
-                      aria-label={`Abrir empreendimento "${imovel.titulo}" no site (nova aba)`}
+                      aria-label={`Abrir imóvel "${imovel.titulo}" no site (nova aba)`}
                       className={`${ICONE_CLASSE} text-neutral-600`}
                     >
                       <IconeAbrir />

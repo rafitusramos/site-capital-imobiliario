@@ -74,6 +74,7 @@ export type ValoresDados = {
   valor_condominio: string;
   valor_iptu: string;
   nome_condominio: string;
+  descricao_unidade: string;
   andar: string;
   mobiliado: OpcaoMobiliado;
   ano_construcao: string;
@@ -142,6 +143,7 @@ export function valoresIniciaisDados(
     valor_condominio: moedaParaCampo(imovel?.valor_condominio),
     valor_iptu: moedaParaCampo(imovel?.valor_iptu),
     nome_condominio: imovel?.nome_condominio ?? "",
+    descricao_unidade: imovel?.descricao_unidade ?? "",
     andar: imovel?.andar?.toString() ?? "",
     mobiliado: mobiliadoParaCampo(imovel?.mobiliado),
     ano_construcao: imovel?.ano_construcao?.toString() ?? "",
@@ -203,6 +205,7 @@ export function montarPayloadImovel(
       valor_condominio: paraMoedaOuNull(v.valor_condominio),
       valor_iptu: paraMoedaOuNull(v.valor_iptu),
       nome_condominio: v.nome_condominio,
+      descricao_unidade: v.descricao_unidade,
       andar: paraNumeroOuNull(v.andar),
       mobiliado: v.mobiliado === "sim" ? true : v.mobiliado === "nao" ? false : null,
       ano_construcao: paraNumeroOuNull(v.ano_construcao),
