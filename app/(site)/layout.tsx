@@ -7,7 +7,7 @@ import "../../styles/imoveis.css";
 import { SITE_URL } from "@/lib/site";
 import { SiteNav } from "@/components/nav/SiteNav";
 import { RevealOnScroll } from "@/components/efeitos/RevealOnScroll";
-import { NEGOCIO_NODE, RAFAEL_NODE } from "@/lib/seo/negocio";
+import { NEGOCIO_NODE, RAFAEL_NODE, WEBSITE_NODE } from "@/lib/seo/negocio";
 import { Tags } from "@/components/analytics/Tags";
 import { CapturaAtribuicao } from "@/components/analytics/CapturaAtribuicao";
 import { BannerConsentimento } from "@/components/consentimento/BannerConsentimento";
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 // ficar pendurada ou duplicada. Ver lib/seo/negocio.ts.
 const negocioGraphJsonLd = {
   "@context": "https://schema.org",
-  "@graph": [NEGOCIO_NODE, RAFAEL_NODE],
+  "@graph": [NEGOCIO_NODE, RAFAEL_NODE, WEBSITE_NODE],
 };
 
 export default function RootLayout({

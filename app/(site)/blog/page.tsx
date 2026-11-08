@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getPublishedPosts } from "@/lib/queries/posts";
 import { BlogFiltro } from "@/components/blog/BlogFiltro";
+import { montarItemList } from "@/lib/seo/lista";
+import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO, SITE_NOME } from "@/lib/og";
 
 export const revalidate = 3600;
@@ -35,8 +37,20 @@ export const metadata: Metadata = {
 export default async function BlogIndicePage() {
   const posts = await getPublishedPosts();
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      montarBreadcrumb([{ nome: "Blog" }]),
+      montarItemList(posts.map((post) => ({ caminho: `/blog/${post.slug}/` }))),
+    ],
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <header className="blog-hero" id="topo">
         <div className="wrap">
           <div className="eyebrow reveal">Artigos com conhecimento aplicado</div>

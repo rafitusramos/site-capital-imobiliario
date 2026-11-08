@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/legal.css";
-import { IMAGEM_OG_PADRAO } from "@/lib/og";
+import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 import {
   CONTROLADOR,
   ENCARREGADO,
@@ -26,6 +26,12 @@ export const metadata: Metadata = {
     url: "/politica-de-privacidade/",
     images: [IMAGEM_OG_PADRAO],
     locale: "pt_BR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITULO,
+    description: DESCRICAO,
+    images: [OG_IMAGEM_PADRAO],
   },
 };
 

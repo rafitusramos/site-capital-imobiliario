@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/legal.css";
-import { IMAGEM_OG_PADRAO } from "@/lib/og";
+import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 import { ATUALIZADO_EM } from "@/lib/legal";
 
 const TITULO = "Termos de Uso — Rafael Teixeira · Capital Imobiliário";
@@ -19,6 +19,12 @@ export const metadata: Metadata = {
     url: "/termos-de-uso/",
     images: [IMAGEM_OG_PADRAO],
     locale: "pt_BR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITULO,
+    description: DESCRICAO,
+    images: [OG_IMAGEM_PADRAO],
   },
 };
 
