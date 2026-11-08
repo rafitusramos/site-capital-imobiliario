@@ -357,6 +357,20 @@ describe("arquivarLead / restaurarLead", () => {
     const payload = chamada!.payload as Record<string, unknown>;
     expect(payload.arquivado_em).toBeNull();
     expect(payload.arquivado_por).toBeNull();
+    // Marca a restauração para o arquivamento automático (migration 023) não re-arquivar o lead na noite seguinte.
+    expect(typeof payload.restaurado_em).toBe("string");
+    expect(Number.isNaN(Date.parse(payload.restaurado_em as string))).toBe(false);
+  });
+
+  test("arquivarLead não toca em restaurado_em", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("leads", "update", { data: [{ id: LEAD_1 }], error: null });
+
+    await arquivarLead(LEAD_1);
+
+    const chamada = falso.chamadas.find((c) => c.tabela === "leads" && c.operacao === "update");
+    expect(chamada!.payload as Record<string, unknown>).not.toHaveProperty("restaurado_em");
   });
 
   test("restaurarLead sem linha afetada devolve erro de permissão", async () => {

@@ -91,15 +91,21 @@ export type ContagemEtapaCRM = {
  */
 export async function getContagensPorEtapa(tipo: LeadTipoSlug): Promise<ContagemEtapaCRM[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("vw_leads_crm").select("status, valor_negocio").eq("tipo", tipo);
-  if (error) throw error;
+  // Agregação no banco (migration 022): somar linhas aqui subcontaria assim
+  // que o max-rows do PostgREST truncasse a resposta.
+  const { data, error } = await supabase.rpc("contar_leads_crm", { p_tipo: tipo });
+  if (error) {
+    console.error("[admin-crm] contar_leads_crm falhou (por etapa)", error);
+    throw error;
+  }
 
-  const mapa = new Map<LeadEtapaSlug, ContagemEtapaCRM>();
+  const mapa = new Map<string, ContagemEtapaCRM>();
   for (const linha of data ?? []) {
-    const atual = mapa.get(linha.status) ?? { etapa: linha.status, total: 0, somaValorNegocio: 0 };
-    atual.total += 1;
-    atual.somaValorNegocio += linha.valor_negocio ?? 0;
-    mapa.set(linha.status, atual);
+    mapa.set(linha.status, {
+      etapa: linha.status as LeadEtapaSlug,
+      total: Number(linha.total),
+      somaValorNegocio: Number(linha.soma_valor_negocio),
+    });
   }
 
   return etapasDoTipo(tipo).map(
@@ -287,12 +293,15 @@ export type ContagemAbaCRM = { tipo: LeadTipoSlug; total: number };
 /** Total de leads não arquivados por tipo, para o cabeçalho de abas (docs/crm-spec.md §3.1). Todo tipo aparece, mesmo com zero (a aba Consórcio nasce vazia). */
 export async function getContagensPorAba(): Promise<ContagemAbaCRM[]> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("vw_leads_crm").select("tipo");
-  if (error) throw error;
+  const { data, error } = await supabase.rpc("contar_leads_crm");
+  if (error) {
+    console.error("[admin-crm] contar_leads_crm falhou (por aba)", error);
+    throw error;
+  }
 
-  const mapa = new Map<LeadTipoSlug, number>();
+  const mapa = new Map<string, number>();
   for (const linha of data ?? []) {
-    mapa.set(linha.tipo, (mapa.get(linha.tipo) ?? 0) + 1);
+    mapa.set(linha.tipo, (mapa.get(linha.tipo) ?? 0) + Number(linha.total));
   }
 
   return (Object.keys(ETAPAS_POR_TIPO) as LeadTipoSlug[]).map((tipo) => ({

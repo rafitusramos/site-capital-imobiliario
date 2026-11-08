@@ -258,22 +258,6 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     }
   }
 
-  if (leadsIniciais.length === 0) {
-    return (
-      <div>
-        <EstadoVazio
-          variante="quadro"
-          mensagem="Nenhum lead nesta origem ainda. Crie um lead manualmente para começar."
-        />
-        {leadAbertoId ? <ModalLead key={leadAbertoId} leadId={leadAbertoId} dominios={dominios} onFechar={fecharModal} /> : null}
-        {/* `!leadAbertoId` evita os dois modais empilhados se a URL tiver
-            `?lead=` e `?novo=1` ao mesmo tempo (não deveria acontecer pela UI
-            normal, mas nada impede alguém editar a URL à mão). */}
-        {novoAberto && !leadAbertoId ? <NovoLeadModal tipo={tipo} dominios={dominios} onFechar={fecharModal} /> : null}
-      </div>
-    );
-  }
-
   return (
     <div>
       <BarraFiltros
@@ -283,6 +267,19 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
         corretores={dominios.corretores.map((c) => ({ id: c.id, full_name: c.full_name }))}
         tags={dominios.tags}
       />
+
+      {/* Quadro sem nenhum lead: a mensagem aparece ACIMA das colunas, sem
+          escondê-las. Antes ela substituía filtros e colunas, e quem abria a
+          aba Consórcio (nasce vazia) ficava sem a barra de filtros e sem ver o
+          pipeline que o primeiro lead vai percorrer. */}
+      {leadsIniciais.length === 0 ? (
+        <div className="mb-4">
+          <EstadoVazio
+            variante="coluna"
+            mensagem="Nenhum lead nesta origem ainda. Crie um lead manualmente para começar."
+          />
+        </div>
+      ) : null}
 
       {/* `id` explícito não é enfeite: sem ele o dnd-kit deriva o
           `aria-describedby` dos cards de um CONTADOR DE MÓDULO
