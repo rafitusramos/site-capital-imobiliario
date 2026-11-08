@@ -76,7 +76,7 @@ export async function getImoveisPublicados(): Promise<ImovelComCapa[]> {
   })[];
   return imoveis.map(({ imagens, ...imovel }) => ({
     ...imovel,
-    capa: capaDoCard(imagens, imovel.modalidade),
+    capa: capaDoCard(imagens, imovel.modalidade, imovel.capa_origem),
   }));
 }
 
@@ -118,7 +118,7 @@ export async function getImoveisRelacionados(
   })[];
   return imoveis.map(({ imagens, ...imovel }) => ({
     ...imovel,
-    capa: capaDoCard(imagens, imovel.modalidade),
+    capa: capaDoCard(imagens, imovel.modalidade, imovel.capa_origem),
   }));
 }
 

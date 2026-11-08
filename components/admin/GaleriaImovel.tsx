@@ -23,7 +23,7 @@ import {
 import { uploadImagemImovel } from "@/app/actions/admin-imoveis";
 import { prepararImagem } from "@/lib/imoveis/redimensionar";
 import type { ImagemInput } from "@/lib/validations/imovel";
-import type { ImovelImagemGrupo, ImovelModalidade } from "@/types/database";
+import type { ImovelCapaOrigem, ImovelImagemGrupo, ImovelModalidade } from "@/types/database";
 import {
   GRUPOS_GALERIA,
   gruposDaGaleria,
@@ -88,6 +88,8 @@ export type GaleriaImovelProps = {
    * continuam na lista e são salvas junto.
    */
   modalidade?: ImovelModalidade;
+  /** Origem da capa do pronto (campo "Foto de capa" dos dados gerais). */
+  capaOrigem?: ImovelCapaOrigem;
 };
 
 /**
@@ -97,7 +99,7 @@ export type GaleriaImovelProps = {
  * "agrupada" da galeria — a fonte da verdade para `ordem`/`destaque`
  * continua sendo `achatarGaleria`, repassada ao pai a cada mudança.
  */
-export function GaleriaImovel({ imagens, onChange, modalidade = "lancamento" }: GaleriaImovelProps) {
+export function GaleriaImovel({ imagens, onChange, modalidade = "lancamento", capaOrigem = "unidade" }: GaleriaImovelProps) {
   const secoes = gruposDaGaleria(modalidade);
   const [grupos, setGrupos] = useState<GaleriaAgrupada<ImagemComChave>>(() =>
     agruparImagens(imagens.map(comChaveLocal)),
@@ -122,9 +124,9 @@ export function GaleriaImovel({ imagens, onChange, modalidade = "lancamento" }: 
       primeiraRenderizacao.current = false;
       return;
     }
-    const achatada = achatarGaleria(grupos, modalidade).map(({ chaveLocal: _chaveLocal, ...resto }) => resto);
+    const achatada = achatarGaleria(grupos, modalidade, capaOrigem).map(({ chaveLocal: _chaveLocal, ...resto }) => resto);
     onChangeRef.current(achatada);
-  }, [grupos, modalidade]);
+  }, [grupos, modalidade, capaOrigem]);
 
   useEffect(() => {
     const consulta = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -316,7 +318,7 @@ export function GaleriaImovel({ imagens, onChange, modalidade = "lancamento" }: 
             <SecaoGrupo
               key={grupoInfo.id}
               grupoInfo={grupoInfo}
-              ehGrupoDaCapa={grupoInfo.id === grupoDaCapa(grupos, modalidade)}
+              ehGrupoDaCapa={grupoInfo.id === grupoDaCapa(grupos, modalidade, capaOrigem)}
               itens={grupos[grupoInfo.id]}
               enviando={enviandoPorGrupo[grupoInfo.id] ?? 0}
               destacado={grupoArrastandoArquivo === grupoInfo.id}

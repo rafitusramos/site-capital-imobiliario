@@ -160,6 +160,7 @@ const prontoSchema = z
       "Informe um ano entre 1800 e 2100.",
     ),
     exibir_endereco: z.boolean().default(false),
+    capa_origem: z.enum(["unidade", "condominio"]).default("unidade"),
   })
   .superRefine((dados, ctx) => {
     if (dados.fase_id !== null && !z.string().uuid().safeParse(dados.fase_id).success) {

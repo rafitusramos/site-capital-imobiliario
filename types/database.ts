@@ -1,6 +1,8 @@
 export type ProfileRole = "admin" | "corretor";
 export type PostStatus = "draft" | "published" | "archived";
 export type ImovelModalidade = "lancamento" | "pronto";
+/** Grupo de fotos que dá a capa do imóvel pronto (migration 028). */
+export type ImovelCapaOrigem = "unidade" | "condominio";
 export type ImovelStatus = "ativo" | "reservado" | "vendido" | "inativo";
 export type ImovelImagemGrupo = "empreendimento" | "decorado" | "planta" | "implantacao";
 export type ImovelDiferencialGrupo = "lazer" | "diferencial";
@@ -223,6 +225,7 @@ export interface Database {
           mobiliado: boolean | null;
           ano_construcao: number | null;
           exibir_endereco: boolean;
+          capa_origem: ImovelCapaOrigem;
           video_data_publicacao: string | null;
           status: ImovelStatus;
           corretor_id: string | null;
@@ -278,6 +281,7 @@ export interface Database {
           mobiliado?: boolean | null;
           ano_construcao?: number | null;
           exibir_endereco?: boolean;
+          capa_origem?: ImovelCapaOrigem;
           video_data_publicacao?: string | null;
           status?: ImovelStatus;
           corretor_id?: string | null;

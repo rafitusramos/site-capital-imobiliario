@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1000 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **027**.
+Suíte em Vitest: `npm test` — 1011 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **028**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -183,7 +183,15 @@ e a mesma rota `/imoveis/<slug>/`: **nenhuma URL nova**, layout por modalidade.
   `nome_condominio`, `andar`, `mobiliado`, `ano_construcao`) no lugar das faixas
   `*_min/_max`, e não tem tipologias, fase de obra, plantas, decorado nem
   realização. A página mostra a "Ficha do imóvel" (`fichaDoPronto`,
-  `lib/imoveis/ficha.ts`) e "Outros imóveis".
+  `lib/imoveis/ficha.ts`) e "Outros imóveis". Ordem das seções: vídeo, fotos da
+  unidade, descrição da unidade, fotos do condomínio, o condomínio, lazer,
+  diferenciais, localização, CTA final, outros imóveis, FAQ.
+- **Capa do pronto** (`imoveis.capa_origem`, migration 028): `unidade` (padrão,
+  grupo `decorado`) ou `condominio` (grupo `empreendimento`), escolhida em "Foto
+  de capa" nos dados gerais (`CamposPronto`). Se o grupo escolhido está vazio, cai
+  para o outro. `capaDaPagina`/`capaDoCard` (`lib/imoveis/capa.ts`) e
+  `grupoDaCapa`/`achatarGaleria` (`lib/imoveis/galeria.ts`) recebem a origem;
+  lançamento a ignora.
 - **Endereço exato só com `exibir_endereco`** (padrão `false`): sem ele, nem o
   texto nem o `q=` do mapa embutido levam o endereço — só bairro e cidade.
 - **Fase fixa**: pronto sempre tem `fase_id` = fase `pronto`. A action

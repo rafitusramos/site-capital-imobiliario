@@ -2,7 +2,7 @@ import { mascaraMoeda } from "@/lib/mascaras";
 import type { ImovelComColecoesAdmin } from "@/lib/queries/admin-imoveis";
 import type { ImovelFaseOpcao, ImovelTipoOpcao } from "@/lib/queries/imoveis";
 import type { SalvarImovelInput } from "@/app/actions/admin-imoveis";
-import type { ImovelModalidade } from "@/types/database";
+import type { ImovelCapaOrigem, ImovelModalidade } from "@/types/database";
 
 // Ponte entre o formulário do admin (tudo string) e o payload que
 // `salvarImovel` valida. Fica fora do componente para ser testável e para o
@@ -79,6 +79,7 @@ export type ValoresDados = {
   mobiliado: OpcaoMobiliado;
   ano_construcao: string;
   exibir_endereco: boolean;
+  capa_origem: ImovelCapaOrigem;
   // Comuns
   valor_sob_consulta: boolean;
   video_youtube_url: string;
@@ -148,6 +149,7 @@ export function valoresIniciaisDados(
     mobiliado: mobiliadoParaCampo(imovel?.mobiliado),
     ano_construcao: imovel?.ano_construcao?.toString() ?? "",
     exibir_endereco: imovel?.exibir_endereco ?? false,
+    capa_origem: imovel?.capa_origem ?? "unidade",
     valor_sob_consulta: imovel?.valor_sob_consulta ?? false,
     video_youtube_url: imovel?.video_youtube_url ?? "",
     video_data_publicacao: imovel?.video_data_publicacao ?? "",
@@ -210,6 +212,7 @@ export function montarPayloadImovel(
       mobiliado: v.mobiliado === "sim" ? true : v.mobiliado === "nao" ? false : null,
       ano_construcao: paraNumeroOuNull(v.ano_construcao),
       exibir_endereco: v.exibir_endereco,
+      capa_origem: v.capa_origem,
     };
   }
 

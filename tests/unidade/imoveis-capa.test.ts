@@ -22,6 +22,46 @@ describe("capaDaPagina", () => {
   });
 });
 
+describe("capaDaPagina — capa_origem do pronto", () => {
+  const imagens = [img("c.jpg", "empreendimento"), img("u.jpg", "decorado")];
+
+  test("condominio: primeira do condomínio mesmo havendo foto da unidade", () => {
+    expect(capaDaPagina(imagens, "pronto", "condominio")).toBe("c.jpg");
+  });
+
+  test("unidade é o padrão quando a origem não é informada", () => {
+    expect(capaDaPagina(imagens, "pronto")).toBe("u.jpg");
+    expect(capaDaPagina(imagens, "pronto", "unidade")).toBe("u.jpg");
+  });
+
+  test("grupo escolhido vazio cai para o outro", () => {
+    expect(capaDaPagina([img("u.jpg", "decorado")], "pronto", "condominio")).toBe("u.jpg");
+    expect(capaDaPagina([img("c.jpg", "empreendimento")], "pronto", "unidade")).toBe("c.jpg");
+  });
+
+  test("lançamento ignora a origem", () => {
+    expect(capaDaPagina(imagens, "lancamento", "unidade")).toBe("c.jpg");
+  });
+});
+
+describe("capaDoCard — capa_origem do pronto", () => {
+  const imagens = [img("c.jpg", "empreendimento", 0, true), img("u.jpg", "decorado")];
+
+  test("condominio escolhe o grupo do condomínio; unidade, o da unidade", () => {
+    expect(capaDoCard(imagens, "pronto", "condominio")).toBe("c.jpg");
+    expect(capaDoCard(imagens, "pronto", "unidade")).toBe("u.jpg");
+    expect(capaDoCard(imagens, "pronto")).toBe("u.jpg");
+  });
+
+  test("grupo escolhido vazio cai para o outro", () => {
+    expect(capaDoCard([img("u.jpg", "decorado")], "pronto", "condominio")).toBe("u.jpg");
+  });
+
+  test("lançamento ignora a origem", () => {
+    expect(capaDoCard([img("u.jpg", "decorado", 0), img("e.jpg", "empreendimento", 1, true)], "lancamento", "unidade")).toBe("e.jpg");
+  });
+});
+
 describe("capaDoCard", () => {
   test("lançamento: destaque, senão menor ordem (comportamento anterior)", () => {
     expect(capaDoCard([img("a.jpg", "decorado", 0), img("b.jpg", "empreendimento", 1, true)], "lancamento")).toBe("b.jpg");

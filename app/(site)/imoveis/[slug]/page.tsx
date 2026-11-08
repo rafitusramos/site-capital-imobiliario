@@ -81,9 +81,9 @@ function urlAbsoluta(url: string | null | undefined): string | undefined {
   return url.startsWith("http") ? url : `${SITE_URL}${url}`;
 }
 
-/** Capa do hero e do og:image (lançamento: fachada; pronto: foto da unidade). */
+/** Capa do hero e do og:image (lançamento: fachada; pronto: grupo escolhido em capa_origem). */
 function capaDoImovel(imovel: ImovelCompleto): string | null {
-  return capaDaPagina(imovel.imagens, imovel.modalidade);
+  return capaDaPagina(imovel.imagens, imovel.modalidade, imovel.capa_origem);
 }
 
 type Diferenciais = ImovelCompleto["diferenciais"];
@@ -548,7 +548,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
 
         {pronto ? (
           <>
-            {/* Imóvel pronto: vídeo, unidade, condomínio, localização. */}
+            {/* Imóvel pronto: vídeo, unidade, condomínio, lazer, diferenciais, localização. */}
             <SecaoVideo idVideo={idVideo} titulo={imovel.titulo} />
 
             {imagensDecorado.length > 0 ? (
@@ -616,14 +616,14 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               </section>
             ) : null}
 
+            <SecaoLazer itens={diferenciaisLazer} />
+            <SecaoDiferenciais itens={diferenciaisGerais} />
             <SecaoLocalizacao
               endereco={enderecoPublico}
               enderecoMapa={enderecoMapa}
               titulo={imovel.titulo}
               mostrar={Boolean(enderecoPublico || local)}
             />
-            <SecaoLazer itens={diferenciaisLazer} />
-            <SecaoDiferenciais itens={diferenciaisGerais} />
             <SecaoCtaFinal pronto titulo={imovel.titulo} hrefSimulador={hrefSimulador} />
             <SecaoOutros relacionados={relacionados} pronto />
             <SecaoFaq faqs={imovel.faqs} />
