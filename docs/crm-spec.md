@@ -137,11 +137,25 @@ de origem e nada é gravado.
 **Mudar etapa pelo formulário:** o `select` de etapa dispara o mesmo diálogo de
 motivo quando aplicável.
 
+
+### 1.5 Arquivamento automático
+
+Lead em `ganho` ou `perdido` (**não** `nao-qualificado`) há mais de 30 dias é
+arquivado sozinho. Vive na migration 023: função
+`arquivar_leads_finais_antigos()` + job pg_cron `crm-arquivar-finais-antigos`,
+todo dia às 03:00 de São Paulo (06:00 UTC).
+
+- Os 30 dias contam de `status_alterado_em` (renovado a cada troca de etapa).
+- Arquivado pelo sistema = `arquivado_por` nulo; a tela de arquivados mostra
+  "Arquivado automaticamente".
+- Lead restaurado à mão (`restaurado_em`) não é re-arquivado até mudar de
+  etapa de novo e voltar a ficar mais de 30 dias numa etapa final.
+
 ---
 
 ## 2. Banco de dados
 
-Quatro migrations, aplicadas à mão no SQL Editor do Supabase, **nesta ordem**.
+Quatro migrations, aplicadas pelo workflow `migrations-supabase` (merge em `Preview`; mesmo banco da produção), **nesta ordem**.
 A numeração continua de onde a 013 parou.
 
 ### 2.1 `014_crm_pipelines.sql`
@@ -570,7 +584,7 @@ components/admin/crm/
   NovaInteracao.tsx          composer + lembrete opcional
   DialogoMotivo.tsx          motivo obrigatório
   ConfirmarAcao.tsx          confirmação reutilizável
-  EstadoVazio.tsx
+  EstadoVazio.tsx            quadro sem lead: mensagem acima das colunas, que continuam visíveis junto com a barra de filtros
   icones.tsx                 catálogo SVG (sem emoji, padrão do projeto)
 
 components/admin/Toaster.tsx  + lib/admin/toast.ts   (novo, usado por todo o admin)
@@ -653,7 +667,7 @@ Todas retornam `AcaoResultado` (o tipo já existente em
 | `moverLead` | `leadId, etapa, motivo?, motivoObs?, updatedAt` | RPC `mover_lead_crm`; traduz `MOTIVO_OBRIGATORIO`, `ETAPA_INVALIDA`, `LEAD_DESATUALIZADO` em mensagem pt-BR |
 | `criarLead` | comum + origem | cria `leads` + linha de detalhe da origem; etapa = `is_inicial` do pipeline |
 | `atualizarLead` | comum + origem + extras | upsert na tabela de detalhe (lead manual pode não ter linha) |
-| `arquivarLead` / `restaurarLead` | `leadId` | grava/limpa `arquivado_em` + `arquivado_por` |
+| `arquivarLead` / `restaurarLead` | `leadId` | grava/limpa `arquivado_em` + `arquivado_por`; `restaurarLead` também grava `restaurado_em` (§1.5) |
 | `excluirLead` | `leadId, motivo?` | só `admin`; grava `crm_exclusoes` antes do delete em cascata |
 | `registrarInteracao` | `leadId, tipo, conteudo, lembrete?` | RPC transacional |
 | `concluirLembrete` / `reagendarLembrete` | `lembreteId[, novaData]` | |
@@ -787,11 +801,12 @@ custar um byte a mais de download.
 | 7 | Mudar etapa pelo formulário, não arrastando | Mesmo RPC, mesma exigência de motivo |
 | 8 | Lembrete "hoje 14:00" perto da meia-noite | `timestamptz` no banco; atraso e rótulo calculados em `America/Sao_Paulo` |
 | 9 | Excluir lead com lembrete e histórico | Cascata; `crm_exclusoes` guarda protocolo e autor, sem dado pessoal |
-| 10 | Coluna com centenas de cards | Teto de 500 por coluna com "carregar mais"; a contagem do cabeçalho vem de agregação separada e continua verdadeira |
+| 10 | Coluna com centenas de cards | Teto de 500 por coluna; a contagem do cabeçalho vem de agregação separada no banco (RPC `contar_leads_crm`, migration 022) e continua verdadeira. **"Carregar mais" adiado de propósito** até o volume se aproximar do teto de 500 por etapa (hoje são poucos leads) |
 | 11 | Nome ou e-mail muito longo | `truncate` + `title` com o valor inteiro |
 | 12 | Voltar de `ganho` para `contrato` | Permitido e registrado no histórico |
 | 13 | Sequência de protocolo na virada do ano | `RT-2027-0042` continua a numeração; a sequência é global. Não é bug — está documentado |
 | 14 | Etapa desativada com leads dentro | A coluna continua aparecendo enquanto tiver lead, marcada como inativa; não some com lead dentro |
+| 15 | Lead restaurado da lixeira que já passou de 30 dias em `ganho`/`perdido` | `restaurado_em` o protege do job (§1.5) até ele mudar de etapa de novo |
 
 ---
 
@@ -849,7 +864,7 @@ existindo**.
 
 ## 9. Ordem de execução (Fase 2)
 
-1. Migrations 014 → 017, aplicadas à mão no SQL Editor, na ordem. Conferir cada
+1. Migrations 014 → 017, aplicadas em ordem pelo workflow `migrations-supabase`. Conferir cada
    uma antes da seguinte.
 2. `types/database.ts` atualizado à mão (convenção do projeto): remover
    `LeadStatusSlug`/`lead_status`, acrescentar `crm_etapas`, `crm_lembretes`,

@@ -568,6 +568,9 @@ export interface Database {
           // é ação separada, registrada em crm_exclusoes.
           arquivado_em: string | null;
           arquivado_por: string | null;
+          // Preenchido por restaurarLead; o arquivamento automático (023) ignora
+          // leads restaurados depois da última mudança de etapa.
+          restaurado_em: string | null;
           // Extensibilidade sem migration: campos com `fonte: "extra"` em
           // lib/crm/campos.ts gravam aqui (docs/crm-spec.md §3.4).
           campos_extras: Record<string, unknown>;
@@ -598,6 +601,7 @@ export interface Database {
           favorito?: boolean;
           arquivado_em?: string | null;
           arquivado_por?: string | null;
+          restaurado_em?: string | null;
           campos_extras?: Record<string, unknown>;
           status_alterado_em?: string;
           created_at?: string;
@@ -1011,6 +1015,14 @@ export interface Database {
       salvar_imovel_tipologias: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
       salvar_imovel_diferenciais: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
       salvar_imovel_faqs: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
+      // Contagens do CRM agrupadas no banco (022_crm_contagens.sql); bigint e
+      // numeric podem chegar como string do PostgREST — converter com Number().
+      contar_leads_crm: {
+        Args: { p_tipo?: string | null };
+        Returns: { tipo: string; status: string; total: number | string; soma_valor_negocio: number | string }[];
+      };
+      // Só o pg_cron chama (023_crm_arquivamento_automatico.sql); devolve quantos arquivou.
+      arquivar_leads_finais_antigos: { Args: Record<PropertyKey, never>; Returns: number };
       definir_tags_lead: { Args: { p_lead_id: string; p_tags: string[] }; Returns: undefined };
       // true só quando o usuário autenticado tem profiles.role = 'admin'.
       // SECURITY DEFINER com search_path fixo (017_crm_funcoes_rls.sql) —

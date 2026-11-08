@@ -478,7 +478,9 @@ export async function restaurarLead(leadId: string): Promise<AcaoResultado> {
 
   const { data, error } = await supabase
     .from("leads")
-    .update({ arquivado_em: null, arquivado_por: null })
+    // restaurado_em impede o job de arquivamento automático (migration 023) de
+    // re-arquivar na noite seguinte um lead que a pessoa acabou de resgatar.
+    .update({ arquivado_em: null, arquivado_por: null, restaurado_em: new Date().toISOString() })
     .eq("id", leadId)
     .select("id");
 
