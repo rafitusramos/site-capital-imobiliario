@@ -307,7 +307,7 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
         protocolo: antesDoMovimento.protocolo,
       },
       de: antesDoMovimento.status,
-      para: parsed.data.etapa,
+      para: parsed.data.etapa as LeadEtapaSlug,
       motivo: parsed.data.motivo,
       motivoObs: parsed.data.motivoObs,
       quemMoveu,

@@ -20,7 +20,7 @@ const LEAD = {
 
 function montar(opcoes: { semChave?: boolean } = {}) {
   const falso = criarSupabaseFalso();
-  const enviar = vi.fn(async (e: { para: string }) =>
+  const enviar = vi.fn(async (e: { para: string; texto?: string }) =>
     opcoes.semChave
       ? ({ enviado: false, motivo: "sem-chave" } as const)
       : ({ enviado: true, id: `re_${e.para}` } as const),
