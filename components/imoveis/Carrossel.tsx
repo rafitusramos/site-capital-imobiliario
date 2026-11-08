@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
+import { ImagemImovel } from "@/components/imoveis/ImagemImovel";
+import { prioridadeDoSlide, SIZES_CARROSSEL, SIZES_FOTO_UNICA } from "@/lib/imoveis/imagem-otimizada";
 import { altDaImagem } from "@/lib/imoveis/seo";
 
 export type ImagemCarrossel = { url: string; ambiente: string | null };
@@ -26,6 +28,13 @@ type CarrosselProps = {
    */
   aoAmpliar?: (indice: number) => void;
 };
+
+// Tamanho publicado das fotos (enviarImagem): só serve de razão de aspecto para
+// o next/image; o CSS (aspect-ratio 4/3) manda no tamanho real.
+const LARGURA_FOTO = 1400;
+const ALTURA_FOTO = 900;
+// Quanto antes de entrar na tela a galeria começa a baixar as fotos.
+const MARGEM_PROXIMIDADE = "600px 0px";
 
 // `duration` do Embla é expresso na escala interna dele, não em ms: 25 é o
 // padrão da lib e 0 faz o deslocamento ser instantâneo.
@@ -55,11 +64,16 @@ export function Carrossel({
     const [imagem] = imagens;
     return (
       <figure className="im-carrossel-unica">
-        <img
+        <ImagemImovel
           src={imagem.url}
           alt={altDaImagem(imagem.ambiente, contexto)}
-          decoding="async"
-          fetchPriority={primeiraEager ? "high" : "low"}
+          width={LARGURA_FOTO}
+          height={ALTURA_FOTO}
+          sizes={SIZES_FOTO_UNICA}
+          // Fora do Embla o lazy nativo funciona; só a primeira da página
+          // (acima da dobra) sobe de prioridade.
+          loading={primeiraEager ? "eager" : "lazy"}
+          fetchPriority={primeiraEager ? "high" : undefined}
         />
         {/* aria-hidden: o `alt` da imagem já anuncia o ambiente, e sem isso o
             leitor de tela leria a mesma frase duas vezes seguidas. */}
@@ -126,6 +140,31 @@ function CarrosselMultiplo({
   });
 
   const [indiceSelecionado, setIndiceSelecionado] = useState(0);
+
+  // Carregamento por proximidade (ver comentário no slide). Começa `false` no
+  // servidor e no cliente, para a hidratação bater; o observador liga no mount.
+  const raizRef = useRef<HTMLDivElement>(null);
+  const [perto, setPerto] = useState(false);
+
+  useEffect(() => {
+    const raiz = raizRef.current;
+    // Sem IntersectionObserver (navegador antigo), carrega tudo, como antes.
+    if (!raiz || typeof IntersectionObserver === "undefined") {
+      setPerto(true);
+      return;
+    }
+    const observador = new IntersectionObserver(
+      (entradas) => {
+        if (entradas.some((e) => e.isIntersecting)) {
+          setPerto(true);
+          observador.disconnect();
+        }
+      },
+      { rootMargin: MARGEM_PROXIMIDADE },
+    );
+    observador.observe(raiz);
+    return () => observador.disconnect();
+  }, []);
   // Sem loop, as setas nas pontas ficam mortas — desabilitadas via estado em
   // vez de escondidas, para o teclado/leitor de tela também saber que
   // chegaram no fim.
@@ -173,6 +212,7 @@ function CarrosselMultiplo({
       aria-label={ariaLabel}
       tabIndex={0}
       onKeyDown={aoTeclar}
+      ref={raizRef}
     >
       <div className="im-carrossel-viewport" ref={emblaRef}>
         <div className="im-carrossel-trilho">
@@ -200,18 +240,31 @@ function CarrosselMultiplo({
                     : (imagem.ambiente ?? `Imagem ${indice + 1} de ${imagens.length}`)
                 }
               >
-                {/* Sem loading="lazy": medido no navegador que imagens lazy dentro
-                    do overflow:hidden do viewport do Embla nunca disparam o
-                    carregamento, nem com a galeria centralizada na tela — só a
-                    primeira (eager) aparecia. Galeria é conteúdo principal e
-                    finita, então carrega tudo; `fetchPriority` baixo nas demais
-                    evita competir com a capa do hero (LCP). */}
-                <img
-                  src={imagem.url}
-                  alt={altDaImagem(imagem.ambiente, contexto)}
-                  decoding="async"
-                  fetchPriority={primeiraEager && indice === 0 ? "high" : "low"}
-                />
+                {/* Carregamento por proximidade, no lugar do `loading="lazy"`
+                    nativo: medido que imagem lazy dentro do overflow:hidden do
+                    viewport do Embla nunca dispara. Antes de a galeria chegar
+                    perto da tela (`perto`), só o slide 0 da primeira galeria
+                    (acima da dobra) tem <img>; o resto é a caixa reservada,
+                    sem requisição. Depois, todos os slides renderizam (navegar
+                    nunca cai em slide vazio), com o ativo e os vizinhos em
+                    prioridade padrão e o resto em `low`. */}
+                {perto || (primeiraEager && indice === 0) ? (
+                  <ImagemImovel
+                    src={imagem.url}
+                    alt={altDaImagem(imagem.ambiente, contexto)}
+                    width={LARGURA_FOTO}
+                    height={ALTURA_FOTO}
+                    sizes={SIZES_CARROSSEL}
+                    loading="eager"
+                    fetchPriority={
+                      primeiraEager && indice === 0
+                        ? "high"
+                        : prioridadeDoSlide(indice, indiceSelecionado)
+                    }
+                  />
+                ) : (
+                  <span className="im-carrossel-reserva" aria-hidden="true" />
+                )}
                 {/* `span`, e não `figcaption`: o elemento vive dentro do
                     `button` do slide, e figcaption só é válido dentro de
                     figure. aria-hidden porque o aria-label do botão acima já

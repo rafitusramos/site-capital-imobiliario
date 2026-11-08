@@ -132,6 +132,22 @@ para fazer numa imagem servida em página pública.
   `lib/imoveis/marca-dagua-asset.ts`, gerado por `scripts/gerar-asset-marca.mjs`
   com os bytes em base64. Trocou o PNG, rode o script.
 
+- **Fotos servidas por `next/image`** (`components/imoveis/ImagemImovel.tsx`), só as
+  do bucket público `imovel-images`: `images.remotePatterns` em `next.config.ts` (host
+  derivado de `NEXT_PUBLIC_SUPABASE_URL`) e predicado `ehImagemOtimizavel`
+  (`lib/imoveis/imagem-otimizada.ts`); URL fora do bucket vai `unoptimized`. A lista
+  `deviceSizes`/`imageSizes` é curta de propósito: cada largura x formato é uma
+  transformação e o Hobby tem cota mensal; não acrescente tamanho sem motivo. Os
+  `sizes` espelham o CSS (a foto ativa do carrossel é escalada 1.5x). og:image,
+  JSON-LD e sitemap seguem com a URL original do Supabase, nunca `/_next/image`.
+  Uploads novos saem com `cacheControl` de 1 ano (nome UUID imutável); os antigos
+  seguem com 1h.
+- **Carregamento do carrossel é por proximidade, não `loading="lazy"`**: lazy nativo
+  dentro do `overflow:hidden` do Embla nunca dispara. Um IntersectionObserver
+  (`rootMargin` 600px) liga `perto`; antes disso só o slide 0 da primeira galeria
+  tem `<img>`, o resto é a caixa `.im-carrossel-reserva`. O fade-in é CSS
+  (`img[data-fade]`), ativo só com `@media (scripting: enabled)`.
+
 ### Texto de descoberta (alt, title, description)
 Tudo derivado do cadastro em `lib/imoveis/seo.ts`, travado em
 `tests/unidade/imoveis-seo.test.ts`. Nenhuma dessas funções devolve vazio.

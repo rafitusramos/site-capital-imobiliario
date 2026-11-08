@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ImovelComCapa } from "@/lib/queries/imoveis";
 import { fatosDoImovel, precoDoImovel } from "@/lib/imoveis/ficha";
 import { obterIcone } from "@/components/imoveis/icones";
+import { ImagemImovel } from "@/components/imoveis/ImagemImovel";
+import { SIZES_CARD } from "@/lib/imoveis/imagem-otimizada";
 import { altDoImovel } from "@/lib/imoveis/seo";
 
 type ImovelCardProps = {
@@ -23,7 +25,13 @@ export function ImovelCard({ imovel }: ImovelCardProps) {
     <Link className="im-card reveal" href={`/imoveis/${imovel.slug}/`}>
       <div className="im-card-capa">
         {imovel.capa ? (
-          <img src={imovel.capa} alt={altDoImovel(imovel)} loading="lazy" />
+          <ImagemImovel
+            src={imovel.capa}
+            alt={altDoImovel(imovel)}
+            fill
+            sizes={SIZES_CARD}
+            loading="lazy"
+          />
         ) : null}
         <span className="im-badge-fase" data-fase={imovel.fase?.slug}>
           {imovel.fase?.nome}
