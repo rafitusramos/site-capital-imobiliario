@@ -3,9 +3,13 @@ import { criarSupabaseFalso } from "@/tests/apoio/supabase-falso";
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("next/server", () => ({ after: vi.fn() }));
+vi.mock("@/lib/email/notificar", () => ({ dispararAvisosMudancaEtapa: vi.fn() }));
 
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
+import { dispararAvisosMudancaEtapa } from "@/lib/email/notificar";
 import {
   alternarFavorito,
   arquivarLead,
@@ -128,6 +132,90 @@ describe("moverLead", () => {
     const resultado = await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
 
     expect(resultado).toEqual({ sucesso: false, erro: "Lead não encontrado." });
+  });
+});
+
+describe("moverLead — e-mails", () => {
+  const LEAD_ANTES = {
+    id: LEAD_1,
+    tipo: "financiamento",
+    status: "criado",
+    nome: "Maria Silva",
+    email: "maria@example.com",
+    telefone: "(19) 99783-4187",
+    protocolo: "RT-1",
+  };
+
+  function preparar(statusAntes: string | null) {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1", email: "rafael@rt.com" });
+    falso.programarResposta("leads", "select", {
+      data: statusAntes ? { ...LEAD_ANTES, status: statusAntes } : null,
+      error: null,
+    });
+    falso.programarRpc("mover_lead_crm", { data: { id: LEAD_1 }, error: null });
+    const agendados: Array<() => unknown> = [];
+    vi.mocked(after).mockImplementation(((cb: () => unknown) => {
+      agendados.push(cb);
+    }) as never);
+    return { falso, agendados };
+  }
+
+  test("lê o lead ANTES do RPC e agenda os avisos em after()", async () => {
+    const { falso, agendados } = preparar("criado");
+
+    const resultado = await moverLead({ leadId: LEAD_1, etapa: "simulacao", motivo: "x", motivoObs: "y" });
+
+    expect(resultado).toEqual({ sucesso: true });
+    const idxLeitura = falso.chamadas.findIndex((c) => c.tabela === "leads" && c.operacao === "select");
+    expect(idxLeitura).toBeGreaterThanOrEqual(0);
+    expect(falso.chamadasRpc.find((c) => c.nome === "mover_lead_crm")).toBeDefined();
+    expect(dispararAvisosMudancaEtapa).not.toHaveBeenCalled();
+    expect(agendados).toHaveLength(1);
+
+    await agendados[0]();
+    expect(dispararAvisosMudancaEtapa).toHaveBeenCalledWith({
+      lead: expect.objectContaining({ id: LEAD_1, tipo: "financiamento", email: "maria@example.com" }),
+      de: "criado",
+      para: "simulacao",
+      motivo: "x",
+      motivoObs: "y",
+      quemMoveu: "rafael@rt.com",
+    });
+  });
+
+  test("etapa de destino igual à atual não envia nada", async () => {
+    const { agendados } = preparar("simulacao");
+    await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
+    expect(agendados).toHaveLength(0);
+  });
+
+  test("RPC com erro não envia nada", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("leads", "select", { data: LEAD_ANTES, error: null });
+    falso.programarRpc("mover_lead_crm", { data: null, error: { message: "ETAPA_INVALIDA" } });
+
+    await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
+
+    expect(after).not.toHaveBeenCalled();
+  });
+
+  test("lead ilegível (sem leitura) ainda move, só não envia", async () => {
+    const { agendados } = preparar(null);
+    const resultado = await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
+    expect(resultado).toEqual({ sucesso: true });
+    expect(agendados).toHaveLength(0);
+  });
+
+  test("falha ao agendar os avisos não faz o movimento falhar", async () => {
+    preparar("criado");
+    vi.mocked(after).mockImplementation((() => {
+      throw new Error("fora do escopo");
+    }) as never);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    expect(await moverLead({ leadId: LEAD_1, etapa: "simulacao" })).toEqual({ sucesso: true });
   });
 });
 
