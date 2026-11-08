@@ -570,7 +570,7 @@ components/admin/crm/
   NovaInteracao.tsx          composer + lembrete opcional
   DialogoMotivo.tsx          motivo obrigatório
   ConfirmarAcao.tsx          confirmação reutilizável
-  EstadoVazio.tsx
+  EstadoVazio.tsx            quadro sem lead: mensagem acima das colunas, que continuam visíveis junto com a barra de filtros
   icones.tsx                 catálogo SVG (sem emoji, padrão do projeto)
 
 components/admin/Toaster.tsx  + lib/admin/toast.ts   (novo, usado por todo o admin)
@@ -787,7 +787,7 @@ custar um byte a mais de download.
 | 7 | Mudar etapa pelo formulário, não arrastando | Mesmo RPC, mesma exigência de motivo |
 | 8 | Lembrete "hoje 14:00" perto da meia-noite | `timestamptz` no banco; atraso e rótulo calculados em `America/Sao_Paulo` |
 | 9 | Excluir lead com lembrete e histórico | Cascata; `crm_exclusoes` guarda protocolo e autor, sem dado pessoal |
-| 10 | Coluna com centenas de cards | Teto de 500 por coluna com "carregar mais"; a contagem do cabeçalho vem de agregação separada e continua verdadeira |
+| 10 | Coluna com centenas de cards | Teto de 500 por coluna; a contagem do cabeçalho vem de agregação separada no banco (RPC `contar_leads_crm`, migration 022) e continua verdadeira. **"Carregar mais" adiado de propósito** até o volume se aproximar do teto de 500 por etapa (hoje são poucos leads) |
 | 11 | Nome ou e-mail muito longo | `truncate` + `title` com o valor inteiro |
 | 12 | Voltar de `ganho` para `contrato` | Permitido e registrado no histórico |
 | 13 | Sequência de protocolo na virada do ano | `RT-2027-0042` continua a numeração; a sequência é global. Não é bug — está documentado |

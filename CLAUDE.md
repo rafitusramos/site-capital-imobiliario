@@ -37,15 +37,17 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 758 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 773 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
-no SQL Editor do Supabase; a última é a **021**.
+no SQL Editor do Supabase; a última é a **022**.
 
 ### CRM
 Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 (financiamento, home-equity, consórcio, imóveis). A especificação completa é
 `docs/crm-spec.md`, citada nos comentários do módulo inteiro por seção.
 
+- Contagens do cabeçalho (por etapa e por aba) vêm do RPC `contar_leads_crm`
+  (migration 022), **nunca** somadas em JS: o max-rows do PostgREST truncaria em silêncio.
 - `lib/crm/etapas.ts` **espelha** os seeds de `crm_etapas` da migration 014. Os
   dois têm de andar juntos: mudou label, cor, ordem, SLA ou `exige_motivo` numa
   ponta, refaça na outra.
