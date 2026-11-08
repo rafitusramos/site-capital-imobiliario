@@ -100,3 +100,16 @@ export function canonicalDoArtigo(
 ): string {
   return canonicalUrl?.trim() || `/blog/${slug}/`;
 }
+
+/**
+ * Os `limite` posts mais recentes de uma categoria (por slug). Recebe a lista
+ * já carregada por `getPublishedPosts` — nenhuma query nova.
+ */
+export function postsDaCategoria<
+  T extends { published_at: string | null; categoria: { slug: string } | null },
+>(posts: readonly T[], categoriaSlug: string, limite: number): T[] {
+  return posts
+    .filter((post) => post.categoria?.slug === categoriaSlug)
+    .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""))
+    .slice(0, limite);
+}
