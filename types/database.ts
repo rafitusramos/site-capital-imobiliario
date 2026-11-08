@@ -1011,6 +1011,12 @@ export interface Database {
       salvar_imovel_tipologias: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
       salvar_imovel_diferenciais: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
       salvar_imovel_faqs: { Args: { p_imovel_id: string; p_itens: unknown }; Returns: undefined };
+      // Contagens do CRM agrupadas no banco (022_crm_contagens.sql); bigint e
+      // numeric podem chegar como string do PostgREST — converter com Number().
+      contar_leads_crm: {
+        Args: { p_tipo?: string | null };
+        Returns: { tipo: string; status: string; total: number | string; soma_valor_negocio: number | string }[];
+      };
       definir_tags_lead: { Args: { p_lead_id: string; p_tags: string[] }; Returns: undefined };
       // true só quando o usuário autenticado tem profiles.role = 'admin'.
       // SECURITY DEFINER com search_path fixo (017_crm_funcoes_rls.sql) —
