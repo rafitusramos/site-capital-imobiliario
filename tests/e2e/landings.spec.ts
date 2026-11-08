@@ -37,6 +37,47 @@ for (const caminho of ["/financiamento/", "/home_equity/"]) {
   });
 }
 
+test.describe("/financiamento/ — taxas de mercado de outubro/2026", () => {
+  test.beforeEach(async ({ page }) => {
+    await new LandingPage(page, "/financiamento/").goto();
+  });
+
+  test('card "Entre bancos" mostra ~3,3 p.p.', async ({ page }) => {
+    const card = page.locator(".cel").filter({ hasText: "Entre bancos" });
+    await expect(card).toContainText("~3,3 p.p.");
+  });
+
+  // Linhas da tabela por texto (no mobile a tabela vira cards; toContainText independe do layout).
+  const linhas = [
+    { cenario: "Balcão mais caro", taxa: "15% a.a. + TR", parcela: "R$ 11.594", total: "≈ R$ 2,49 mi", nota: "R$ 355 mil a mais que a melhor taxa" },
+    { cenario: "Taxa média de balcão", taxa: "13,25% a.a. + TR", parcela: "R$ 10.561", total: "≈ R$ 2,31 mi", nota: "R$ 169 mil a mais que a melhor taxa" },
+    { cenario: "Melhor taxa em cotação", taxa: "11,69% a.a. + TR", parcela: "R$ 9.627", total: "≈ R$ 2,14 mi", nota: "" },
+  ];
+  for (const l of linhas) {
+    test(`tabela comparativa: linha "${l.cenario}"`, async ({ page }) => {
+      const linha = page.locator("table.tabela tbody tr").filter({ hasText: l.cenario });
+      await expect(linha).toHaveCount(1);
+      for (const trecho of [l.taxa, l.parcela, l.total, l.nota].filter(Boolean)) {
+        await expect(linha, trecho).toContainText(trecho);
+      }
+    });
+  }
+
+  test('avisos citam "outubro/2026" e a página não tem valores antigos', async ({ page }) => {
+    const avisos = page.locator("p.disclaimer");
+    await expect(avisos).toHaveCount(2);
+    for (let i = 0; i < 2; i++) {
+      await expect(avisos.nth(i), `aviso ${i + 1}`).toContainText("outubro/2026");
+    }
+    await expect(avisos.last()).toContainText("(11,69% a 15% a.a.)");
+
+    const texto = (await page.locator("body").textContent()) ?? "";
+    for (const velho of ["julho/2026", "13,99%", "2,3 p.p."]) {
+      expect(texto, `não deve conter "${velho}"`).not.toContain(velho);
+    }
+  });
+});
+
 test.describe("/financiamento/ — simulador", () => {
   test("alternar de SAC para PRICE muda o texto da parcela", async ({ page }) => {
     await new LandingPage(page, "/financiamento/").goto();
