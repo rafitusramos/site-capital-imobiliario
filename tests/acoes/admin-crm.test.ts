@@ -15,6 +15,8 @@ import {
   criarLead,
   criarTag,
   definirTags,
+  editarInteracao,
+  excluirInteracao,
   excluirLead,
   moverLead,
   reagendarLembrete,
@@ -26,6 +28,7 @@ const LEAD_1 = "11111111-1111-4111-8111-111111111111";
 const LEAD_2 = "22222222-2222-4222-8222-222222222222";
 const LEMBRETE_1 = "33333333-3333-4333-8333-333333333333";
 const CORRETOR_1 = "44444444-4444-4444-8444-444444444444";
+const INTERACAO_1 = "66666666-6666-4666-8666-666666666666";
 const IMOVEL_1 = "55555555-5555-4555-8555-555555555555";
 
 function montarSupabase() {
@@ -45,8 +48,10 @@ describe("sessão expirada", () => {
     ["atualizarLead", () => atualizarLead({ leadId: LEAD_1, tipo: "financiamento" })],
     ["arquivarLead", () => arquivarLead(LEAD_1)],
     ["restaurarLead", () => restaurarLead(LEAD_1)],
-    ["excluirLead", () => excluirLead(LEAD_1)],
+    ["excluirLead", () => excluirLead(LEAD_1, "pedido do titular")],
     ["registrarInteracao", () => registrarInteracao({ leadId: LEAD_1, tipo: "nota", conteudo: "oi" })],
+    ["editarInteracao", () => editarInteracao({ interacaoId: INTERACAO_1, conteudo: "novo" })],
+    ["excluirInteracao", () => excluirInteracao(INTERACAO_1)],
     ["concluirLembrete", () => concluirLembrete(LEMBRETE_1)],
     ["reagendarLembrete", () => reagendarLembrete(LEMBRETE_1, "2026-01-01T00:00:00.000Z")],
     ["alternarFavorito", () => alternarFavorito(LEAD_1)],
@@ -393,7 +398,7 @@ describe("excluirLead", () => {
     falso.definirUsuario({ id: "user-1" });
     falso.programarResposta("profiles", "select", { data: { role: "corretor" }, error: null });
 
-    const resultado = await excluirLead(LEAD_1);
+    const resultado = await excluirLead(LEAD_1, "pedido do titular");
 
     expect(resultado).toEqual({
       sucesso: false,
@@ -438,7 +443,7 @@ describe("excluirLead", () => {
     falso.programarResposta("profiles", "select", { data: { role: "admin" }, error: null });
     falso.programarResposta("leads", "select", { data: null, error: null });
 
-    const resultado = await excluirLead(LEAD_1);
+    const resultado = await excluirLead(LEAD_1, "pedido do titular");
 
     expect(resultado).toEqual({ sucesso: false, erro: "Lead não encontrado." });
     expect(falso.chamadas.some((c) => c.tabela === "crm_exclusoes")).toBe(false);
@@ -452,12 +457,179 @@ describe("excluirLead", () => {
     falso.programarResposta("crm_exclusoes", "insert", { data: null, error: null });
     falso.programarResposta("leads", "delete", { data: [], error: null });
 
-    const resultado = await excluirLead(LEAD_1);
+    const resultado = await excluirLead(LEAD_1, "pedido do titular");
 
     expect(resultado).toEqual({
       sucesso: false,
       erro: "Lead não encontrado ou você não tem permissão para excluí-lo.",
     });
+  });
+
+  test("motivo ausente, curto ou só espaços é recusado sem tocar no banco", async () => {
+    for (const motivo of [undefined, "", "   ", "abc", "  ab  "]) {
+      const falso = montarSupabase();
+      falso.definirUsuario({ id: "admin-1" });
+
+      const resultado = await excluirLead(LEAD_1, motivo as string);
+
+      expect(resultado.sucesso).toBe(false);
+      expect(resultado.erro).toMatch(/motivo/i);
+      expect(falso.chamadas).toEqual([]);
+    }
+  });
+
+  test("grava o motivo aparado em crm_exclusoes", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("leads", "select", { data: { protocolo: "RT-2026-0009", tipo: "financiamento" }, error: null });
+    falso.programarResposta("crm_exclusoes", "insert", { data: null, error: null });
+    falso.programarResposta("leads", "delete", { data: [{ id: LEAD_1 }], error: null });
+
+    await excluirLead(LEAD_1, "  pedido do titular via e-mail  ");
+
+    const insert = falso.chamadas.find((c) => c.tabela === "crm_exclusoes" && c.operacao === "insert");
+    expect(insert?.payload).toMatchObject({ motivo: "pedido do titular via e-mail" });
+  });
+});
+
+describe("editarInteracao", () => {
+  test("conteúdo vazio é recusado sem tocar no banco", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+
+    const resultado = await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "   " });
+
+    expect(resultado.sucesso).toBe(false);
+    expect(falso.chamadas).toEqual([]);
+  });
+
+  test("interação inexistente (ou invisível pela RLS) devolve erro", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("lead_interacoes", "select", { data: null, error: null });
+
+    const resultado = await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "novo texto" });
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Interação não encontrada." });
+    expect(falso.chamadas.some((c) => c.operacao === "update")).toBe(false);
+  });
+
+  test("outro corretor não pode editar interação alheia", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.definirPapel("corretor");
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "outro", automatica: false }, error: null });
+
+    const resultado = await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "novo texto" });
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Só o autor ou um administrador pode alterar esta interação." });
+    expect(falso.chamadas.some((c) => c.operacao === "update")).toBe(false);
+  });
+
+  test("interação automática (log do sistema) não é editável nem por admin", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: null, automatica: true }, error: null });
+
+    const resultado = await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "novo texto" });
+
+    expect(resultado.sucesso).toBe(false);
+    expect(falso.chamadas.some((c) => c.operacao === "update")).toBe(false);
+  });
+
+  test("autor edita: atualiza conteúdo e editada_em, e revalida o quadro", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.definirPapel("corretor");
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "user-1", automatica: false }, error: null });
+    falso.programarResposta("lead_interacoes", "update", { data: [{ id: INTERACAO_1 }], error: null });
+
+    const resultado = await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "  texto corrigido  " });
+
+    expect(resultado).toEqual({ sucesso: true });
+    const upd = falso.chamadas.find((c) => c.tabela === "lead_interacoes" && c.operacao === "update");
+    expect(upd?.payload).toMatchObject({ conteudo: "texto corrigido" });
+    expect((upd?.payload as Record<string, unknown>).editada_em).toEqual(expect.any(String));
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/crm/[origem]", "page");
+  });
+
+  test("admin edita interação de outro autor", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "user-9", automatica: false }, error: null });
+    falso.programarResposta("lead_interacoes", "update", { data: [{ id: INTERACAO_1 }], error: null });
+
+    expect(await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "texto corrigido" })).toEqual({ sucesso: true });
+  });
+
+  test("update que não casa linha (RLS) devolve erro em vez de 'salvo'", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "admin-1", automatica: false }, error: null });
+    falso.programarResposta("lead_interacoes", "update", { data: [], error: null });
+
+    const resultado = await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "texto corrigido" });
+
+    expect(resultado.sucesso).toBe(false);
+  });
+});
+
+describe("excluirInteracao", () => {
+  test("id inválido é recusado", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    expect((await excluirInteracao("x")).sucesso).toBe(false);
+    expect(falso.chamadas).toEqual([]);
+  });
+
+  test("outro corretor não pode apagar interação alheia", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.definirPapel("corretor");
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "outro", automatica: false }, error: null });
+
+    const resultado = await excluirInteracao(INTERACAO_1);
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Só o autor ou um administrador pode alterar esta interação." });
+    expect(falso.chamadas.some((c) => c.operacao === "delete")).toBe(false);
+  });
+
+  test("interação automática não pode ser apagada", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "admin-1", automatica: true }, error: null });
+
+    expect((await excluirInteracao(INTERACAO_1)).sucesso).toBe(false);
+    expect(falso.chamadas.some((c) => c.operacao === "delete")).toBe(false);
+  });
+
+  test("autor apaga e o quadro é revalidado", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.definirPapel("corretor");
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "user-1", automatica: false }, error: null });
+    falso.programarResposta("lead_interacoes", "delete", { data: [{ id: INTERACAO_1 }], error: null });
+
+    expect(await excluirInteracao(INTERACAO_1)).toEqual({ sucesso: true });
+    expect(revalidatePath).toHaveBeenCalledWith("/admin/crm/[origem]", "page");
+  });
+
+  test("admin apaga interação de outro autor", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "user-9", automatica: false }, error: null });
+    falso.programarResposta("lead_interacoes", "delete", { data: [{ id: INTERACAO_1 }], error: null });
+
+    expect(await excluirInteracao(INTERACAO_1)).toEqual({ sucesso: true });
+  });
+
+  test("delete que não casa linha devolve erro", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "admin-1" });
+    falso.programarResposta("lead_interacoes", "select", { data: { autor_id: "admin-1", automatica: false }, error: null });
+    falso.programarResposta("lead_interacoes", "delete", { data: [], error: null });
+
+    expect((await excluirInteracao(INTERACAO_1)).sucesso).toBe(false);
   });
 });
 

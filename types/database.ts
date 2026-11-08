@@ -826,6 +826,8 @@ export interface Database {
           // saíram daqui.
           automatica: boolean;
           created_at: string;
+          // Preenchida por editarInteracao (migration 024); nula = nunca editada.
+          editada_em: string | null;
         };
         Insert: {
           id?: string;
@@ -835,6 +837,7 @@ export interface Database {
           autor_id?: string | null;
           automatica?: boolean;
           created_at?: string;
+          editada_em?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["lead_interacoes"]["Insert"]>;
         Relationships: [];
@@ -887,20 +890,25 @@ export interface Database {
         };
         Relationships: [];
       };
-      // Linha do tempo unificada (interações + transições de etapa),
-      // carregada sob demanda ao abrir o modal do lead — nunca junto do
+      // Linha do tempo unificada (interações, transições de etapa e
+      // lembretes — estes a partir da migration 024), carregada sob demanda ao abrir o modal do lead — nunca junto do
       // quadro (015_crm_interacoes_lembretes.sql).
       vw_crm_timeline: {
         Row: {
           lead_id: string;
           ocorrido_em: string;
-          natureza: "interacao" | "etapa";
+          natureza: "interacao" | "etapa" | "lembrete";
           tipo: string;
           tipo_label: string | null;
           corpo: string | null;
           automatica: boolean;
           autor_id: string | null;
           autor_nome: string | null;
+          // Colunas acrescentadas ao FIM pela migration 024. `item_id` é o id da
+          // linha de origem (interação, lembrete ou histórico de etapa);
+          // `editada_em` só vem preenchida em interação editada.
+          item_id: string | null;
+          editada_em: string | null;
         };
         Relationships: [];
       };

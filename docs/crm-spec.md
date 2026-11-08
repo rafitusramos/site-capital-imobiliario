@@ -321,6 +321,22 @@ create view public.vw_crm_timeline as
     left join public.profiles p on p.id = h.alterado_por;
 ```
 
+> **Atualização (`024_crm_produtividade.sql`).** A view acima é a da `015` e só
+> unia interações e etapas, apesar de o parágrafo prometer lembretes. A `024` a
+> recria com dois ramos de `crm_lembretes` — `lembrete-agendado` (em
+> `created_at`) e `lembrete-concluido` (em `concluido_em`), ambos com
+> `natureza = 'lembrete'` — e acrescenta duas colunas **no fim**: `item_id` (id da
+> linha de origem, para a interface saber qual interação editar/apagar) e
+> `editada_em`. As nove colunas anteriores não mudam de ordem nem de tipo.
+> `security_invoker` é reafirmado. **Reagendamento não aparece**: a tabela guarda
+> só a data vigente; mostrar remarcações exigiria uma tabela de eventos.
+>
+> **Editar/apagar interação.** `lead_interacoes_crud` (`for all`) foi trocada por
+> quatro policies. `select` e `insert` mantêm a regra de antes (quem enxerga o
+> lead); `update` e `delete` exigem, além disso, ser o **autor** ou **admin** e a
+> interação não ser `automatica`. Coluna nova `lead_interacoes.editada_em` marca
+> a edição para a linha do tempo exibir "editada".
+
 **Quadro** — uma consulta serve o board inteiro. O `left join lateral` traz o
 próximo lembrete sem N+1, e o filtro de arquivados mora **na view**, não em cada
 consulta, para não haver como esquecer.
@@ -601,7 +617,27 @@ Sem Redux, sem Zustand, sem React Query. React 19 já dá o necessário:
   Busca, filtro e ordenação acontecem **em memória** (`lib/crm/filtros.ts`) —
   resposta instantânea, sem round-trip por tecla digitada.
 - Mover card usa **`useOptimistic`**: o card salta de coluna imediatamente,
-  a server action confirma, e o `catch` reverte com toast de erro.
+  a server action confirma, e o `catch` reverte com toast de erro. **Favoritar**
+  segue o mesmo molde (mesmo reducer, ação `favoritar`): a estrela vira na hora e
+  volta com toast se a action falhar.
+- **Filtros na URL.** O estado dos filtros nasce dos search params e é
+  espelhado de volta com `history.replaceState` (sem nova entrada no histórico):
+  recarregar ou mandar o link reproduz a visão. Serialização pura em
+  `lib/crm/filtros-url.ts`; valor inválido é ignorado. Parâmetros: `q` (busca),
+  `resp` (uuid ou `sem`), `tag`, `fav=1`, `atrasados=1` (lembrete vencido),
+  `parados=1` (passou do SLA da etapa: estado `atencao` ou `parado` de
+  `estadoDaEtapa`), `sem_lembrete=1`, `de`/`ate` (criação, `AAAA-MM-DD` no dia de
+  São Paulo, ambos inclusivos) e `ordem`. Todos valem em qualquer origem, então
+  as abas de origem levam os filtros junto; `lead`/`novo` não (são de um
+  modal daquela aba), mas abrir e fechar o modal preserva os filtros.
+- **Exportar CSV** (botão só para admin): feito **no cliente** a partir das
+  linhas já carregadas, filtradas e ordenadas como o operador as vê
+  (`lib/crm/csv.ts`). Server action exigiria reimplementar os filtros no
+  servidor sem ganho de segurança: os dados já chegaram ao navegador sob RLS, e o
+  botão escondido é conforto de interface, não barreira. Formato para Excel
+  pt-BR: UTF-8 com BOM, separador `;`, CRLF, decimal com vírgula e sem milhar,
+  datas `dd/mm/aaaa hh:mm` de São Paulo; texto que começa com `= + - @` ganha
+  apóstrofo (CSV injection).
 - Depois de cada mutação bem-sucedida, `revalidatePath('/admin/crm/[origem]',
   'page')` para que um F5 conte a verdade.
 - **A linha do tempo não vem com o quadro.** É carregada sob demanda ao abrir o
@@ -668,8 +704,10 @@ Todas retornam `AcaoResultado` (o tipo já existente em
 | `criarLead` | comum + origem | cria `leads` + linha de detalhe da origem; etapa = `is_inicial` do pipeline |
 | `atualizarLead` | comum + origem + extras | upsert na tabela de detalhe (lead manual pode não ter linha) |
 | `arquivarLead` / `restaurarLead` | `leadId` | grava/limpa `arquivado_em` + `arquivado_por`; `restaurarLead` também grava `restaurado_em` (§1.5) |
-| `excluirLead` | `leadId, motivo?` | só `admin`; grava `crm_exclusoes` antes do delete em cascata |
+| `excluirLead` | `leadId, motivo` | só `admin`; motivo **obrigatório** (mín. 5, máx. 500 — evidência de LGPD em `crm_exclusoes.motivo`); grava `crm_exclusoes` antes do delete em cascata |
 | `registrarInteracao` | `leadId, tipo, conteudo, lembrete?` | RPC transacional |
+| `editarInteracao` | `interacaoId, conteudo` | só o autor ou `admin`, nunca interação `automatica`; grava `editada_em`; RLS da `024` impõe o mesmo |
+| `excluirInteracao` | `interacaoId` | mesma regra de `editarInteracao` |
 | `concluirLembrete` / `reagendarLembrete` | `lembreteId[, novaData]` | |
 | `alternarFavorito` | `leadId` | |
 | `definirTags` | `leadId, slugs[]` | máx. 8; substitui o conjunto |
@@ -700,7 +738,8 @@ não confia na formatação do cliente).
 | `dormitorios_min` | inteiro, 0–20 |
 | `lembrete.agendado_para` | futuro na criação; passado permitido só ao reagendar |
 | `lembrete.descricao` | mín. 3, máx. 200 |
-| `interacao.conteudo` | mín. 1, máx. 5000 |
+| `interacao.conteudo` | mín. 1, máx. 5000 (também na edição) |
+| `exclusao.motivo` | trim, mín. 5, máx. 500 |
 | tags | máx. 8 por lead, slugs precisam existir |
 
 ---
@@ -857,7 +896,9 @@ existindo**.
 | `tests/unidade/crm-etapas.test.ts` | integridade dos 4 pipelines, etapa inicial única, quais exigem motivo |
 | `tests/unidade/crm-lembretes.test.ts` | atraso, rótulo relativo, virada de dia em `America/Sao_Paulo` |
 | `tests/unidade/crm-calculos.test.ts` | LTV, valor do negócio por origem, soma de coluna |
-| `tests/unidade/crm-filtros.test.ts` | busca, filtros combinados, ordenações |
+| `tests/unidade/crm-filtros.test.ts` | busca, filtros combinados (incl. parados além do SLA, período, sem lembrete), ordenações |
+| `tests/unidade/crm-filtros-url.test.ts` | filtros ida e volta pela URL, valor inválido ignorado, parâmetros alheios preservados |
+| `tests/unidade/crm-csv.test.ts` | escape de `;`, aspas, quebra de linha, CSV injection, BOM, formato do quadro |
 | `tests/acoes/admin-crm.test.ts` | ações com `tests/apoio/supabase-falso.ts`: sessão expirada, update sem linha afetada, tradução dos erros do RPC |
 
 ---

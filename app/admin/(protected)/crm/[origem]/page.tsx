@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getContagensPorEtapa, getDominios, getQuadro } from "@/lib/queries/admin-crm";
+import { getContagensPorEtapa, getDominios, getQuadro, getUsuarioCRM } from "@/lib/queries/admin-crm";
 import { QuadroCRM } from "@/components/admin/crm/QuadroCRM";
 import type { LeadTipoSlug } from "@/types/database";
 
@@ -46,10 +46,11 @@ export default async function QuadroOrigemPage({ params, searchParams }: PaginaO
   // quem decide se e o quê renderizar é QuadroCRM.tsx (client component).
   const { lead: leadAberto, novo } = await searchParams;
 
-  const [leads, contagensPorEtapa, dominios] = await Promise.all([
+  const [leads, contagensPorEtapa, dominios, usuario] = await Promise.all([
     getQuadro(tipo),
     getContagensPorEtapa(tipo),
     getDominios(),
+    getUsuarioCRM(),
   ]);
 
   return (
@@ -58,6 +59,7 @@ export default async function QuadroOrigemPage({ params, searchParams }: PaginaO
       leadsIniciais={leads}
       contagensPorEtapa={contagensPorEtapa}
       dominios={dominios}
+      souAdmin={usuario.souAdmin}
       leadAbertoId={leadAberto}
       novoAberto={novo === "1"}
     />

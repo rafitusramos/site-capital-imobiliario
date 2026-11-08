@@ -30,6 +30,8 @@ function criarIcone(paths: ReactNode): ComponentType<IconeProps> {
   };
 }
 
+export const IconeBaixar = criarIcone(<path d="M10 3v10m0 0-3.5-3.5M10 13l3.5-3.5M4 16.5h12" />);
+
 export const IconeLapis = criarIcone(<path d="M13.5 3.5l3 3L6 17H3v-3L13.5 3.5z" />);
 
 export const IconeLixeira = criarIcone(

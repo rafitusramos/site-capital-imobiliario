@@ -4,8 +4,11 @@ import {
   buscarLeads,
   filtrarAtrasados,
   filtrarFavoritos,
+  filtrarParados,
+  filtrarPorPeriodo,
   filtrarPorResponsavel,
   filtrarPorTag,
+  filtrarSemLembrete,
   ordenarLeads,
   type LeadQuadroCRM,
 } from "@/lib/crm/filtros";
@@ -162,6 +165,62 @@ describe("filtrarAtrasados", () => {
 
   test("lead sem lembrete nunca é 'atrasado'", () => {
     expect(filtrarAtrasados(leads, true, AGORA)).not.toContainEqual(leads[2]);
+  });
+});
+
+describe("filtrarParados", () => {
+  // criado: SLA 1 dia -> 1 dia no prazo, 2 dias atenção, 3+ parado.
+  const noPrazo = lead({ id: "1", status: "criado", sla_dias: 1, dias_na_etapa: 1 });
+  const atencao = lead({ id: "2", status: "criado", sla_dias: 1, dias_na_etapa: 2 });
+  const parado = lead({ id: "3", status: "criado", sla_dias: 1, dias_na_etapa: 5 });
+  const semSla = lead({ id: "4", status: "ganho", sla_dias: null, dias_na_etapa: 90 });
+  const semDias = lead({ id: "5", status: "criado", sla_dias: 1, dias_na_etapa: null });
+
+  test("desligado devolve a lista inteira", () => {
+    expect(filtrarParados([noPrazo, parado], false)).toEqual([noPrazo, parado]);
+  });
+
+  test("ligado mantém quem passou do SLA (atenção e parado)", () => {
+    expect(filtrarParados([noPrazo, atencao, parado], true)).toEqual([atencao, parado]);
+  });
+
+  test("etapa final (sem SLA) e lead sem dias_na_etapa nunca contam como parados", () => {
+    expect(filtrarParados([semSla, semDias], true)).toEqual([]);
+  });
+});
+
+describe("filtrarPorPeriodo", () => {
+  // 2026-07-15T02:30Z é 14/07 23:30 em São Paulo: o dia civil é o de SP, não o UTC.
+  const noite = lead({ id: "1", created_at: "2026-07-15T02:30:00.000Z" });
+  const meioDia = lead({ id: "2", created_at: "2026-07-15T15:00:00.000Z" });
+  const depois = lead({ id: "3", created_at: "2026-07-20T15:00:00.000Z" });
+  const todos = [noite, meioDia, depois];
+
+  test("sem limites devolve tudo", () => {
+    expect(filtrarPorPeriodo(todos, undefined, undefined)).toEqual(todos);
+  });
+
+  test("usa o dia civil de São Paulo, inclusive nos dois extremos", () => {
+    expect(filtrarPorPeriodo(todos, "2026-07-14", "2026-07-14")).toEqual([noite]);
+    expect(filtrarPorPeriodo(todos, "2026-07-15", "2026-07-15")).toEqual([meioDia]);
+  });
+
+  test("só 'de' ou só 'até'", () => {
+    expect(filtrarPorPeriodo(todos, "2026-07-16", undefined)).toEqual([depois]);
+    expect(filtrarPorPeriodo(todos, undefined, "2026-07-14")).toEqual([noite]);
+  });
+});
+
+describe("filtrarSemLembrete", () => {
+  const com = lead({ id: "1", proximo_lembrete_em: "2026-07-20T12:00:00.000Z" });
+  const sem = lead({ id: "2", proximo_lembrete_em: null });
+
+  test("desligado não filtra", () => {
+    expect(filtrarSemLembrete([com, sem], false)).toEqual([com, sem]);
+  });
+
+  test("ligado mantém só quem não tem lembrete pendente", () => {
+    expect(filtrarSemLembrete([com, sem], true)).toEqual([sem]);
   });
 });
 
