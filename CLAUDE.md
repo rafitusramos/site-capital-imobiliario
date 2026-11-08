@@ -230,6 +230,24 @@ em `tests/unidade/imoveis-schema.test.ts`. `priceCurrency` é sempre `BRL`.
 - `priceValidUntil` fica fora de propósito: não há regra de validade no
   cadastro, e data vencida derruba o rich result. Campo ausente > campo vencido.
 
+### Inventário de JSON-LD por rota
+Tudo sai de construtores puros em `lib/seo/` (travados em
+`tests/unidade/seo-estruturados.test.ts`). O layout declara `#negocio`,
+`#rafael` e `#website` (sem `SearchAction`: não há busca no site).
+
+- `/financiamento/`, `/home_equity/`: Service (`areaServed` de `CIDADES_ATENDIDAS`
+  via `areaServida`), BreadcrumbList e FAQPage. O FAQ visível e o JSON-LD saem do
+  mesmo array em `lib/seo/faqs-landings.ts` — edite lá, nunca no JSX. Fecham com
+  o bloco "Leia também" (3 posts mais recentes da categoria).
+- `/sobre/`: BreadcrumbList. `/blog/`: BreadcrumbList + ItemList (ordem exibida).
+  `/imoveis/`: BreadcrumbList + ItemList. Artigo e imóvel: ver seções acima.
+- Sitemap: posts (capa) e imóveis (capa + galerias) levam `images`.
+- **`title.template` não foi adotado**: os sufixos das páginas divergem ("— Rafael
+  Teixeira · Capital Imobiliário", "| Rafael Teixeira", "| RT Capital Imobiliário",
+  artigo sem sufixo). Um template único mudaria o `<title>` final de várias.
+- Rótulos de seção da página de imóvel são `<h2 class="eyebrow">` (regra
+  `h2.eyebrow` em `lp.css` zera o estilo de h2).
+
 ### Simuladores
 Financiamento (`/financiamento/`) e home equity (`/home_equity/`). O de
 financiamento tem interruptor SAC/PRICE, com SAC como padrão.

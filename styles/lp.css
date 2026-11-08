@@ -18,6 +18,8 @@
   section{padding:36px 0;background:var(--marfim);}
   .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;display:flex;align-items:center;gap:10px;margin-bottom:var(--s4);color:var(--jade);}
   .eyebrow::before{content:"";width:9px;height:9px;background:var(--jade);flex:none;}
+  /* h2.eyebrow: rótulo de seção semântico com o visual do eyebrow. O h2 global acima define max-width, peso e line-height que não valem aqui. */
+  h2.eyebrow{max-width:none;font-weight:400;line-height:inherit;}
   h2{font-family:var(--display);font-weight:400;font-size:clamp(26px,4vw,36px);color:var(--abissal);margin-bottom:var(--s3);line-height:1.15;max-width:24ch;}
   .mono-num{font-family:var(--mono);font-weight:500;white-space:nowrap;}
 

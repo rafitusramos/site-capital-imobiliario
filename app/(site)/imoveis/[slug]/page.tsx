@@ -353,7 +353,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {imovel.descricao_completa ? (
           <section id="projeto">
             <div className="wrap">
-              <div className="eyebrow reveal">O projeto</div>
+              <h2 className="eyebrow reveal">O projeto</h2>
               <p className="im-projeto reveal d2">{imovel.descricao_completa}</p>
             </div>
           </section>
@@ -363,7 +363,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {pronto && ficha.length > 0 ? (
           <section id="ficha">
             <div className="wrap">
-              <div className="eyebrow reveal">Ficha do imóvel</div>
+              <h2 className="eyebrow reveal">Ficha do imóvel</h2>
               <dl className="im-ficha reveal d2">
                 {ficha.map((item) => (
                   <div key={item.rotulo} className="im-ficha-item">
@@ -380,7 +380,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {idVideo ? (
           <section id="video">
             <div className="wrap">
-              <div className="eyebrow reveal">Vídeo</div>
+              <h2 className="eyebrow reveal">Vídeo</h2>
               <div className="im-video reveal d2">
                 {/* O YouTube não permite escolher botões individualmente: ou a
                     barra inteira ou nenhuma (controls=0). Estes parâmetros são
@@ -400,7 +400,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {imagensEmpreendimento.length > 0 ? (
           <section id="galeria">
             <div className="wrap">
-              <div className="eyebrow reveal">Galeria</div>
+              <h2 className="eyebrow reveal">Galeria</h2>
             </div>
             {/* `Carrossel`, `GaleriaPlantas` e `ImovelCard` não recebem
                 `className`; o reveal vem por um wrapper em vez de alargar a API
@@ -420,7 +420,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {!pronto ? (
         <section id="fase-obra">
           <div className="wrap">
-            <div className="eyebrow reveal">Fase da obra</div>
+            <h2 className="eyebrow reveal">Fase da obra</h2>
             <ol className="im-fases reveal d2" aria-label="Linha do tempo da obra">
               {fases.map((fase, indiceFase) => {
                 const feita = indiceFase < indiceFaseAtual;
@@ -445,7 +445,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {diferenciaisLazer.length > 0 ? (
           <section id="lazer">
             <div className="wrap">
-              <div className="eyebrow reveal">Lazer e convívio</div>
+              <h2 className="eyebrow reveal">Lazer e convívio</h2>
               <ul className="im-lazer reveal d2">
                 {diferenciaisLazer.map((item) => {
                   const Icone = obterIcone(item.icone);
@@ -464,7 +464,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {!pronto && (imovel.descricao_unidades || imagensDecorado.length > 0) ? (
           <section id="unidades">
             <div className="wrap">
-              <div className="eyebrow reveal">As unidades</div>
+              <h2 className="eyebrow reveal">As unidades</h2>
               {imovel.descricao_unidades ? (
                 <p className="im-projeto reveal d2">{imovel.descricao_unidades}</p>
               ) : null}
@@ -485,7 +485,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {!pronto && (imagensPlanta.length > 0 || imovel.tipologias.length > 0) ? (
           <section id="plantas">
             <div className="wrap">
-              <div className="eyebrow reveal">Plantas e quadro de áreas</div>
+              <h2 className="eyebrow reveal">Plantas e quadro de áreas</h2>
             </div>
             {imagensPlanta.length > 0 ? (
               /* Só seguro porque `.visivel` agora zera o `will-change` (lp.css):
@@ -559,7 +559,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {diferenciaisGerais.length > 0 ? (
           <section id="diferenciais">
             <div className="wrap">
-              <div className="eyebrow reveal">Diferenciais</div>
+              <h2 className="eyebrow reveal">Diferenciais</h2>
               <div className="im-diferenciais reveal d2">
                 {diferenciaisGerais.map((item) => {
                   const Icone = obterIcone(item.icone);
@@ -579,7 +579,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {enderecoPublico || local ? (
           <section id="localizacao">
             <div className="wrap">
-              <div className="eyebrow reveal">Localização</div>
+              <h2 className="eyebrow reveal">Localização</h2>
               <div className="im-localizacao reveal d2">
                 {enderecoPublico ? <p className="endereco">{enderecoPublico}</p> : null}
                 {/* Prévia embutida sem chave de API (embed clássico do Maps). O
@@ -615,7 +615,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {!pronto && imovel.construtora ? (
           <section id="realizacao">
             <div className="wrap">
-              <div className="eyebrow reveal">Realização</div>
+              <h2 className="eyebrow reveal">Realização</h2>
               <div className="im-realizacao-centro reveal d1">
                 {imovel.construtora_logo_url ? (
                   <img src={imovel.construtora_logo_url} alt={imovel.construtora} loading="lazy" />
@@ -630,7 +630,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {imovel.faqs.length > 0 ? (
           <section id="faq">
             <div className="wrap">
-              <div className="eyebrow reveal">Perguntas frequentes</div>
+              <h2 className="eyebrow reveal">Perguntas frequentes</h2>
               {imovel.faqs.map((faq) => (
                 <details key={faq.id} className="reveal d2">
                   <summary>{faq.pergunta}</summary>
@@ -665,9 +665,9 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         {relacionados.length > 0 ? (
           <section id={pronto ? "outros-imoveis" : "outros-empreendimentos"}>
             <div className="wrap">
-              <div className="eyebrow reveal">
+              <h2 className="eyebrow reveal">
                 {pronto ? "Outros imóveis" : "Continue pesquisando"}
-              </div>
+              </h2>
               {/* Sem reveal na grade: quem anima é cada `ImovelCard`, para os
                   cards entrarem conforme aparecem em vez de a grade inteira
                   surgir de uma vez quando o topo dela toca a viewport. */}

@@ -142,3 +142,28 @@ export async function getTiposEFases(): Promise<{
 
   return { tipos: tipos ?? [], fases: fases ?? [] };
 }
+
+/** Slug, data de alteração e imagens (todas as galerias) dos imóveis ativos — para o sitemap. */
+export async function getImoveisParaSitemap(): Promise<
+  { slug: string; updated_at: string; imagens: { url: string }[] }[]
+> {
+  const supabase = createStaticClient();
+  const { data, error } = await supabase
+    .from("imoveis")
+    .select("slug, updated_at, imagens:imovel_imagens(url, ordem)")
+    .eq("status", "ativo")
+    .order("ordem", { ascending: true })
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  const linhas = (data ?? []) as unknown as {
+    slug: string;
+    updated_at: string;
+    imagens: { url: string; ordem: number }[] | null;
+  }[];
+  return linhas.map((linha) => ({
+    slug: linha.slug,
+    updated_at: linha.updated_at,
+    imagens: [...(linha.imagens ?? [])].sort((a, b) => a.ordem - b.ordem),
+  }));
+}

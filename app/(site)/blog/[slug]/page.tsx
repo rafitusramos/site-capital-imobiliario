@@ -105,7 +105,7 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
 
             {post.cover_image ? (
               <figure className="artigo-imagem">
-                <img src={post.cover_image} alt={post.title} loading="lazy" />
+                <img src={post.cover_image} alt={post.title} loading="eager" fetchPriority="high" />
               </figure>
             ) : null}
 
