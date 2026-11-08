@@ -37,15 +37,19 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 773 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 776 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
-no SQL Editor do Supabase; a última é a **022**.
+no SQL Editor do Supabase; a última é a **023**.
 
 ### CRM
 Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 (financiamento, home-equity, consórcio, imóveis). A especificação completa é
 `docs/crm-spec.md`, citada nos comentários do módulo inteiro por seção.
 
+- Lead em `ganho`/`perdido` (não `nao-qualificado`) há mais de 30 dias é arquivado
+  sozinho, todo dia às 03:00 BRT, pela função `arquivar_leads_finais_antigos` +
+  job pg_cron `crm-arquivar-finais-antigos` (migration 023). `arquivado_por` nulo
+  = sistema; `restaurarLead` grava `restaurado_em` para o job não re-arquivar.
 - Contagens do cabeçalho (por etapa e por aba) vêm do RPC `contar_leads_crm`
   (migration 022), **nunca** somadas em JS: o max-rows do PostgREST truncaria em silêncio.
 - `lib/crm/etapas.ts` **espelha** os seeds de `crm_etapas` da migration 014. Os

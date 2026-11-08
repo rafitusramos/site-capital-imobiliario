@@ -137,6 +137,20 @@ de origem e nada é gravado.
 **Mudar etapa pelo formulário:** o `select` de etapa dispara o mesmo diálogo de
 motivo quando aplicável.
 
+
+### 1.5 Arquivamento automático
+
+Lead em `ganho` ou `perdido` (**não** `nao-qualificado`) há mais de 30 dias é
+arquivado sozinho. Vive na migration 023: função
+`arquivar_leads_finais_antigos()` + job pg_cron `crm-arquivar-finais-antigos`,
+todo dia às 03:00 de São Paulo (06:00 UTC).
+
+- Os 30 dias contam de `status_alterado_em` (renovado a cada troca de etapa).
+- Arquivado pelo sistema = `arquivado_por` nulo; a tela de arquivados mostra
+  "Arquivado automaticamente".
+- Lead restaurado à mão (`restaurado_em`) não é re-arquivado até mudar de
+  etapa de novo e voltar a ficar mais de 30 dias numa etapa final.
+
 ---
 
 ## 2. Banco de dados
@@ -653,7 +667,7 @@ Todas retornam `AcaoResultado` (o tipo já existente em
 | `moverLead` | `leadId, etapa, motivo?, motivoObs?, updatedAt` | RPC `mover_lead_crm`; traduz `MOTIVO_OBRIGATORIO`, `ETAPA_INVALIDA`, `LEAD_DESATUALIZADO` em mensagem pt-BR |
 | `criarLead` | comum + origem | cria `leads` + linha de detalhe da origem; etapa = `is_inicial` do pipeline |
 | `atualizarLead` | comum + origem + extras | upsert na tabela de detalhe (lead manual pode não ter linha) |
-| `arquivarLead` / `restaurarLead` | `leadId` | grava/limpa `arquivado_em` + `arquivado_por` |
+| `arquivarLead` / `restaurarLead` | `leadId` | grava/limpa `arquivado_em` + `arquivado_por`; `restaurarLead` também grava `restaurado_em` (§1.5) |
 | `excluirLead` | `leadId, motivo?` | só `admin`; grava `crm_exclusoes` antes do delete em cascata |
 | `registrarInteracao` | `leadId, tipo, conteudo, lembrete?` | RPC transacional |
 | `concluirLembrete` / `reagendarLembrete` | `lembreteId[, novaData]` | |
@@ -792,6 +806,7 @@ custar um byte a mais de download.
 | 12 | Voltar de `ganho` para `contrato` | Permitido e registrado no histórico |
 | 13 | Sequência de protocolo na virada do ano | `RT-2027-0042` continua a numeração; a sequência é global. Não é bug — está documentado |
 | 14 | Etapa desativada com leads dentro | A coluna continua aparecendo enquanto tiver lead, marcada como inativa; não some com lead dentro |
+| 15 | Lead restaurado da lixeira que já passou de 30 dias em `ganho`/`perdido` | `restaurado_em` o protege do job (§1.5) até ele mudar de etapa de novo |
 
 ---
 

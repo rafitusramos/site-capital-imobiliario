@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { excluirLead, restaurarLead } from "@/app/actions/admin-crm";
 import { useToast } from "@/lib/admin/toast";
 import { mascaraTelefone } from "@/lib/mascaras";
+import { rotuloArquivamento } from "@/lib/crm/arquivamento";
 import { ConfirmarAcao } from "@/components/admin/crm/ConfirmarAcao";
 import { EstadoVazio } from "@/components/admin/crm/EstadoVazio";
 import type { LeadArquivado } from "@/lib/queries/admin-crm";
@@ -107,7 +108,12 @@ export function PainelArquivados({ arquivados, souAdmin }: PainelArquivadosProps
                 </td>
                 <td className="px-3 py-2 text-neutral-600">{lead.tipoInfo?.label ?? lead.tipo}</td>
                 <td className="px-3 py-2 text-neutral-600">{lead.corretor?.full_name ?? "Sem responsável"}</td>
-                <td className="px-3 py-2 text-neutral-600">{lead.arquivado_em ? formatarData(lead.arquivado_em) : "—"}</td>
+                <td className="px-3 py-2 text-neutral-600">
+                  {lead.arquivado_em ? formatarData(lead.arquivado_em) : "—"}
+                  {rotuloArquivamento(lead) ? (
+                    <p className="text-xs text-neutral-500">{rotuloArquivamento(lead)}</p>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2">
                   <div className="flex gap-1.5">
                     <button
