@@ -24,6 +24,10 @@ import type { ImagemInput, TipologiaInput, DiferencialInput, FaqInput } from "@/
 import type { ImovelDiferencialGrupo } from "@/types/database";
 import { listaDeIcones, obterIcone } from "@/components/imoveis/icones";
 import { GaleriaImovel } from "@/components/admin/GaleriaImovel";
+import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
+import { useGuardaAlteracoes } from "@/components/admin/useGuardaAlteracoes";
+import { houveAlteracao } from "@/lib/admin/alteracoes";
+import { useToast } from "@/lib/admin/toast";
 
 const CAMPO =
   "mb-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
@@ -179,8 +183,11 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   const [enviandoDados, setEnviandoDados] = useState<
     "salvar" | "publicar" | "despublicar" | "excluir" | null
   >(null);
-  const [erroDados, setErroDados] = useState<string | null>(null);
-  const [mensagemDados, setMensagemDados] = useState<string | null>(null);
+  // Erro de validação do campo slug: fica inline, junto da confirmação. O resto
+  // do feedback (salvo, publicado, falhas de servidor) sai por toast.
+  const [erroSlug, setErroSlug] = useState<string | null>(null);
+  const [confirmandoExcluir, setConfirmandoExcluir] = useState(false);
+  const { mostrarToast } = useToast();
 
   function setCampoDados<K extends keyof ValoresDados>(campo: K, valor: ValoresDados[K]) {
     setValoresDados((atual) => ({ ...atual, [campo]: valor }));
@@ -204,7 +211,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
 
   function bloqueadoPorSlug(): boolean {
     if (slugMudouEmImovelPublicado && !confirmaSlug) {
-      setErroDados("Marque a confirmação abaixo antes de salvar a mudança de slug.");
+      setErroSlug("Marque a confirmação abaixo antes de salvar a mudança de slug.");
       return true;
     }
     return false;
@@ -246,8 +253,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   }
 
   async function salvarDados() {
-    setErroDados(null);
-    setMensagemDados(null);
+    setErroSlug(null);
     if (bloqueadoPorSlug()) return;
 
     setEnviandoDados("salvar");
@@ -255,58 +261,68 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
     setEnviandoDados(null);
 
     if (!resultado.sucesso) {
-      setErroDados(resultado.erro ?? "Não foi possível salvar o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar o empreendimento.");
       return;
     }
+    setBaseline((atual) => ({ ...atual, dados: valoresDados }));
     if (!imovel && resultado.id) {
       router.replace(`/admin/imoveis/${resultado.id}`);
       return;
     }
     router.refresh();
-    setMensagemDados("Dados salvos.");
+    mostrarToast("sucesso", "Dados salvos.");
   }
 
   async function publicar() {
     if (!imovel) return;
-    setErroDados(null);
-    setMensagemDados(null);
+    setErroSlug(null);
+    if (bloqueadoPorSlug()) return;
+
+    // Salva os dados pendentes antes: publicar sem salvar publicaria a versão
+    // antiga do banco e deixaria a edição só na tela (mesmo contrato do PostEditor).
     setEnviandoDados("publicar");
+    const resultadoSalvar = await salvarImovel(montarPayloadDados());
+    if (!resultadoSalvar.sucesso) {
+      setEnviandoDados(null);
+      mostrarToast("erro", resultadoSalvar.erro ?? "Não foi possível salvar antes de publicar.");
+      return;
+    }
+    setBaseline((atual) => ({ ...atual, dados: valoresDados }));
+
     const resultado = await publicarImovel(imovel.id, valoresDados.slug);
     setEnviandoDados(null);
     if (!resultado.sucesso) {
-      setErroDados(resultado.erro ?? "Não foi possível publicar o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível publicar o empreendimento.");
       return;
     }
     router.refresh();
-    setMensagemDados("Publicado.");
+    mostrarToast("sucesso", "Publicado.");
   }
 
   async function despublicar() {
     if (!imovel) return;
-    setErroDados(null);
-    setMensagemDados(null);
     setEnviandoDados("despublicar");
     const resultado = await despublicarImovel(imovel.id, imovel.slug);
     setEnviandoDados(null);
     if (!resultado.sucesso) {
-      setErroDados(resultado.erro ?? "Não foi possível despublicar o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível despublicar o empreendimento.");
       return;
     }
     router.refresh();
-    setMensagemDados("Despublicado — voltou para rascunho.");
+    mostrarToast("sucesso", "Despublicado — voltou para rascunho.");
   }
 
   async function excluir() {
     if (!imovel) return;
-    if (!confirm(`Excluir "${imovel.titulo}"? Essa ação não pode ser desfeita.`)) return;
-    setErroDados(null);
+    setConfirmandoExcluir(false);
     setEnviandoDados("excluir");
     const resultado = await excluirImovel(imovel.id, imovel.slug);
     setEnviandoDados(null);
     if (!resultado.sucesso) {
-      setErroDados(resultado.erro ?? "Não foi possível excluir o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível excluir o empreendimento.");
       return;
     }
+    // Excluído: a navegação é por código, que a guarda de alterações não intercepta.
     router.push("/admin/imoveis");
   }
 
@@ -328,8 +344,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   );
   const [galeriaAlterada, setGaleriaAlterada] = useState(false);
   const [enviandoGaleria, setEnviandoGaleria] = useState(false);
-  const [erroGaleria, setErroGaleria] = useState<string | null>(null);
-  const [mensagemGaleria, setMensagemGaleria] = useState<string | null>(null);
 
   function aoMudarGaleria(novasImagens: ImagemInput[]) {
     setImagens(novasImagens);
@@ -338,18 +352,16 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
 
   async function salvarGaleria() {
     if (!imovel) return;
-    setErroGaleria(null);
-    setMensagemGaleria(null);
     setEnviandoGaleria(true);
     const resultado = await salvarImagens(imovel.id, valoresDados.slug, imagens);
     setEnviandoGaleria(false);
     if (!resultado.sucesso) {
-      setErroGaleria(resultado.erro ?? "Não foi possível salvar a galeria.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar a galeria.");
       return;
     }
     router.refresh();
     setGaleriaAlterada(false);
-    setMensagemGaleria("Galeria salva.");
+    mostrarToast("sucesso", "Galeria salva.");
   }
 
   // -----------------------------------------------------------------
@@ -372,8 +384,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   );
   const [enviandoTipologias, setEnviandoTipologias] = useState(false);
   const [enviandoPlantaLinha, setEnviandoPlantaLinha] = useState<string | null>(null);
-  const [erroTipologias, setErroTipologias] = useState<string | null>(null);
-  const [mensagemTipologias, setMensagemTipologias] = useState<string | null>(null);
 
   function adicionarTipologia() {
     setTipologias((atual) => [
@@ -404,7 +414,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
   async function aoSelecionarPlanta(chave: string, e: ChangeEvent<HTMLInputElement>) {
     const arquivo = e.target.files?.[0];
     if (!arquivo) return;
-    setErroTipologias(null);
     setEnviandoPlantaLinha(chave);
     // Mesma redução da galeria: sem ela a planta em alta resolução estoura o
     // teto de requisição da função serverless na Vercel.
@@ -415,7 +424,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
     setEnviandoPlantaLinha(null);
     e.target.value = "";
     if (!resultado.sucesso || !resultado.url) {
-      setErroTipologias(resultado.erro ?? "Não foi possível enviar a planta.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível enviar a planta.");
       return;
     }
     atualizarTipologia(chave, { planta_url: resultado.url });
@@ -423,18 +432,17 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
 
   async function salvarTipologiasAba() {
     if (!imovel) return;
-    setErroTipologias(null);
-    setMensagemTipologias(null);
     setEnviandoTipologias(true);
     const payload = tipologias.map(({ chaveLocal, ...resto }) => resto);
     const resultado = await salvarTipologias(imovel.id, valoresDados.slug, payload);
     setEnviandoTipologias(false);
     if (!resultado.sucesso) {
-      setErroTipologias(resultado.erro ?? "Não foi possível salvar as tipologias.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar as tipologias.");
       return;
     }
+    setBaseline((atual) => ({ ...atual, tipologias }));
     router.refresh();
-    setMensagemTipologias("Tipologias salvas.");
+    mostrarToast("sucesso", "Tipologias salvas.");
   }
 
   // -----------------------------------------------------------------
@@ -452,8 +460,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
       })),
   );
   const [enviandoDiferenciais, setEnviandoDiferenciais] = useState(false);
-  const [erroDiferenciais, setErroDiferenciais] = useState<string | null>(null);
-  const [mensagemDiferenciais, setMensagemDiferenciais] = useState<string | null>(null);
 
   function adicionarDiferencial() {
     setDiferenciais((atual) => [
@@ -478,18 +484,17 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
 
   async function salvarDiferenciaisAba() {
     if (!imovel) return;
-    setErroDiferenciais(null);
-    setMensagemDiferenciais(null);
     setEnviandoDiferenciais(true);
     const payload = diferenciais.map(({ chaveLocal, ...resto }) => resto);
     const resultado = await salvarDiferenciais(imovel.id, valoresDados.slug, payload);
     setEnviandoDiferenciais(false);
     if (!resultado.sucesso) {
-      setErroDiferenciais(resultado.erro ?? "Não foi possível salvar os diferenciais.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar os diferenciais.");
       return;
     }
+    setBaseline((atual) => ({ ...atual, diferenciais }));
     router.refresh();
-    setMensagemDiferenciais("Diferenciais salvos.");
+    mostrarToast("sucesso", "Diferenciais salvos.");
   }
 
   // -----------------------------------------------------------------
@@ -505,8 +510,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
     })),
   );
   const [enviandoFaqs, setEnviandoFaqs] = useState(false);
-  const [erroFaqs, setErroFaqs] = useState<string | null>(null);
-  const [mensagemFaqs, setMensagemFaqs] = useState<string | null>(null);
 
   function adicionarFaq() {
     setFaqs((atual) => [
@@ -525,21 +528,28 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
 
   async function salvarFaqsAba() {
     if (!imovel) return;
-    setErroFaqs(null);
-    setMensagemFaqs(null);
     setEnviandoFaqs(true);
     const payload = faqs.map(({ chaveLocal, ...resto }) => resto);
     const resultado = await salvarFaqs(imovel.id, valoresDados.slug, payload);
     setEnviandoFaqs(false);
     if (!resultado.sucesso) {
-      setErroFaqs(resultado.erro ?? "Não foi possível salvar o FAQ.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar o FAQ.");
       return;
     }
+    setBaseline((atual) => ({ ...atual, faqs }));
     router.refresh();
-    setMensagemFaqs("FAQ salvo.");
+    mostrarToast("sucesso", "FAQ salvo.");
   }
 
   // -----------------------------------------------------------------
+  // Alterações não salvas. A galeria já tem a sua própria marca
+  // (`galeriaAlterada`); as demais abas são comparadas com o último estado
+  // gravado, porque o `imovel` da prop não muda depois de salvar.
+  const estadoAtual = { dados: valoresDados, tipologias, diferenciais, faqs };
+  const [baseline, setBaseline] = useState(estadoAtual);
+  const sujo = galeriaAlterada || houveAlteracao(baseline, estadoAtual);
+  const { saidaPendente, confirmarSaida, cancelarSaida } = useGuardaAlteracoes(sujo);
+
   return (
     <div>
       <Link
@@ -594,6 +604,11 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
                     />
                     Entendo que isso quebra a URL indexada e quero mudar assim mesmo.
                   </label>
+                  {erroSlug ? (
+                    <p role="alert" className="mt-2 font-medium">
+                      {erroSlug}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -904,9 +919,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
             </div>
           </div>
 
-          {erroDados ? <p className="mb-3 text-sm text-[var(--erro)]">{erroDados}</p> : null}
-          {mensagemDados ? <p className="mb-3 text-sm text-[var(--jade)]">{mensagemDados}</p> : null}
-
           <div className="flex flex-wrap gap-3 border-t border-black/10 pt-4">
             <button
               type="button"
@@ -939,7 +951,7 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
               <button
                 type="button"
                 disabled={enviandoDados !== null}
-                onClick={excluir}
+                onClick={() => setConfirmandoExcluir(true)}
                 className="ml-auto rounded-md px-4 py-2 text-sm font-semibold text-[var(--erro)] transition hover:bg-red-50 disabled:opacity-50"
               >
                 {enviandoDados === "excluir" ? "Excluindo…" : "Excluir"}
@@ -972,9 +984,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
               <span className="text-xs text-neutral-500">Há alterações não salvas.</span>
             ) : null}
           </div>
-
-          {erroGaleria ? <p className="mt-3 text-sm text-[var(--erro)]">{erroGaleria}</p> : null}
-          {mensagemGaleria ? <p className="mt-3 text-sm text-[var(--jade)]">{mensagemGaleria}</p> : null}
         </div>
       ) : null}
 
@@ -1096,11 +1105,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
             + Adicionar tipologia
           </button>
 
-          {erroTipologias ? <p className="mb-3 text-sm text-[var(--erro)]">{erroTipologias}</p> : null}
-          {mensagemTipologias ? (
-            <p className="mb-3 text-sm text-[var(--jade)]">{mensagemTipologias}</p>
-          ) : null}
-
           <div>
             <button
               type="button"
@@ -1179,11 +1183,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
             + Adicionar diferencial
           </button>
 
-          {erroDiferenciais ? <p className="mb-3 text-sm text-[var(--erro)]">{erroDiferenciais}</p> : null}
-          {mensagemDiferenciais ? (
-            <p className="mb-3 text-sm text-[var(--jade)]">{mensagemDiferenciais}</p>
-          ) : null}
-
           <div>
             <button
               type="button"
@@ -1232,9 +1231,6 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
             + Adicionar pergunta
           </button>
 
-          {erroFaqs ? <p className="mb-3 text-sm text-[var(--erro)]">{erroFaqs}</p> : null}
-          {mensagemFaqs ? <p className="mb-3 text-sm text-[var(--jade)]">{mensagemFaqs}</p> : null}
-
           <div>
             <button type="button" disabled={enviandoFaqs} onClick={salvarFaqsAba} className={BOTAO_PRIMARIO}>
               {enviandoFaqs ? "Salvando…" : "Salvar FAQ"}
@@ -1242,6 +1238,26 @@ export function ImovelEditor({ imovel, tipos, fases }: ImovelEditorProps) {
           </div>
         </div>
       ) : null}
+
+      <ConfirmarAcao
+        aberto={confirmandoExcluir}
+        titulo="Excluir empreendimento?"
+        descricao={`"${imovel?.titulo ?? ""}" será excluído e a URL deixa de existir. Essa ação não pode ser desfeita.`}
+        rotuloConfirmar="Excluir"
+        variante="perigo"
+        onConfirmar={excluir}
+        onCancelar={() => setConfirmandoExcluir(false)}
+      />
+      <ConfirmarAcao
+        aberto={saidaPendente}
+        titulo="Descartar alterações?"
+        descricao="Há alterações não salvas neste empreendimento. Se sair agora, elas serão perdidas."
+        rotuloConfirmar="Descartar e sair"
+        rotuloCancelar="Continuar editando"
+        variante="perigo"
+        onConfirmar={confirmarSaida}
+        onCancelar={cancelarSaida}
+      />
     </div>
   );
 }

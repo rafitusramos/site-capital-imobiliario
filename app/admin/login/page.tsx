@@ -18,17 +18,24 @@ export default function AdminLoginPage() {
     setErro(null);
     setCarregando(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
 
-    if (error) {
+      if (error) {
+        setErro("E-mail ou senha inválidos.");
+        return;
+      }
+
+      router.replace(ADMIN_HOME);
+      router.refresh();
+    } catch (excecao) {
+      // Falha de rede ou de configuração: sem isto o botão ficava em "Entrando…" para sempre.
+      console.error("Falha ao entrar no admin:", excecao);
+      setErro("Não foi possível entrar agora. Verifique sua conexão e tente novamente.");
+    } finally {
       setCarregando(false);
-      setErro("E-mail ou senha inválidos.");
-      return;
     }
-
-    router.replace(ADMIN_HOME);
-    router.refresh();
   }
 
   return (
@@ -68,7 +75,11 @@ export default function AdminLoginPage() {
           className="mb-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]"
         />
 
-        {erro ? <p className="mb-4 text-sm text-[var(--erro)]">{erro}</p> : null}
+        {erro ? (
+          <p role="alert" className="mb-4 text-sm text-[var(--erro)]">
+            {erro}
+          </p>
+        ) : null}
 
         <button
           type="submit"

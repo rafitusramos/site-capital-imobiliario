@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 758 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 782 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
 no SQL Editor do Supabase; a última é a **021**.
 
