@@ -37,9 +37,9 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 702 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 755 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`, aplicadas à mão
-no SQL Editor do Supabase; a última é a **019**.
+no SQL Editor do Supabase; a última é a **021**.
 
 ### CRM
 Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
@@ -211,6 +211,7 @@ Tipografia que o layout de fato carrega: Libre Caslon Display (`--display`),
 Libre Caslon Text (`--texto`), Archivo (`--sans`), IBM Plex Mono (`--mono`).
 O admin carrega ainda Geologica (`--geologica`), usada só na soma de valores do
 cabeçalho das colunas do CRM.
+Fontes hospedadas em `app/fonts/` via `next/font/local` (woff2 latin em `app/fonts/arquivos/`); os 3 root layouts importam de lá.
 Cores: `--jade`, `--bronze`, `--abissal`, `--marfim`, `--areia`, `--tinta`,
 `--branco`, `--erro`.
 
@@ -249,6 +250,12 @@ Financiamento, Home Equity, Consórcio, Imóveis.
 - As entidades JSON-LD `#negocio` e `#rafael` são declaradas **uma única vez**,
   no layout, a partir de `lib/seo/negocio.ts`. Não redeclare em página, ou
   voltam as entidades conflitantes.
+- O `image` do BlogPosting concatenava `SITE_URL` com a capa, que já é URL
+  absoluta do Supabase: saía `https://rtcapitalimobiliario.com.brhttps://...`
+  em todo artigo com capa. O JSON-LD do artigo agora vem de `montarJsonLdArtigo`
+  (`lib/blog/json-ld.ts`), travado em `tests/unidade/blog-json-ld.test.ts`.
+  Toda URL que pode vir absoluta ou relativa passa por `urlAbsoluta`
+  (`lib/og.ts`), nunca por concatenação com `SITE_URL`.
 - Build no Windows falhando com `spawn UNKNOWN` na geração de páginas: é
   processo `node` órfão. Encerre os `node` pendentes e apague `.next`.
 - Data que **volta do banco** não passa em `z.string().datetime()`: o PostgREST
@@ -280,6 +287,7 @@ Financiamento, Home Equity, Consórcio, Imóveis.
 - `DndContext` do dnd-kit precisa de `id` fixo quando a página é renderizada no
   servidor: sem ele o `aria-describedby` dos itens vem de um contador de módulo
   que diverge entre servidor e cliente e quebra a hidratação.
+- Build da Vercel quebrou em `next/font/google` (`Cannot read properties of null (reading '1')`): o Google passou a devolver URLs de fonte sem extensão às máquinas de build. Por isso as fontes são locais. Peso novo exige baixar o woff2 `latin` para `app/fonts/arquivos/` e declarar em `app/fonts/index.ts` — nunca volte ao `next/font/google`.
 - Estas quatro decisões de estrutura **parecem** desvio da convenção do Next e
   não são — não as "conserte":
   1. **Não existe `app/layout.tsx`.** São dois root layouts,
@@ -300,6 +308,24 @@ Financiamento, Home Equity, Consórcio, Imóveis.
      importada dali. A regra `@next/next/no-html-link-for-pages` está
      desligada no `eslint.config.mjs` por causa disso; para religar, primeiro
      dispare `page_view` a cada mudança de rota em `lib/analytics/eventos.ts`.
+- **Escrita de conteúdo é só para admin, nas duas camadas.** Policy de escrita
+  usa `public.eh_admin()` (migration 020), **nunca** `auth.role() =
+  'authenticated'`: esta última deixa qualquer corretor logado apagar posts,
+  imóveis e imagens. Policy nova de escrita sem `eh_admin()` é regressão. Na
+  aplicação, o ponto único da checagem é `exigirAdmin()` em `lib/admin/auth.ts`
+  (toda action de `admin-posts`, `admin-imoveis` e `admin-parametros` começa
+  por ele; as páginas usam `garantirAdminOuRedirecionar()` nos layouts de
+  `posts/`, `imoveis/` e `parametros/`). As ações do CRM seguem a RLS do CRM.
+- **`profiles.role` nunca pode ser atualizável pelo próprio usuário.**
+  `profiles_update_own` filtra a *linha*, não a *coluna*: sem revogar o
+  privilégio de coluna, qualquer logado fazia `update profiles set role =
+  'admin'` e passava em `eh_admin()` e em toda policy. A 020 deixa só
+  `full_name, phone, avatar_url, creci` com UPDATE. Coluna nova em `profiles`
+  nasce **sem** grant — conceda explicitamente só se for editável pelo dono.
+- Coleção filha gravada em várias chamadas (apagar, depois inserir/atualizar)
+  deixa a lista pela metade se uma falhar. Tipologias, diferenciais, FAQs,
+  imagens do imóvel e tags do lead vão por RPC `security invoker` (migration
+  021), uma transação por coleção.
 - `eslint .` tem de sair com zero erro e zero aviso — é assim que a suíte está
   hoje. Regra desligada exige comentário com o motivo e a condição de voltar,
   no próprio `eslint.config.mjs`. Não silencie aviso sem justificar.

@@ -29,6 +29,9 @@ import type {
 const TIPO_UUID = "123e4567-e89b-12d3-a456-426614174001";
 const FASE_UUID = "123e4567-e89b-12d3-a456-426614174002";
 
+const UUID_IMOVEL = "33333333-3333-4333-8333-333333333333";
+const UUID_IMOVEL_EXISTENTE = "44444444-4444-4444-8444-444444444444";
+
 function montarSupabase() {
   const falso = criarSupabaseFalso();
   vi.mocked(createClient).mockResolvedValue(falso.cliente as never);
@@ -118,14 +121,14 @@ afterEach(() => {
 describe("sessão expirada", () => {
   const acoes: Array<[string, () => Promise<unknown>]> = [
     ["salvarImovel", () => salvarImovel(imovelValido())],
-    ["publicarImovel", () => publicarImovel("imovel-1", "residencial-jardim")],
-    ["despublicarImovel", () => despublicarImovel("imovel-1", "residencial-jardim")],
-    ["excluirImovel", () => excluirImovel("imovel-1", "residencial-jardim")],
+    ["publicarImovel", () => publicarImovel(UUID_IMOVEL, "residencial-jardim")],
+    ["despublicarImovel", () => despublicarImovel(UUID_IMOVEL, "residencial-jardim")],
+    ["excluirImovel", () => excluirImovel(UUID_IMOVEL, "residencial-jardim")],
     ["uploadImagemImovel", () => uploadImagemImovel(new FormData())],
-    ["salvarImagens", () => salvarImagens("imovel-1", "residencial-jardim", [])],
-    ["salvarTipologias", () => salvarTipologias("imovel-1", "residencial-jardim", [])],
-    ["salvarDiferenciais", () => salvarDiferenciais("imovel-1", "residencial-jardim", [])],
-    ["salvarFaqs", () => salvarFaqs("imovel-1", "residencial-jardim", [])],
+    ["salvarImagens", () => salvarImagens(UUID_IMOVEL, "residencial-jardim", [])],
+    ["salvarTipologias", () => salvarTipologias(UUID_IMOVEL, "residencial-jardim", [])],
+    ["salvarDiferenciais", () => salvarDiferenciais(UUID_IMOVEL, "residencial-jardim", [])],
+    ["salvarFaqs", () => salvarFaqs(UUID_IMOVEL, "residencial-jardim", [])],
   ];
 
   test.each(acoes)("%s sem usuário autenticado devolve erro de sessão", async (_nome, chamar) => {
@@ -155,11 +158,12 @@ describe("salvarImovel", () => {
   test("com id faz update e revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imoveis", "update", { data: null, error: null });
+    falso.programarResposta("imoveis", "select", { data: { slug: "residencial-jardim-das-palmeiras" }, error: null });
+    falso.programarResposta("imoveis", "update", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await salvarImovel({ ...imovelValido(), id: "imovel-existente" });
+    const resultado = await salvarImovel({ ...imovelValido(), id: UUID_IMOVEL_EXISTENTE });
 
-    expect(resultado).toEqual({ sucesso: true, id: "imovel-existente" });
+    expect(resultado).toEqual({ sucesso: true, id: UUID_IMOVEL_EXISTENTE });
     const chamada = falso.chamadas.find((c) => c.tabela === "imoveis" && c.operacao === "update");
     expect(chamada).toBeDefined();
     expect(revalidatePath).toHaveBeenCalledWith("/imoveis");
@@ -185,11 +189,11 @@ describe("publicarImovel", () => {
   test("grava status ativo e revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imoveis", "update", { data: null, error: null });
+    falso.programarResposta("imoveis", "update", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await publicarImovel("imovel-1", "residencial-jardim");
+    const resultado = await publicarImovel(UUID_IMOVEL, "residencial-jardim");
 
-    expect(resultado).toEqual({ sucesso: true, id: "imovel-1" });
+    expect(resultado).toEqual({ sucesso: true, id: UUID_IMOVEL });
     const chamada = falso.chamadas.find((c) => c.tabela === "imoveis" && c.operacao === "update");
     expect((chamada!.payload as Record<string, unknown>).status).toBe("ativo");
     expect(revalidatePath).toHaveBeenCalledWith("/imoveis");
@@ -202,11 +206,11 @@ describe("despublicarImovel", () => {
   test("grava status inativo e revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imoveis", "update", { data: null, error: null });
+    falso.programarResposta("imoveis", "update", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await despublicarImovel("imovel-1", "residencial-jardim");
+    const resultado = await despublicarImovel(UUID_IMOVEL, "residencial-jardim");
 
-    expect(resultado).toEqual({ sucesso: true, id: "imovel-1" });
+    expect(resultado).toEqual({ sucesso: true, id: UUID_IMOVEL });
     const chamada = falso.chamadas.find((c) => c.tabela === "imoveis" && c.operacao === "update");
     expect((chamada!.payload as Record<string, unknown>).status).toBe("inativo");
     expect(revalidatePath).toHaveBeenCalledWith("/imoveis");
@@ -219,9 +223,9 @@ describe("excluirImovel", () => {
   test("deleta e revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imoveis", "delete", { data: null, error: null });
+    falso.programarResposta("imoveis", "delete", { data: [{ id: "linha-1" }], error: null });
 
-    const resultado = await excluirImovel("imovel-1", "residencial-jardim");
+    const resultado = await excluirImovel(UUID_IMOVEL, "residencial-jardim");
 
     expect(resultado).toEqual({ sucesso: true });
     const chamada = falso.chamadas.find((c) => c.tabela === "imoveis" && c.operacao === "delete");
@@ -323,223 +327,217 @@ describe("uploadImagemImovel", () => {
 
 const IMG_1 = "11111111-1111-4111-8111-111111111111";
 const IMG_2 = "22222222-2222-4222-8222-222222222222";
-const IMG_3 = "33333333-3333-4333-8333-333333333333";
 
-describe("salvarImagens — reconciliação da coleção", () => {
-  test("itens existentes fora do array recebido são removidos via .in", async () => {
+const COLECOES: Array<{
+  nome: string;
+  rpc: string;
+  executar: () => Promise<{ sucesso: boolean; erro?: string }>;
+  erroGenerico: string;
+}> = [
+  {
+    nome: "salvarImagens",
+    rpc: "salvar_imovel_imagens",
+    executar: () =>
+      salvarImagens(UUID_IMOVEL, "residencial-jardim", [
+        { id: IMG_1, url: "/a.jpg", ambiente: "", grupo: "empreendimento", ordem: 0, destaque: true },
+        { url: "/nova.jpg", ambiente: "", grupo: "decorado", ordem: 1, destaque: false },
+      ] as ImagemInput[]),
+    erroGenerico: "Não foi possível salvar as imagens.",
+  },
+  {
+    nome: "salvarTipologias",
+    rpc: "salvar_imovel_tipologias",
+    executar: () => salvarTipologias(UUID_IMOVEL, "residencial-jardim", [tipologiaValida({ area: 68 })]),
+    erroGenerico: "Não foi possível salvar as tipologias.",
+  },
+  {
+    nome: "salvarDiferenciais",
+    rpc: "salvar_imovel_diferenciais",
+    executar: () =>
+      salvarDiferenciais(UUID_IMOVEL, "residencial-jardim", [
+        { grupo: "lazer", nome: "Piscina", icone: "", ordem: 0 },
+      ] as DiferencialInput[]),
+    erroGenerico: "Não foi possível salvar os diferenciais.",
+  },
+  {
+    nome: "salvarFaqs",
+    rpc: "salvar_imovel_faqs",
+    executar: () =>
+      salvarFaqs(UUID_IMOVEL, "residencial-jardim", [
+        { pergunta: "Aceita FGTS?", resposta: "Sim.", ordem: 0 },
+      ] as FaqInput[]),
+    erroGenerico: "Não foi possível salvar o FAQ.",
+  },
+];
+
+describe.each(COLECOES)("$nome — gravação atômica por RPC", ({ rpc, executar, erroGenerico }) => {
+  test("chama a RPC uma única vez, sem nenhuma escrita avulsa, e revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", {
-      data: [{ id: IMG_1 }, { id: IMG_2 }, { id: IMG_3 }],
-      error: null,
-    });
-    falso.programarResposta("imovel_imagens", "delete", { data: null, error: null });
-    falso.programarResposta("imovel_imagens", "update", { data: null, error: null });
+    falso.programarRpc(rpc, { data: null, error: null });
 
-    const itens = [
-      { id: IMG_1, url: "/a.jpg", ambiente: "", grupo: "empreendimento" as const, ordem: 0, destaque: false },
-    ];
-
-    const resultado = await salvarImagens("imovel-1", "residencial-jardim", itens);
+    const resultado = await executar();
 
     expect(resultado).toEqual({ sucesso: true });
-    const chamadaDelete = falso.chamadas.find(
-      (c) => c.tabela === "imovel_imagens" && c.operacao === "delete",
-    );
-    expect(chamadaDelete).toBeDefined();
-    const filtroIn = chamadaDelete!.filtros.find((f) => f.metodo === "in");
-    expect(filtroIn?.args).toEqual(["id", [IMG_2, IMG_3]]);
-  });
-
-  test("item com id vira update", async () => {
-    const falso = montarSupabase();
-    falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", { data: [{ id: IMG_1 }], error: null });
-    falso.programarResposta("imovel_imagens", "update", { data: null, error: null });
-
-    const itens = [
-      { id: IMG_1, url: "/a.jpg", ambiente: "", grupo: "empreendimento" as const, ordem: 0, destaque: true },
-    ];
-
-    await salvarImagens("imovel-1", "residencial-jardim", itens);
-
-    const chamadaUpdate = falso.chamadas.find(
-      (c) => c.tabela === "imovel_imagens" && c.operacao === "update",
-    );
-    expect(chamadaUpdate).toBeDefined();
-    const payload = chamadaUpdate!.payload as Record<string, unknown>;
-    expect(payload.id).toBeUndefined();
-    expect(payload.url).toBe("/a.jpg");
-  });
-
-  test("item sem id vira insert com imovel_id injetado", async () => {
-    const falso = montarSupabase();
-    falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", { data: [], error: null });
-    falso.programarResposta("imovel_imagens", "insert", { data: null, error: null });
-
-    const itens: ImagemInput[] = [
-      { url: "/nova.jpg", ambiente: "", grupo: "decorado", ordem: 1, destaque: false },
-    ];
-
-    await salvarImagens("imovel-1", "residencial-jardim", itens);
-
-    const chamadaInsert = falso.chamadas.find(
-      (c) => c.tabela === "imovel_imagens" && c.operacao === "insert",
-    );
-    expect(chamadaInsert).toBeDefined();
-    const payload = chamadaInsert!.payload as Record<string, unknown>;
-    expect(payload.imovel_id).toBe("imovel-1");
-    expect(payload.url).toBe("/nova.jpg");
-  });
-
-  test("quando nada foi removido, delete não é chamado", async () => {
-    const falso = montarSupabase();
-    falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", { data: [{ id: IMG_1 }], error: null });
-    falso.programarResposta("imovel_imagens", "update", { data: null, error: null });
-
-    const itens = [
-      { id: IMG_1, url: "/a.jpg", ambiente: "", grupo: "empreendimento" as const, ordem: 0, destaque: false },
-    ];
-
-    await salvarImagens("imovel-1", "residencial-jardim", itens);
-
-    const chamadaDelete = falso.chamadas.find(
-      (c) => c.tabela === "imovel_imagens" && c.operacao === "delete",
-    );
-    expect(chamadaDelete).toBeUndefined();
-  });
-
-  test("erro ao ler existentes devolve mensagem específica de leitura", async () => {
-    const falso = montarSupabase();
-    falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", {
-      data: null,
-      error: { message: "falha" },
-    });
-
-    const resultado = await salvarImagens("imovel-1", "residencial-jardim", []);
-
-    expect(resultado).toEqual({
-      sucesso: false,
-      erro: "Não foi possível ler as imagens existentes.",
-    });
-  });
-
-  test("erro no delete devolve mensagem específica de remoção", async () => {
-    const falso = montarSupabase();
-    falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", { data: [{ id: "img-1" }], error: null });
-    falso.programarResposta("imovel_imagens", "delete", {
-      data: null,
-      error: { message: "falha" },
-    });
-
-    const resultado = await salvarImagens("imovel-1", "residencial-jardim", []);
-
-    expect(resultado).toEqual({
-      sucesso: false,
-      erro: "Não foi possível remover as imagens excluídas.",
-    });
-  });
-
-  test("erro no insert/update devolve mensagem específica de gravação", async () => {
-    const falso = montarSupabase();
-    falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", { data: [], error: null });
-    falso.programarResposta("imovel_imagens", "insert", {
-      data: null,
-      error: { message: "falha" },
-    });
-
-    const itens: ImagemInput[] = [
-      { url: "/nova.jpg", ambiente: "", grupo: "decorado", ordem: 1, destaque: false },
-    ];
-    const resultado = await salvarImagens("imovel-1", "residencial-jardim", itens);
-
-    expect(resultado).toEqual({ sucesso: false, erro: "Não foi possível salvar as imagens." });
-  });
-
-  test("sucesso revalida /imoveis, /imoveis/<slug> e /sitemap.xml", async () => {
-    const falso = montarSupabase();
-    falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_imagens", "select", { data: [], error: null });
-
-    await salvarImagens("imovel-1", "residencial-jardim", []);
-
-    expect(revalidatePath).toHaveBeenCalledWith("/imoveis");
+    expect(falso.chamadasRpc).toHaveLength(1);
+    expect(falso.chamadasRpc[0]?.nome).toBe(rpc);
+    expect(falso.chamadasRpc[0]?.params).toMatchObject({ p_imovel_id: UUID_IMOVEL });
+    expect(falso.chamadas.filter((c) => c.operacao && c.operacao !== "select")).toEqual([]);
     expect(revalidatePath).toHaveBeenCalledWith("/imoveis/residencial-jardim");
     expect(revalidatePath).toHaveBeenCalledWith("/sitemap.xml");
   });
-});
 
-describe("salvarTipologias — caso de sucesso", () => {
-  test("reconcilia e revalida", async () => {
+  test("erro da RPC devolve a mensagem genérica e não revalida", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_tipologias", "select", {
-      data: [{ id: "tip-antiga" }],
-      error: null,
-    });
-    falso.programarResposta("imovel_tipologias", "delete", { data: null, error: null });
-    falso.programarResposta("imovel_tipologias", "insert", { data: null, error: null });
+    falso.programarRpc(rpc, { data: null, error: { message: "falha qualquer" } });
 
-    const itens = [tipologiaValida({ area: 68 })];
-    const resultado = await salvarTipologias("imovel-1", "residencial-jardim", itens);
+    const resultado = await executar();
 
-    expect(resultado).toEqual({ sucesso: true });
-    const chamadaDelete = falso.chamadas.find(
-      (c) => c.tabela === "imovel_tipologias" && c.operacao === "delete",
-    );
-    expect(chamadaDelete?.filtros.find((f) => f.metodo === "in")?.args).toEqual([
-      "id",
-      ["tip-antiga"],
-    ]);
-    const chamadaInsert = falso.chamadas.find(
-      (c) => c.tabela === "imovel_tipologias" && c.operacao === "insert",
-    );
-    expect((chamadaInsert!.payload as Record<string, unknown>).imovel_id).toBe("imovel-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/imoveis/residencial-jardim");
+    expect(resultado).toEqual({ sucesso: false, erro: erroGenerico });
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test("item de outro imóvel (ITEM_NAO_ENCONTRADO) vira mensagem específica", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarRpc(rpc, { data: null, error: { message: "ITEM_NAO_ENCONTRADO" } });
+
+    const resultado = await executar();
+
+    expect(resultado.sucesso).toBe(false);
+    expect(resultado.erro).toMatch(/não pertence a este empreendimento/);
+  });
+
+  test("corretor recebe o erro de admin e a RPC não é chamada", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "corretor-1" });
+    falso.definirPapel("corretor");
+
+    const resultado = await executar();
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Apenas administradores podem fazer isso." });
+    expect(falso.chamadasRpc).toEqual([]);
   });
 });
 
-describe("salvarDiferenciais — caso de sucesso", () => {
-  test("reconcilia e revalida", async () => {
+describe("coleções — validação", () => {
+  test("o array enviado à RPC é o validado (ids preservados, vazio vira null)", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_diferenciais", "select", { data: [], error: null });
-    falso.programarResposta("imovel_diferenciais", "insert", { data: null, error: null });
 
-    const itens: DiferencialInput[] = [
-      { grupo: "lazer", nome: "Piscina", icone: "", ordem: 0 },
-    ];
-    const resultado = await salvarDiferenciais("imovel-1", "residencial-jardim", itens);
+    await salvarImagens(UUID_IMOVEL, "residencial-jardim", [
+      { id: IMG_2, url: "/a.jpg", ambiente: "", grupo: "empreendimento", ordem: 0, destaque: false },
+    ] as ImagemInput[]);
 
-    expect(resultado).toEqual({ sucesso: true });
-    const chamadaInsert = falso.chamadas.find(
-      (c) => c.tabela === "imovel_diferenciais" && c.operacao === "insert",
-    );
-    expect((chamadaInsert!.payload as Record<string, unknown>).imovel_id).toBe("imovel-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/imoveis/residencial-jardim");
+    const params = falso.chamadasRpc[0]?.params as { p_itens: Array<Record<string, unknown>> };
+    expect(params.p_itens).toHaveLength(1);
+    expect(params.p_itens[0]?.id).toBe(IMG_2);
+    expect(params.p_itens[0]?.ambiente).toBeNull();
+  });
+
+  test("imovelId que não é UUID é rejeitado sem chamar a RPC", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+
+    const resultado = await salvarFaqs("imovel-1", "residencial-jardim", []);
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Empreendimento inválido." });
+    expect(falso.chamadasRpc).toEqual([]);
+  });
+
+  test("dados inválidos devolvem a mensagem do Zod sem chamar a RPC", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+
+    const resultado = await salvarFaqs(UUID_IMOVEL, "residencial-jardim", [
+      { pergunta: "", resposta: "Sim.", ordem: 0 },
+    ] as FaqInput[]);
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Informe a pergunta." });
+    expect(falso.chamadasRpc).toEqual([]);
   });
 });
 
-describe("salvarFaqs — caso de sucesso", () => {
-  test("reconcilia e revalida", async () => {
+describe("permissão de administrador e integridade (conteúdo geral)", () => {
+  const acoes: Array<[string, () => Promise<{ sucesso: boolean; erro?: string }>]> = [
+    ["salvarImovel", () => salvarImovel(imovelValido())],
+    ["salvarImovel (update)", () => salvarImovel({ ...imovelValido(), id: UUID_IMOVEL })],
+    ["publicarImovel", () => publicarImovel(UUID_IMOVEL, "residencial-jardim")],
+    ["despublicarImovel", () => despublicarImovel(UUID_IMOVEL, "residencial-jardim")],
+    ["excluirImovel", () => excluirImovel(UUID_IMOVEL, "residencial-jardim")],
+    ["uploadImagemImovel", () => uploadImagemImovel(new FormData())],
+  ];
+
+  test.each(acoes)("%s devolve erro de admin para corretor e não escreve", async (_nome, executar) => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "corretor-1" });
+    falso.definirPapel("corretor");
+
+    const resultado = await executar();
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Apenas administradores podem fazer isso." });
+    expect(falso.chamadas.filter((c) => c.operacao && c.operacao !== "select")).toEqual([]);
+    expect(falso.chamadasStorage).toEqual([]);
+  });
+
+  test.each([
+    ["salvarImovel", () => salvarImovel({ ...imovelValido(), id: UUID_IMOVEL })],
+    ["publicarImovel", () => publicarImovel(UUID_IMOVEL, "x")],
+    ["despublicarImovel", () => despublicarImovel(UUID_IMOVEL, "x")],
+    ["excluirImovel", () => excluirImovel(UUID_IMOVEL, "x")],
+  ])("%s com zero linhas afetadas devolve erro, não sucesso", async (_nome, executar) => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("imovel_faqs", "select", { data: [], error: null });
-    falso.programarResposta("imovel_faqs", "insert", { data: null, error: null });
+    falso.programarResposta("imoveis", "select", { data: { slug: "x" }, error: null });
+    falso.programarResposta("imoveis", "update", { data: [], error: null });
+    falso.programarResposta("imoveis", "delete", { data: [], error: null });
 
-    const itens: FaqInput[] = [{ pergunta: "Aceita FGTS?", resposta: "Sim.", ordem: 0 }];
-    const resultado = await salvarFaqs("imovel-1", "residencial-jardim", itens);
+    const resultado = await executar();
 
-    expect(resultado).toEqual({ sucesso: true });
-    const chamadaInsert = falso.chamadas.find(
-      (c) => c.tabela === "imovel_faqs" && c.operacao === "insert",
+    expect(resultado.sucesso).toBe(false);
+    expect(resultado.erro).toMatch(/não encontrado/);
+    expect(revalidatePath).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["publicarImovel", () => publicarImovel("abc", "x")],
+    ["despublicarImovel", () => despublicarImovel("abc", "x")],
+    ["excluirImovel", () => excluirImovel("abc", "x")],
+    ["salvarImovel", () => salvarImovel({ ...imovelValido(), id: "abc" })],
+  ])("%s com id que não é UUID é rejeitado antes de consultar", async (_nome, executar) => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+
+    const resultado = await executar();
+
+    expect(resultado).toEqual({ sucesso: false, erro: "Empreendimento inválido." });
+    expect(falso.chamadas.filter((c) => c.tabela === "imoveis")).toEqual([]);
+  });
+
+  test("slug alterado revalida a URL antiga e a nova", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("imoveis", "select", { data: { slug: "slug-antigo" }, error: null });
+    falso.programarResposta("imoveis", "update", { data: [{ id: UUID_IMOVEL }], error: null });
+
+    await salvarImovel({ ...imovelValido(), id: UUID_IMOVEL });
+
+    expect(revalidatePath).toHaveBeenCalledWith("/imoveis/slug-antigo");
+    expect(revalidatePath).toHaveBeenCalledWith("/imoveis/residencial-jardim-das-palmeiras");
+  });
+
+  test("extensão do original vem do MIME, não do nome do arquivo", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    const fd = new FormData();
+    fd.set("arquivo", await arquivoJpegValido("foto.php"));
+
+    await uploadImagemImovel(fd);
+
+    const original = falso.chamadasStorage.find(
+      (c) => c.bucket === "imovel-images-originais" && c.metodo === "upload",
     );
-    expect((chamadaInsert!.payload as Record<string, unknown>).imovel_id).toBe("imovel-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/imoveis/residencial-jardim");
+    expect(original?.args[0]).toMatch(/^[0-9a-f-]{36}\.jpg$/);
   });
 });

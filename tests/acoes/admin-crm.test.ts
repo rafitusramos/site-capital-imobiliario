@@ -636,54 +636,48 @@ describe("definirTags", () => {
     expect(falso.chamadas).toEqual([]);
   });
 
-  test("lead não encontrado (ou fora do alcance da RLS) devolve erro", async () => {
+  test("lead não encontrado (ou fora do alcance da RLS) devolve erro da RPC traduzido", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("leads", "select", { data: null, error: null });
+    falso.programarRpc("definir_tags_lead", { data: null, error: { message: "LEAD_NAO_ENCONTRADO" } });
 
     const resultado = await definirTags(LEAD_1, ["urgente"]);
 
-    expect(resultado).toEqual({
-      sucesso: false,
-      erro: "Lead não encontrado ou você não tem permissão para acessá-lo.",
-    });
+    expect(resultado).toEqual({ sucesso: false, erro: "Lead não encontrado." });
   });
 
-  test("lista vazia substitui por nada: deleta e não insere", async () => {
+  test("lista vazia chama a RPC com array vazio, sem escrita avulsa", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("leads", "select", { data: { id: LEAD_1 }, error: null });
-    falso.programarResposta("lead_tags", "delete", { data: null, error: null });
+    falso.programarRpc("definir_tags_lead", { data: null, error: null });
 
     const resultado = await definirTags(LEAD_1, []);
 
     expect(resultado).toEqual({ sucesso: true });
-    expect(falso.chamadas.some((c) => c.tabela === "lead_tags" && c.operacao === "delete")).toBe(true);
-    expect(falso.chamadas.some((c) => c.tabela === "lead_tags" && c.operacao === "insert")).toBe(false);
+    expect(falso.chamadasRpc).toEqual([{ nome: "definir_tags_lead", params: { p_lead_id: LEAD_1, p_tags: [] } }]);
+    expect(falso.chamadas.some((c) => c.tabela === "lead_tags")).toBe(false);
   });
 
-  test("substitui o conjunto: deleta tudo e insere as novas", async () => {
+  test("substitui o conjunto numa única chamada de RPC", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("leads", "select", { data: { id: LEAD_1 }, error: null });
-    falso.programarResposta("lead_tags", "delete", { data: null, error: null });
-    falso.programarResposta("lead_tags", "insert", { data: null, error: null });
+    falso.programarRpc("definir_tags_lead", { data: null, error: null });
 
     const resultado = await definirTags(LEAD_1, ["urgente", "capital-de-giro"]);
 
     expect(resultado).toEqual({ sucesso: true });
-    const chamadaInsert = falso.chamadas.find((c) => c.tabela === "lead_tags" && c.operacao === "insert");
-    expect(chamadaInsert!.payload).toEqual([
-      { lead_id: LEAD_1, tag_slug: "urgente" },
-      { lead_id: LEAD_1, tag_slug: "capital-de-giro" },
-    ]);
+    expect(falso.chamadasRpc).toHaveLength(1);
+    expect(falso.chamadasRpc[0]).toEqual({
+      nome: "definir_tags_lead",
+      params: { p_lead_id: LEAD_1, p_tags: ["urgente", "capital-de-giro"] },
+    });
+    expect(falso.chamadas.some((c) => c.tabela === "lead_tags")).toBe(false);
   });
 
-  test("erro ao deletar devolve mensagem específica", async () => {
+  test("erro da RPC devolve mensagem específica", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
-    falso.programarResposta("leads", "select", { data: { id: LEAD_1 }, error: null });
-    falso.programarResposta("lead_tags", "delete", { data: null, error: { message: "falha" } });
+    falso.programarRpc("definir_tags_lead", { data: null, error: { message: "falha" } });
 
     const resultado = await definirTags(LEAD_1, []);
 
