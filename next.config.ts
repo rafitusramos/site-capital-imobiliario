@@ -1,7 +1,42 @@
 import type { NextConfig } from "next";
 
+// Host do Supabase Storage, derivado da URL do projeto. Espelha `hostDoSupabase`
+// (lib/imoveis/imagem-otimizada.ts), que este arquivo não consegue importar pelo
+// alias `@/`: mudou lá, mude aqui.
+function hostDoSupabase(): string {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname;
+  } catch {
+    return "lqiztovibxbrertyxead.supabase.co";
+  }
+}
+
 const nextConfig: NextConfig = {
   trailingSlash: true,
+  images: {
+    // Só as fotos de imóvel passam pelo otimizador: o bucket público e nada além
+    // (o resto do site segue com <img>). Qualquer outra URL vai `unoptimized`
+    // no componente (ver lib/imoveis/imagem-otimizada.ts).
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: hostDoSupabase(),
+        pathname: "/storage/v1/object/public/imovel-images/**",
+      },
+    ],
+    formats: ["image/avif", "image/webp"],
+    // Lista curta de propósito: cada combinação (imagem x largura x formato) é
+    // uma transformação cobrada, e o plano Hobby tem cota mensal. 540 é a foto
+    // ativa do carrossel no desktop; 640/828/1080/1400 cobrem mobile (1x-3x),
+    // tablet e a capa em 100vw. 1400 é o tamanho publicado, então não há
+    // ganho em ir além.
+    deviceSizes: [640, 828, 1080, 1400],
+    imageSizes: [540],
+    // Os nomes são UUIDs imutáveis (nunca sobrescritos): a variante otimizada
+    // pode ficar em cache por 1 ano sem risco de servir foto velha, e cada ano
+    // sem retransformar poupa cota.
+    minimumCacheTTL: 31536000,
+  },
   experimental: {
     // Habilita app/global-not-found.tsx: como o projeto usa dois root
     // layouts (multiple root layouts, ver app/(site) e app/admin), não

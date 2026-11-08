@@ -157,10 +157,8 @@ system e das restrições do repo (ver `CLAUDE.md`):
   Archivo "direto" e da paleta de referência.
 - **CSS em arquivo próprio (`styles/imoveis.css`)**, não classes Tailwind — o projeto não usa
   Tailwind nas páginas públicas (só no admin).
-- **`<img>` simples com `aspect-ratio` fixo em CSS**, não `next/image` — o restante do codebase
-  usa `<img>` puro (`components/blog/post-card.tsx`, `app/(site)/blog/[slug]/page.tsx`) e
-  `next.config.ts` não declara `images.remotePatterns` para o domínio do Supabase Storage. A
-  proteção contra CLS vem do `aspect-ratio` no lugar das dimensões do `next/image`.
+- **`next/image` via `ImagemImovel`** (ver "Estratégia de carregamento" abaixo). A proteção
+  contra CLS vem do `aspect-ratio` 4/3 em CSS mais `width`/`height` (1400x900) no componente.
 - **Sem plugin de autoplay** (`embla-carousel-autoplay` não foi instalado e não deve ser
   adicionado): autoplay numa galeria de imóvel atrapalha a leitura das fotos e conflita com
   `prefers-reduced-motion` — decisão consciente, não uma omissão.
@@ -191,3 +189,25 @@ system e das restrições do repo (ver `CLAUDE.md`):
   `isolation:isolate` (+ `translateZ(0)` no botão do slide) para o recorte
   funcionar também em elemento escalado no Safari/iOS. Imagem e legenda são
   recortadas juntas.
+
+## Estratégia de carregamento das fotos
+
+- **Por que não `loading="lazy"` nativo**: dentro do `overflow:hidden` do viewport do Embla
+  a imagem lazy nunca dispara o carregamento. O gatilho é nosso: um `IntersectionObserver` na
+  raiz do carrossel (`rootMargin: "600px 0px"`) liga a flag `perto` (uma vez; depois desconecta).
+- **Antes de `perto`** (estado inicial, igual no servidor e no cliente, então a hidratação
+  bate): só o slide 0 da primeira galeria (`primeiraEager`) tem `<img>`, com
+  `fetchPriority="high"`. Os demais slides renderizam `.im-carrossel-reserva`, caixa 4/3 na cor
+  `--abissal` sem requisição.
+- **Depois de `perto`**: todos os slides renderizam (navegar nunca cai num slide vazio). Ativo
+  e vizinhos imediatos usam a prioridade padrão; o resto `fetchPriority="low"`
+  (`prioridadeDoSlide`). Sem `IntersectionObserver`, `perto` liga no mount (carrega tudo).
+- **Foto única, card e lightbox**: fora do Embla, lazy nativo funciona (card, foto única que
+  não é a primeira). A planta ampliada só existe depois do clique.
+- **`sizes`** (constantes em `lib/imoveis/imagem-otimizada.ts`): carrossel
+  `(min-width:1024px) 540px, (min-width:768px) 60vw, 78vw`, de `--basis` x `--escala-ativa`
+  (mobile 0,52vw x 1,5; tablet 0,40vw x 1,5; desktop 50% de 1080px). Mudou `--basis` ou a
+  escala, mude os `sizes`.
+- **Chegada suave**: placeholder `--abissal` na proporção final; a foto sobe de `opacity` 0 a 1
+  em 300ms no `onLoad` (e no mount, se `img.complete`, para foto em cache). Sem transição com
+  `prefers-reduced-motion` e sem esconder nada quando o JS está desligado.

@@ -89,6 +89,10 @@ async function enviarImagem(
   const { error } = await supabase.storage.from(BUCKET_IMAGENS).upload(caminho, marcada, {
     contentType: "image/webp",
     upsert: false,
+    // O nome é um UUID novo por upload e o arquivo nunca é sobrescrito
+    // (upsert:false), então o conteúdo é imutável: cache de 1 ano. O padrão do
+    // Supabase (1h) fazia o navegador revalidar toda foto a cada visita.
+    cacheControl: "31536000",
   });
   if (error) {
     console.error("[enviarImagem] falha ao subir a imagem marcada:", error);

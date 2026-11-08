@@ -8,6 +8,8 @@ import {
   type ImovelCompleto,
   type ImovelComCapa,
 } from "@/lib/queries/imoveis";
+import Image from "next/image";
+import { ehImagemOtimizavel } from "@/lib/imoveis/imagem-otimizada";
 import { Carrossel } from "@/components/imoveis/Carrossel";
 import { GaleriaPlantas } from "@/components/imoveis/GaleriaPlantas";
 import { LeadImovelModal } from "@/components/imoveis/LeadImovelModal";
@@ -483,7 +485,15 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
                browser poder priorizar o download e para aceitar srcset depois.
                O overlay .hero::after do lp.css pinta por cima e preserva o
                contraste do texto. */
-            <img className="im-hero-capa" src={capa} alt={altDoImovel(imovel)} fetchPriority="high" />
+            <Image
+              className="im-hero-capa"
+              src={capa}
+              alt={altDoImovel(imovel)}
+              fill
+              sizes="100vw"
+              priority
+              unoptimized={!ehImagemOtimizavel(capa)}
+            />
           ) : null}
           <div className="wrap">
             <span className="im-badge-fase im-badge-fase--inline" data-fase={imovel.fase.slug}>
