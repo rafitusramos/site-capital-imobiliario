@@ -142,7 +142,7 @@ describe("sessão expirada", () => {
 });
 
 describe("salvarImovel", () => {
-  test("novo empreendimento nasce com status inativo", async () => {
+  test("novo imóvel nasce com status inativo", async () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
     falso.programarResposta("imoveis", "insert", { data: { id: "imovel-novo" }, error: null });
@@ -180,7 +180,7 @@ describe("salvarImovel", () => {
 
     expect(resultado).toEqual({
       sucesso: false,
-      erro: "Já existe um empreendimento com esse slug.",
+      erro: "Já existe um imóvel com esse slug.",
     });
   });
 });
@@ -218,6 +218,7 @@ describe("salvarImovel — imóvel pronto", () => {
       valor_condominio: null,
       valor_iptu: null,
       nome_condominio: "",
+      descricao_unidade: "",
       andar: null,
       mobiliado: null,
       ano_construcao: null,
@@ -517,7 +518,7 @@ describe.each(COLECOES)("$nome — gravação atômica por RPC", ({ rpc, executa
     const resultado = await executar();
 
     expect(resultado.sucesso).toBe(false);
-    expect(resultado.erro).toMatch(/não pertence a este empreendimento/);
+    expect(resultado.erro).toMatch(/não pertence a este imóvel/);
   });
 
   test("corretor recebe o erro de admin e a RPC não é chamada", async () => {
@@ -553,7 +554,7 @@ describe("coleções — validação", () => {
 
     const resultado = await salvarFaqs("imovel-1", "residencial-jardim", []);
 
-    expect(resultado).toEqual({ sucesso: false, erro: "Empreendimento inválido." });
+    expect(resultado).toEqual({ sucesso: false, erro: "Imóvel inválido." });
     expect(falso.chamadasRpc).toEqual([]);
   });
 
@@ -622,7 +623,7 @@ describe("permissão de administrador e integridade (conteúdo geral)", () => {
 
     const resultado = await executar();
 
-    expect(resultado).toEqual({ sucesso: false, erro: "Empreendimento inválido." });
+    expect(resultado).toEqual({ sucesso: false, erro: "Imóvel inválido." });
     expect(falso.chamadas.filter((c) => c.tabela === "imoveis")).toEqual([]);
   });
 

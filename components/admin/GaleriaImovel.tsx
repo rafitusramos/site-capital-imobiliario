@@ -23,9 +23,12 @@ import {
 import { uploadImagemImovel } from "@/app/actions/admin-imoveis";
 import { prepararImagem } from "@/lib/imoveis/redimensionar";
 import type { ImagemInput } from "@/lib/validations/imovel";
-import type { ImovelImagemGrupo } from "@/types/database";
+import type { ImovelImagemGrupo, ImovelModalidade } from "@/types/database";
 import {
   GRUPOS_GALERIA,
+  gruposDaGaleria,
+  grupoDaCapa,
+  type GrupoGaleriaInfo,
   agruparImagens,
   achatarGaleria,
   moverDentroDoGrupo,
@@ -45,13 +48,6 @@ const TIPOS_AUTORIZADOS = new Set(["image/jpeg", "image/png", "image/webp", "ima
 // chega aqui reduzido por `prepararImagem`, na prática quase nada esbarra
 // nisso — é a rede de proteção, não o caminho comum.
 const TAMANHO_MAXIMO_BYTES = 4 * 1024 * 1024;
-
-/** Frase de convite exibida enquanto o grupo não tem nenhuma imagem. */
-const CONVITE_VAZIO: Partial<Record<ImovelImagemGrupo, string>> = {
-  empreendimento: "Envie as primeiras fotos da fachada e das áreas comuns.",
-  decorado: "Envie as primeiras fotos do decorado.",
-  planta: "Envie as primeiras plantas baixas.",
-};
 
 /** `ImagemInput` com uma chave local estável, para dar `id` ao dnd-kit mesmo
  * em imagens novas que ainda não têm `id` do banco. */
@@ -87,8 +83,11 @@ function localizarGrupo(
 export type GaleriaImovelProps = {
   imagens: ImagemInput[];
   onChange: (imagens: ImagemInput[]) => void;
-  /** Seções exibidas. Imagens dos grupos omitidos continuam na lista e são salvas junto. */
-  grupos?: ImovelImagemGrupo[];
+  /**
+   * Define as seções exibidas (e seus rótulos). Imagens dos grupos omitidos
+   * continuam na lista e são salvas junto.
+   */
+  modalidade?: ImovelModalidade;
 };
 
 /**
@@ -98,7 +97,8 @@ export type GaleriaImovelProps = {
  * "agrupada" da galeria — a fonte da verdade para `ordem`/`destaque`
  * continua sendo `achatarGaleria`, repassada ao pai a cada mudança.
  */
-export function GaleriaImovel({ imagens, onChange, grupos: gruposVisiveis }: GaleriaImovelProps) {
+export function GaleriaImovel({ imagens, onChange, modalidade = "lancamento" }: GaleriaImovelProps) {
+  const secoes = gruposDaGaleria(modalidade);
   const [grupos, setGrupos] = useState<GaleriaAgrupada<ImagemComChave>>(() =>
     agruparImagens(imagens.map(comChaveLocal)),
   );
@@ -122,9 +122,9 @@ export function GaleriaImovel({ imagens, onChange, grupos: gruposVisiveis }: Gal
       primeiraRenderizacao.current = false;
       return;
     }
-    const achatada = achatarGaleria(grupos).map(({ chaveLocal: _chaveLocal, ...resto }) => resto);
+    const achatada = achatarGaleria(grupos, modalidade).map(({ chaveLocal: _chaveLocal, ...resto }) => resto);
     onChangeRef.current(achatada);
-  }, [grupos]);
+  }, [grupos, modalidade]);
 
   useEffect(() => {
     const consulta = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -312,10 +312,11 @@ export function GaleriaImovel({ imagens, onChange, grupos: gruposVisiveis }: Gal
         onDragCancel={() => setItemAtivo(null)}
       >
         <div className="space-y-8">
-          {GRUPOS_GALERIA.filter((g) => !gruposVisiveis || gruposVisiveis.includes(g.id)).map((grupoInfo) => (
+          {secoes.map((grupoInfo) => (
             <SecaoGrupo
               key={grupoInfo.id}
               grupoInfo={grupoInfo}
+              ehGrupoDaCapa={grupoInfo.id === grupoDaCapa(grupos, modalidade)}
               itens={grupos[grupoInfo.id]}
               enviando={enviandoPorGrupo[grupoInfo.id] ?? 0}
               destacado={grupoArrastandoArquivo === grupoInfo.id}
@@ -342,10 +343,9 @@ export function GaleriaImovel({ imagens, onChange, grupos: gruposVisiveis }: Gal
   );
 }
 
-type GrupoInfo = (typeof GRUPOS_GALERIA)[number];
-
 type SecaoGrupoProps = {
-  grupoInfo: GrupoInfo;
+  grupoInfo: GrupoGaleriaInfo;
+  ehGrupoDaCapa: boolean;
   itens: ImagemComChave[];
   enviando: number;
   destacado: boolean;
@@ -360,6 +360,7 @@ type SecaoGrupoProps = {
 
 function SecaoGrupo({
   grupoInfo,
+  ehGrupoDaCapa,
   itens,
   enviando,
   destacado,
@@ -392,7 +393,7 @@ function SecaoGrupo({
       </header>
 
       {itens.length === 0 && enviando === 0 ? (
-        <p className="mb-3 text-sm text-neutral-500">{CONVITE_VAZIO[grupoInfo.id]}</p>
+        <p className="mb-3 text-sm text-neutral-500">{grupoInfo.convite}</p>
       ) : null}
 
       <div
@@ -404,7 +405,7 @@ function SecaoGrupo({
             <Miniatura
               key={item.chaveLocal}
               item={item}
-              ehCapa={grupoInfo.id === "empreendimento" && indice === 0}
+              ehCapa={ehGrupoDaCapa && indice === 0}
               reducedMotion={reducedMotion}
               onAlterarAmbiente={(valor) => onAlterarAmbiente(indice, valor)}
               onRemover={() => onRemover(indice)}

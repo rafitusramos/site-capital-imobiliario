@@ -56,6 +56,23 @@ export function fichaDoPronto(imovel: FichaPronto): ItemFicha[] {
   return itens.filter((item): item is ItemFicha => item !== null);
 }
 
+/**
+ * Custos mensais que acompanham o preço no hero do imóvel pronto. Não são o
+ * preço: continuam visíveis quando o valor de venda está "sob consulta".
+ */
+export function custosMensaisDoPronto(imovel: {
+  valor_condominio: number | null;
+  valor_iptu: number | null;
+}): ItemFicha[] {
+  const itens: (ItemFicha | null)[] = [
+    imovel.valor_condominio !== null
+      ? { rotulo: "Condomínio", valor: `${brl(imovel.valor_condominio)}/mês` }
+      : null,
+    imovel.valor_iptu !== null ? { rotulo: "IPTU", valor: `${brl(imovel.valor_iptu)}/mês` } : null,
+  ];
+  return itens.filter((item): item is ItemFicha => item !== null);
+}
+
 type FatosEntrada =
   | ({ modalidade: "pronto" } & Pick<FichaPronto, "area_util" | "dormitorios" | "vagas">)
   | {
@@ -86,7 +103,7 @@ export function fatosDoImovel(imovel: FatosEntrada) {
 
 /**
  * Preço visível, ou `null`. "Sob consulta" tem precedência (igual ao JSON-LD).
- * `rotulo` é o "A partir de" do lançamento; unidade única tem preço fechado.
+ * `rotulo` é o "A partir de" do lançamento e o "Valor de venda" da unidade única.
  */
 export function precoDoImovel(imovel: {
   modalidade?: ImovelModalidade;
@@ -96,7 +113,7 @@ export function precoDoImovel(imovel: {
 }): { rotulo: string | null; valor: string } | null {
   if (imovel.valor_sob_consulta) return null;
   if (imovel.modalidade === "pronto") {
-    return imovel.valor_venda ? { rotulo: null, valor: brl(imovel.valor_venda) } : null;
+    return imovel.valor_venda ? { rotulo: "Valor de venda", valor: brl(imovel.valor_venda) } : null;
   }
   return imovel.valor_a_partir_de
     ? { rotulo: "A partir de", valor: brl(imovel.valor_a_partir_de) }

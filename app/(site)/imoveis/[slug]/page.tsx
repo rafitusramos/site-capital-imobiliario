@@ -6,6 +6,7 @@ import {
   getImoveisRelacionados,
   getTiposEFases,
   type ImovelCompleto,
+  type ImovelComCapa,
 } from "@/lib/queries/imoveis";
 import { Carrossel } from "@/components/imoveis/Carrossel";
 import { GaleriaPlantas } from "@/components/imoveis/GaleriaPlantas";
@@ -13,7 +14,14 @@ import { LeadImovelModal } from "@/components/imoveis/LeadImovelModal";
 import { ImovelCard } from "@/components/imoveis/ImovelCard";
 import { obterIcone } from "@/components/imoveis/icones";
 import { extrairIdYoutube, formatarPrecoAPartir } from "@/lib/imoveis/formato";
-import { fatosDoImovel, fichaDoPronto, precoDoImovel, valorParaFiltro } from "@/lib/imoveis/ficha";
+import {
+  custosMensaisDoPronto,
+  fatosDoImovel,
+  fichaDoPronto,
+  precoDoImovel,
+  valorParaFiltro,
+} from "@/lib/imoveis/ficha";
+import { capaDaPagina } from "@/lib/imoveis/capa";
 import {
   montarOfferSchema,
   montarRealEstateListingSchema,
@@ -73,12 +81,189 @@ function urlAbsoluta(url: string | null | undefined): string | undefined {
   return url.startsWith("http") ? url : `${SITE_URL}${url}`;
 }
 
-/** Capa do hero: primeira imagem do empreendimento, ou a primeira de todas. */
+/** Capa do hero e do og:image (lançamento: fachada; pronto: foto da unidade). */
 function capaDoImovel(imovel: ImovelCompleto): string | null {
+  return capaDaPagina(imovel.imagens, imovel.modalidade);
+}
+
+type Diferenciais = ImovelCompleto["diferenciais"];
+
+function SecaoVideo({ idVideo, titulo }: { idVideo: string | null; titulo: string }) {
+  if (!idVideo) return null;
   return (
-    imovel.imagens.find((imagem) => imagem.grupo === "empreendimento")?.url ??
-    imovel.imagens[0]?.url ??
-    null
+    <section id="video">
+      <div className="wrap">
+        <h2 className="eyebrow reveal">Vídeo</h2>
+        <div className="im-video reveal d2">
+          {/* O YouTube não permite escolher botões individualmente: ou a
+              barra inteira ou nenhuma (controls=0). Estes parâmetros são
+              o mínimo alcançável sem construir um player próprio. */}
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${idVideo}?rel=0&modestbranding=1&fs=0&disablekb=1&iv_load_policy=3`}
+            title={`Vídeo do ${titulo}`}
+            loading="lazy"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SecaoLazer({ itens }: { itens: Diferenciais }) {
+  if (itens.length === 0) return null;
+  return (
+    <section id="lazer">
+      <div className="wrap">
+        <h2 className="eyebrow reveal">Lazer e convívio</h2>
+        <ul className="im-lazer reveal d2">
+          {itens.map((item) => {
+            const Icone = obterIcone(item.icone);
+            return (
+              <li key={item.id} className="im-lazer-item">
+                <Icone aria-hidden="true" /> {item.nome}
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function SecaoDiferenciais({ itens }: { itens: Diferenciais }) {
+  if (itens.length === 0) return null;
+  return (
+    <section id="diferenciais">
+      <div className="wrap">
+        <h2 className="eyebrow reveal">Diferenciais</h2>
+        <div className="im-diferenciais reveal d2">
+          {itens.map((item) => {
+            const Icone = obterIcone(item.icone);
+            return (
+              <div key={item.id} className="im-diferencial">
+                <Icone aria-hidden="true" />
+                <span>{item.nome}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SecaoLocalizacao({
+  endereco,
+  enderecoMapa,
+  titulo,
+  mostrar,
+}: {
+  endereco: string | null;
+  enderecoMapa: string;
+  titulo: string;
+  mostrar: boolean;
+}) {
+  if (!mostrar) return null;
+  return (
+    <section id="localizacao">
+      <div className="wrap">
+        <h2 className="eyebrow reveal">Localização</h2>
+        <div className="im-localizacao reveal d2">
+          {endereco ? <p className="endereco">{endereco}</p> : null}
+          {/* Prévia embutida sem chave de API (embed clássico do Maps). O
+              iframe não recebe cliques; o link por cima abre o mapa cheio
+              numa aba nova, para o visitante não perder a LP. */}
+          <div className="im-mapa">
+            <iframe
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(enderecoMapa)}&z=15&output=embed`}
+              title={`Mapa da localização do ${titulo}`}
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+            />
+            <a
+              className="im-mapa-link"
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                enderecoMapa,
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Abrir a localização do ${titulo} no Google Maps, em uma nova aba`}
+            >
+              <span>Abrir no Google Maps</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SecaoFaq({ faqs }: { faqs: ImovelCompleto["faqs"] }) {
+  if (faqs.length === 0) return null;
+  return (
+    <section id="faq">
+      <div className="wrap">
+        <h2 className="eyebrow reveal">Perguntas frequentes</h2>
+        {faqs.map((faq) => (
+          <details key={faq.id} className="reveal d2">
+            <summary>{faq.pergunta}</summary>
+            <div className="resp">{faq.resposta}</div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function SecaoCtaFinal({
+  pronto,
+  titulo,
+  hrefSimulador,
+}: {
+  pronto: boolean;
+  titulo: string;
+  hrefSimulador: string;
+}) {
+  return (
+    <section id="cta-final">
+      <div className="wrap">
+        <div className="artigo-cta reveal">
+          <h3>Quer saber mais sobre {pronto ? "este imóvel" : `o ${titulo}`}?</h3>
+          <div className="im-cta-final-acoes">
+            <button
+              type="button"
+              className="cta"
+              data-abrir-lead={`Quero saber mais sobre o ${titulo}`}
+            >
+              Quero saber mais
+            </button>
+            <a className="cta cta-secundaria" href={hrefSimulador}>
+              Simular financiamento
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SecaoOutros({ relacionados, pronto }: { relacionados: ImovelComCapa[]; pronto: boolean }) {
+  if (relacionados.length === 0) return null;
+  return (
+    <section id={pronto ? "outros-imoveis" : "outros-empreendimentos"}>
+      <div className="wrap">
+        <h2 className="eyebrow reveal">{pronto ? "Outros imóveis" : "Continue pesquisando"}</h2>
+        {/* Sem reveal na grade: quem anima é cada `ImovelCard`, para os
+            cards entrarem conforme aparecem em vez de a grade inteira
+            surgir de uma vez quando o topo dela toca a viewport. */}
+        <div className="im-grid">
+          {relacionados.map((relacionado) => (
+            <ImovelCard key={relacionado.id} imovel={relacionado} />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -152,6 +337,8 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
   const pronto = imovel.modalidade === "pronto";
   const { area, dormitorios, vagas } = fatosDoImovel(imovel);
   const ficha = pronto ? fichaDoPronto(imovel) : [];
+  const custos = pronto ? custosMensaisDoPronto(imovel) : [];
+  const descricaoUnidade = pronto ? (imovel.descricao_unidade?.trim() ?? "") : "";
   // "Sob consulta" tem precedência sobre o valor: quando marcado no cadastro, o
   // preço não aparece em lugar nenhum da página.
   const preco = precoDoImovel(imovel);
@@ -343,58 +530,118 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
               </div>
             ) : null}
 
+            {custos.length > 0 ? (
+              <ul className="im-hero-custos reveal d3" aria-label="Custos mensais">
+                {custos.map((item) => (
+                  <li key={item.rotulo}>
+                    <span>{item.rotulo}</span> {item.valor}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+
             <button type="button" className="cta reveal d3" data-abrir-lead="Solicite informações">
               Solicite informações
             </button>
           </div>
         </header>
 
-        {/* 3. O projeto */}
-        {imovel.descricao_completa ? (
-          <section id="projeto">
-            <div className="wrap">
-              <h2 className="eyebrow reveal">O projeto</h2>
-              <p className="im-projeto reveal d2">{imovel.descricao_completa}</p>
-            </div>
-          </section>
-        ) : null}
+        {pronto ? (
+          <>
+            {/* Imóvel pronto: vídeo, unidade, condomínio, localização. */}
+            <SecaoVideo idVideo={idVideo} titulo={imovel.titulo} />
 
-        {/* 3.0 Ficha da unidade (imóvel pronto) */}
-        {pronto && ficha.length > 0 ? (
-          <section id="ficha">
-            <div className="wrap">
-              <h2 className="eyebrow reveal">Ficha do imóvel</h2>
-              <dl className="im-ficha reveal d2">
-                {ficha.map((item) => (
-                  <div key={item.rotulo} className="im-ficha-item">
-                    <dt>{item.rotulo}</dt>
-                    <dd>{item.valor}</dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          </section>
-        ) : null}
+            {imagensDecorado.length > 0 ? (
+              <section id="fotos-unidade">
+                <div className="wrap">
+                  <h2 className="eyebrow reveal">Fotos da unidade</h2>
+                </div>
+                <div className="reveal d2">
+                  <Carrossel
+                    imagens={imagensDecorado.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
+                    ariaLabel={`Fotos da unidade de ${imovel.titulo}`}
+                    contexto={contexto}
+                    primeiraEager
+                  />
+                </div>
+              </section>
+            ) : null}
 
-        {/* 3.1 Vídeo do empreendimento */}
-        {idVideo ? (
-          <section id="video">
-            <div className="wrap">
-              <h2 className="eyebrow reveal">Vídeo</h2>
-              <div className="im-video reveal d2">
-                {/* O YouTube não permite escolher botões individualmente: ou a
-                    barra inteira ou nenhuma (controls=0). Estes parâmetros são
-                    o mínimo alcançável sem construir um player próprio. */}
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${idVideo}?rel=0&modestbranding=1&fs=0&disablekb=1&iv_load_policy=3`}
-                  title={`Vídeo do ${imovel.titulo}`}
-                  loading="lazy"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                />
-              </div>
-            </div>
-          </section>
-        ) : null}
+            {descricaoUnidade || ficha.length > 0 ? (
+              <section id="descricao-unidade">
+                <div className="wrap">
+                  <h2 className="eyebrow reveal">Descrição da unidade</h2>
+                  {descricaoUnidade ? (
+                    <p className="im-projeto reveal d2">{descricaoUnidade}</p>
+                  ) : null}
+                  {ficha.length > 0 ? (
+                    <dl className="im-ficha reveal d2" aria-label="Ficha do imóvel">
+                      {ficha.map((item) => (
+                        <div key={item.rotulo} className="im-ficha-item">
+                          <dt>{item.rotulo}</dt>
+                          <dd>{item.valor}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+                </div>
+              </section>
+            ) : null}
+
+            {imagensEmpreendimento.length > 0 ? (
+              <section id="fotos-condominio">
+                <div className="wrap">
+                  <h2 className="eyebrow reveal">Fotos do condomínio</h2>
+                </div>
+                <div className="reveal d2">
+                  <Carrossel
+                    imagens={imagensEmpreendimento.map((img) => ({
+                      url: img.url,
+                      ambiente: img.ambiente,
+                    }))}
+                    ariaLabel={`Fotos do condomínio de ${imovel.titulo}`}
+                    contexto={contexto}
+                    primeiraEager={imagensDecorado.length === 0}
+                  />
+                </div>
+              </section>
+            ) : null}
+
+            {imovel.descricao_completa ? (
+              <section id="condominio">
+                <div className="wrap">
+                  <h2 className="eyebrow reveal">O condomínio</h2>
+                  <p className="im-projeto reveal d2">{imovel.descricao_completa}</p>
+                </div>
+              </section>
+            ) : null}
+
+            <SecaoLocalizacao
+              endereco={enderecoPublico}
+              enderecoMapa={enderecoMapa}
+              titulo={imovel.titulo}
+              mostrar={Boolean(enderecoPublico || local)}
+            />
+            <SecaoLazer itens={diferenciaisLazer} />
+            <SecaoDiferenciais itens={diferenciaisGerais} />
+            <SecaoCtaFinal pronto titulo={imovel.titulo} hrefSimulador={hrefSimulador} />
+            <SecaoOutros relacionados={relacionados} pronto />
+            <SecaoFaq faqs={imovel.faqs} />
+          </>
+        ) : (
+          <>
+            {/* 3. O projeto */}
+            {imovel.descricao_completa ? (
+              <section id="projeto">
+                <div className="wrap">
+                  <h2 className="eyebrow reveal">O projeto</h2>
+                  <p className="im-projeto reveal d2">{imovel.descricao_completa}</p>
+                </div>
+              </section>
+            ) : null}
+
+            {/* 3.1 Vídeo do empreendimento */}
+            <SecaoVideo idVideo={idVideo} titulo={imovel.titulo} />
 
         {/* 4. Galeria do empreendimento */}
         {imagensEmpreendimento.length > 0 ? (
@@ -408,7 +655,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             <div className="reveal d2">
               <Carrossel
                 imagens={imagensEmpreendimento.map((img) => ({ url: img.url, ambiente: img.ambiente }))}
-                ariaLabel={`Galeria ${pronto ? "do imóvel" : "do empreendimento"} ${imovel.titulo}`}
+                ariaLabel={`Galeria do empreendimento ${imovel.titulo}`}
                 contexto={contexto}
                 primeiraEager
               />
@@ -417,7 +664,6 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         ) : null}
 
         {/* 5. Fase da obra (só lançamento) */}
-        {!pronto ? (
         <section id="fase-obra">
           <div className="wrap">
             <h2 className="eyebrow reveal">Fase da obra</h2>
@@ -439,29 +685,12 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
             </ol>
           </div>
         </section>
-        ) : null}
 
-        {/* 6. Lazer e convívio */}
-        {diferenciaisLazer.length > 0 ? (
-          <section id="lazer">
-            <div className="wrap">
-              <h2 className="eyebrow reveal">Lazer e convívio</h2>
-              <ul className="im-lazer reveal d2">
-                {diferenciaisLazer.map((item) => {
-                  const Icone = obterIcone(item.icone);
-                  return (
-                    <li key={item.id} className="im-lazer-item">
-                      <Icone aria-hidden="true" /> {item.nome}
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </section>
-        ) : null}
+            {/* 6. Lazer e convívio */}
+            <SecaoLazer itens={diferenciaisLazer} />
 
         {/* 7. As unidades */}
-        {!pronto && (imovel.descricao_unidades || imagensDecorado.length > 0) ? (
+        {(imovel.descricao_unidades || imagensDecorado.length > 0) ? (
           <section id="unidades">
             <div className="wrap">
               <h2 className="eyebrow reveal">As unidades</h2>
@@ -482,7 +711,7 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
         ) : null}
 
         {/* 8. Plantas e quadro de áreas */}
-        {!pronto && (imagensPlanta.length > 0 || imovel.tipologias.length > 0) ? (
+        {(imagensPlanta.length > 0 || imovel.tipologias.length > 0) ? (
           <section id="plantas">
             <div className="wrap">
               <h2 className="eyebrow reveal">Plantas e quadro de áreas</h2>
@@ -555,64 +784,19 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           </section>
         ) : null}
 
-        {/* 9. Diferenciais */}
-        {diferenciaisGerais.length > 0 ? (
-          <section id="diferenciais">
-            <div className="wrap">
-              <h2 className="eyebrow reveal">Diferenciais</h2>
-              <div className="im-diferenciais reveal d2">
-                {diferenciaisGerais.map((item) => {
-                  const Icone = obterIcone(item.icone);
-                  return (
-                    <div key={item.id} className="im-diferencial">
-                      <Icone aria-hidden="true" />
-                      <span>{item.nome}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-        ) : null}
+            {/* 9. Diferenciais */}
+            <SecaoDiferenciais itens={diferenciaisGerais} />
 
-        {/* 10. Localização */}
-        {enderecoPublico || local ? (
-          <section id="localizacao">
-            <div className="wrap">
-              <h2 className="eyebrow reveal">Localização</h2>
-              <div className="im-localizacao reveal d2">
-                {enderecoPublico ? <p className="endereco">{enderecoPublico}</p> : null}
-                {/* Prévia embutida sem chave de API (embed clássico do Maps). O
-                    iframe não recebe cliques; o link por cima abre o mapa cheio
-                    numa aba nova, para o visitante não perder a LP. */}
-                <div className="im-mapa">
-                  <iframe
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                      enderecoMapa,
-                    )}&z=15&output=embed`}
-                    title={`Mapa da localização do ${imovel.titulo}`}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                  />
-                  <a
-                    className="im-mapa-link"
-                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                      enderecoMapa,
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`Abrir a localização do ${imovel.titulo} no Google Maps, em uma nova aba`}
-                  >
-                    <span>Abrir no Google Maps</span>
-                  </a>
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : null}
+            {/* 10. Localização */}
+            <SecaoLocalizacao
+              endereco={enderecoPublico}
+              enderecoMapa={enderecoMapa}
+              titulo={imovel.titulo}
+              mostrar={Boolean(enderecoPublico || local)}
+            />
 
         {/* 11. Realização */}
-        {!pronto && imovel.construtora ? (
+        {imovel.construtora ? (
           <section id="realizacao">
             <div className="wrap">
               <h2 className="eyebrow reveal">Realização</h2>
@@ -626,59 +810,14 @@ export default async function PaginaImovel({ params }: PaginaImovelProps) {
           </section>
         ) : null}
 
-        {/* 12. FAQ */}
-        {imovel.faqs.length > 0 ? (
-          <section id="faq">
-            <div className="wrap">
-              <h2 className="eyebrow reveal">Perguntas frequentes</h2>
-              {imovel.faqs.map((faq) => (
-                <details key={faq.id} className="reveal d2">
-                  <summary>{faq.pergunta}</summary>
-                  <div className="resp">{faq.resposta}</div>
-                </details>
-              ))}
-            </div>
-          </section>
-        ) : null}
+            {/* 12. FAQ */}
+            <SecaoFaq faqs={imovel.faqs} />
 
-        {/* 13. CTA final + outros empreendimentos */}
-        <section id="cta-final">
-          <div className="wrap">
-            <div className="artigo-cta reveal">
-              <h3>Quer saber mais sobre {pronto ? "este imóvel" : `o ${imovel.titulo}`}?</h3>
-              <div className="im-cta-final-acoes">
-                <button
-                  type="button"
-                  className="cta"
-                  data-abrir-lead={`Quero saber mais sobre o ${imovel.titulo}`}
-                >
-                  Quero saber mais
-                </button>
-                <a className="cta cta-secundaria" href={hrefSimulador}>
-                  Simular financiamento
-                </a>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {relacionados.length > 0 ? (
-          <section id={pronto ? "outros-imoveis" : "outros-empreendimentos"}>
-            <div className="wrap">
-              <h2 className="eyebrow reveal">
-                {pronto ? "Outros imóveis" : "Continue pesquisando"}
-              </h2>
-              {/* Sem reveal na grade: quem anima é cada `ImovelCard`, para os
-                  cards entrarem conforme aparecem em vez de a grade inteira
-                  surgir de uma vez quando o topo dela toca a viewport. */}
-              <div className="im-grid">
-                {relacionados.map((relacionado) => (
-                  <ImovelCard key={relacionado.id} imovel={relacionado} />
-                ))}
-              </div>
-            </div>
-          </section>
-        ) : null}
+            {/* 13. CTA final + outros empreendimentos */}
+            <SecaoCtaFinal pronto={false} titulo={imovel.titulo} hrefSimulador={hrefSimulador} />
+            <SecaoOutros relacionados={relacionados} pronto={false} />
+          </>
+        )}
       </div>
 
       {/* Barra de CTA fixa em mobile */}

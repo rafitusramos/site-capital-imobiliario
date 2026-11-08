@@ -115,6 +115,19 @@ export function CamposPronto({ valores, setCampo }: CamposProps) {
         <CampoSimples {...base} id="nome_condominio" rotulo="Nome do condomínio" campo="nome_condominio" inputMode="text" />
       </div>
 
+      <div>
+        <label className={LABEL} htmlFor="descricao_unidade">
+          Descrição da unidade
+        </label>
+        <textarea
+          id="descricao_unidade"
+          rows={4}
+          value={valores.descricao_unidade}
+          onChange={(e) => setCampo("descricao_unidade", e.target.value)}
+          className={CAMPO}
+        />
+      </div>
+
       <div className="grid grid-cols-3 gap-3">
         <div>
           <CampoMoeda

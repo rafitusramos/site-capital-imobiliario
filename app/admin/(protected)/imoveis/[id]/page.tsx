@@ -4,7 +4,7 @@ import { getImovelByIdAdmin } from "@/lib/queries/admin-imoveis";
 import { getTiposEFases } from "@/lib/queries/imoveis";
 import { ImovelEditor } from "@/components/admin/ImovelEditor";
 
-export const metadata: Metadata = { title: "Editar empreendimento · Admin" };
+export const metadata: Metadata = { title: "Editar imóvel · Admin" };
 
 type PaginaEditarImovelProps = {
   params: Promise<{ id: string }>;
@@ -18,7 +18,7 @@ export default async function EditarImovelPage({ params }: PaginaEditarImovelPro
 
   return (
     <div>
-      <h1 className="mb-6 text-lg font-semibold text-[var(--abissal)]">Editar empreendimento</h1>
+      <h1 className="mb-6 text-lg font-semibold text-[var(--abissal)]">Editar imóvel</h1>
       <ImovelEditor imovel={imovel} modalidade={imovel.modalidade} tipos={tipos} fases={fases} />
     </div>
   );

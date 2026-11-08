@@ -152,6 +152,7 @@ const prontoSchema = z
     valor_condominio: valorMonetario,
     valor_iptu: valorMonetario,
     nome_condominio: opcional,
+    descricao_unidade: opcional,
     andar: inteiroOpcional,
     mobiliado: booleanoOpcional,
     ano_construcao: inteiroOpcional.refine(

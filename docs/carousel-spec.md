@@ -167,3 +167,25 @@ system e das restrições do repo (ver `CLAUDE.md`):
 - **Galeria de uma única foto não usa Embla**: com 1 imagem não há o que rolar; o componente
   renderiza um `<figure className="im-carrossel-unica">` simples, sem setas e sem região de
   carrossel.
+## Tamanhos e geometria (implementação em `styles/imoveis.css`)
+
+- **Root do Embla sem padding horizontal.** O Embla mede o root com `offsetWidth`
+  (padding incluído) mas posiciona o trilho a partir da borda de dentro do padding.
+  Com padding lateral (versão antiga: 8% / 18% / 26%) o slide centrado saía
+  deslocado para a direita pelo valor do padding, e no mobile a foto ativa e a
+  legenda encostavam na borda do `overflow:hidden` e eram cortadas. O *peek* vem
+  agora da largura do slide (`--basis`), não de padding.
+- **Largura do slide sem escala (`--basis`)**: mobile `52%` do viewport; ≥768px
+  `40%`; ≥1024px `calc(1080px × 0.4 / 1.5 + 16px)` = 304px. A foto ativa mede
+  `1.5 × (basis − 16px)`.
+- **Desktop (≥1024px): a foto ativa mede 40% do max-width do `.wrap`** (1080px,
+  `--wrap-max`, espelho de `lp.css`), ou seja, 432px. O `+ 16px` é o padding de 8px
+  de cada lado do slide, que também é ampliado pela escala. A foto única
+  (`.im-carrossel-unica`) usa a mesma largura nesse breakpoint.
+- **Padding vertical do viewport (`--folga-vertical`)** = quanto a foto cresce com
+  a escala (25% da altura sem escala = `0.1875 × largura`) + 12px de folga para a
+  sombra. Mudou `--basis` ou `--escala-ativa`, a folga acompanha por fórmula.
+- **Cantos**: 8px no botão do slide e na figura única, com `overflow:hidden` +
+  `isolation:isolate` (+ `translateZ(0)` no botão do slide) para o recorte
+  funcionar também em elemento escalado no Safari/iOS. Imagem e legenda são
+  recortadas juntas.

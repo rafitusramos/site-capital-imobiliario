@@ -153,3 +153,23 @@ describe("video_data_publicacao (as duas modalidades)", () => {
     if (parsed.success) expect(parsed.data.video_data_publicacao).toBe("2026-01-02");
   });
 });
+
+describe("descricao_unidade (pronto)", () => {
+  test("aparada e preservada", () => {
+    const parsed = imovelFormSchema.safeParse(pronto({ descricao_unidade: "  Sala ampla com varanda.  " }));
+    expect(parsed.success).toBe(true);
+    if (parsed.success && parsed.data.modalidade === "pronto") {
+      expect(parsed.data.descricao_unidade).toBe("Sala ampla com varanda.");
+    }
+  });
+
+  test("vazia ou ausente vira null", () => {
+    for (const extra of [{ descricao_unidade: "" }, {}]) {
+      const parsed = imovelFormSchema.safeParse(pronto(extra));
+      expect(parsed.success).toBe(true);
+      if (parsed.success && parsed.data.modalidade === "pronto") {
+        expect(parsed.data.descricao_unidade).toBeNull();
+      }
+    }
+  });
+});

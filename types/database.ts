@@ -201,6 +201,7 @@ export interface Database {
           descricao_breve: string | null;
           descricao_completa: string | null;
           descricao_unidades: string | null;
+          descricao_unidade: string | null;
           seo_title: string | null;
           seo_description: string | null;
           ordem: number;
@@ -255,6 +256,7 @@ export interface Database {
           descricao_breve?: string | null;
           descricao_completa?: string | null;
           descricao_unidades?: string | null;
+          descricao_unidade?: string | null;
           seo_title?: string | null;
           seo_description?: string | null;
           ordem?: number;

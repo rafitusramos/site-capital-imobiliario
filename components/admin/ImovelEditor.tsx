@@ -138,7 +138,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
     setEnviandoDados(null);
 
     if (!resultado.sucesso) {
-      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível salvar o imóvel.");
       return;
     }
     setBaseline((atual) => ({ ...atual, dados: valoresDados }));
@@ -169,7 +169,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
     const resultado = await publicarImovel(imovel.id, valoresDados.slug);
     setEnviandoDados(null);
     if (!resultado.sucesso) {
-      mostrarToast("erro", resultado.erro ?? "Não foi possível publicar o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível publicar o imóvel.");
       return;
     }
     router.refresh();
@@ -182,7 +182,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
     const resultado = await despublicarImovel(imovel.id, imovel.slug);
     setEnviandoDados(null);
     if (!resultado.sucesso) {
-      mostrarToast("erro", resultado.erro ?? "Não foi possível despublicar o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível despublicar o imóvel.");
       return;
     }
     router.refresh();
@@ -196,7 +196,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
     const resultado = await excluirImovel(imovel.id, imovel.slug);
     setEnviandoDados(null);
     if (!resultado.sucesso) {
-      mostrarToast("erro", resultado.erro ?? "Não foi possível excluir o empreendimento.");
+      mostrarToast("erro", resultado.erro ?? "Não foi possível excluir o imóvel.");
       return;
     }
     // Excluído: a navegação é por código, que a guarda de alterações não intercepta.
@@ -433,7 +433,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
         href="/admin/imoveis"
         className="mb-4 inline-block text-sm text-neutral-500 hover:text-[var(--abissal)]"
       >
-        ← Voltar para empreendimentos
+        ← Voltar para imóveis
       </Link>
 
       <div className="mb-6 flex flex-wrap gap-2 border-b border-black/10">
@@ -469,7 +469,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
               {slugMudouEmImovelPublicado ? (
                 <div className="-mt-2 mb-4 rounded-md border border-[var(--erro)]/30 bg-red-50 p-3 text-sm text-[var(--erro)]">
                   <p className="mb-2">
-                    ⚠ Este empreendimento está publicado em <code>/imoveis/{imovel!.slug}/</code>. Mudar
+                    ⚠ Este imóvel está publicado em <code>/imoveis/{imovel!.slug}/</code>. Mudar
                     o slug quebra essa URL indexada (SEO) — você precisará adicionar um redirect 301
                     manualmente em <code>next.config.ts</code>.
                   </p>
@@ -671,7 +671,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
               />
 
               <label className={LABEL} htmlFor="descricao_completa">
-                Seção &quot;O projeto&quot;
+                {pronto ? "Descrição do condomínio" : "Seção \"O projeto\""}
               </label>
               <textarea
                 id="descricao_completa"
@@ -778,7 +778,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
           <GaleriaImovel
             imagens={imagens}
             onChange={aoMudarGaleria}
-            grupos={pronto ? ["empreendimento"] : undefined}
+            modalidade={imovel.modalidade}
           />
 
           <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-black/10 pt-4">
@@ -1051,7 +1051,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
 
       <ConfirmarAcao
         aberto={confirmandoExcluir}
-        titulo="Excluir empreendimento?"
+        titulo="Excluir imóvel?"
         descricao={`"${imovel?.titulo ?? ""}" será excluído e a URL deixa de existir. Essa ação não pode ser desfeita.`}
         rotuloConfirmar="Excluir"
         variante="perigo"
@@ -1061,7 +1061,7 @@ export function ImovelEditor({ imovel, modalidade: modalidadeInicial, tipos, fas
       <ConfirmarAcao
         aberto={saidaPendente}
         titulo="Descartar alterações?"
-        descricao="Há alterações não salvas neste empreendimento. Se sair agora, elas serão perdidas."
+        descricao="Há alterações não salvas neste imóvel. Se sair agora, elas serão perdidas."
         rotuloConfirmar="Descartar e sair"
         rotuloCancelar="Continuar editando"
         variante="perigo"

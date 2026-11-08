@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 973 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **026**.
+Suíte em Vitest: `npm test` — 1000 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **027**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -195,6 +195,17 @@ e a mesma rota `/imoveis/<slug>/`: **nenhuma URL nova**, layout por modalidade.
   `modalidade` vale como `lancamento` (formato anterior). O editor monta o
   payload em `lib/imoveis/formulario.ts` e os blocos de campos vivem em
   `components/admin/imovel/` — `/admin/imoveis/novo` pergunta a modalidade antes.
+- **Galerias do pronto** reaproveitam os grupos do banco, sem migration de grupo:
+  `decorado` = **Fotos da unidade** (aparece primeiro no admin e na página) e
+  `empreendimento` = **Fotos do condomínio**; planta/implantação não existem para
+  pronto. A capa (hero, og:image, card) é a primeira foto da unidade, caindo para a
+  do condomínio (`lib/imoveis/capa.ts`; `achatarGaleria(grupos, modalidade)` marca
+  o `destaque` no grupo certo). `descricao_unidade` (migration 027, só pronto) é a
+  "Descrição da unidade"; no pronto `descricao_completa` passa a ser a descrição do
+  **condomínio**. Ordem da página: vídeo, fotos da unidade, descrição da unidade
+  (texto + ficha), fotos do condomínio, o condomínio, localização, lazer,
+  diferenciais, CTA, outros imóveis, FAQ. O hero mostra "Valor de venda" e, abaixo,
+  condomínio e IPTU por mês (mesmo com o valor "sob consulta").
 - Schema: pronto gera `Offer` simples com `valor_venda` (nunca `AggregateOffer`;
   `valor_a_partir_de` e tipologias são ignorados) e, **além do `Product`**,
   um nó `RealEstateListing` complementar (`montarRealEstateListingSchema`),
