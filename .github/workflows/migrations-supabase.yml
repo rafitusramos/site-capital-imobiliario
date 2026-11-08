@@ -8,8 +8,12 @@
 # ATENÇÃO: Preview e produção compartilham UM único banco Supabase. Mergear em
 # `Preview` aplica a migration em PRODUÇÃO.
 #
-# Secret obrigatório: SUPABASE_DB_URL — connection string do Session pooler
-# (Project Settings > Database), com a senha codificada para URL (URL-encoded).
+# Secret obrigatório: SUPABASE_DB_PASSWORD — só a senha do banco (Project
+# Settings > Database > Reset database password), crua, sem codificar. A URL do
+# Session pooler é montada aqui e a senha é codificada pelo próprio workflow:
+# montar a URI à mão errou três vezes (reticências copiadas, conexão direta
+# IPv6-only, senha rejeitada). Host e usuário não são segredo.
+# Trocou a senha do banco? Só este secret precisa ser atualizado.
 #
 # Pré-requisito: a tabela `supabase_migrations.schema_migrations` precisa listar
 # a versão de TODO arquivo já aplicado em `supabase/migrations/`. Se faltar uma,
@@ -40,14 +44,21 @@ jobs:
   migrations:
     runs-on: ubuntu-latest
     env:
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      # Session pooler (IPv4). A conexão direta db.<ref>.supabase.co é só IPv6,
+      # e os runners do GitHub Actions não têm IPv6.
+      POOLER_HOST: aws-1-us-west-2.pooler.supabase.com
+      POOLER_USER: postgres.lqiztovibxbrertyxead
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
     steps:
-      - name: Conferir secret
+      - name: Montar URL do banco
         run: |
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            echo "::error::Secret SUPABASE_DB_URL vazio ou ausente. Configure em Settings > Secrets and variables > Actions (Session pooler, senha URL-encoded)."
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::Secret SUPABASE_DB_PASSWORD vazio ou ausente. Configure em Settings > Secrets and variables > Actions (só a senha do banco, sem codificar)."
             exit 1
           fi
+          SENHA_CODIFICADA=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$SENHA_CODIFICADA"
+          echo "SUPABASE_DB_URL=postgresql://${POOLER_USER}:${SENHA_CODIFICADA}@${POOLER_HOST}:5432/postgres" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 
