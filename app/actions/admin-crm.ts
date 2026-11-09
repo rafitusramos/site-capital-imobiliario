@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { dispararAvisosMudancaEtapa } from "@/lib/email/notificar";
+import { caminhosDasSimulacoesDoLead, removerArquivosDasSimulacoes } from "@/lib/simulacao/armazenar";
 import type { createClient } from "@/lib/supabase/server";
 import { idSchema, usuarioAutenticado } from "@/lib/admin/auth";
 import { etapaInicial } from "@/lib/crm/etapas";
@@ -247,6 +248,11 @@ export interface MoverLeadInput {
   etapa: LeadEtapaSlug;
   motivo?: string;
   motivoObs?: string;
+  /**
+   * Suprime só o aviso `etapa-lead` (o e-mail ao dono segue). Usado pela tela de
+   * simulação: com a simulação enviada, o aviso "avançou: simulação" seria redundante.
+   */
+  suprimirAvisoLead?: boolean;
   /** Concorrência otimista (docs/crm-spec.md §5, caso de borda 3): comparado contra leads.updated_at dentro do RPC. */
   updatedAt?: string;
 }
@@ -311,6 +317,7 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
       motivo: parsed.data.motivo,
       motivoObs: parsed.data.motivoObs,
       quemMoveu,
+      ...(parsed.data.suprimirAvisoLead ? { suprimirAvisoLead: true } : {}),
     };
     // Depois da resposta, e sem nunca afetar o movimento (Fase 5: e-mails).
     try {
@@ -597,10 +604,21 @@ export async function excluirLead(leadId: string, motivo: string): Promise<AcaoR
   });
   if (erroRegistro) return { sucesso: false, erro: "Não foi possível registrar a exclusão." };
 
+  // Os PDFs de simulação ficam num bucket que o cascade não alcança (LGPD): os
+  // caminhos precisam ser lidos ANTES do delete, que apaga as linhas de crm_simulacoes.
+  const caminhosPdf = await caminhosDasSimulacoesDoLead(leadId);
+
   const { data: excluido, error: erroDelete } = await supabase.from("leads").delete().eq("id", leadId).select("id");
   if (erroDelete) return { sucesso: false, erro: "Não foi possível excluir o lead." };
   if (!excluido || excluido.length === 0) {
     return { sucesso: false, erro: "Lead não encontrado ou você não tem permissão para excluí-lo." };
+  }
+
+  // Falha de storage nunca bloqueia a exclusão: registra e segue.
+  try {
+    await removerArquivosDasSimulacoes(caminhosPdf);
+  } catch (e) {
+    console.error("[excluirLead] não foi possível remover os PDFs de simulação do bucket:", e);
   }
 
   revalidarQuadro();

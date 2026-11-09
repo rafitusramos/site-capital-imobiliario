@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1099 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **029**.
+Suíte em Vitest: `npm test` — 1192 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **030**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -135,6 +135,29 @@ documentadas em `.env.local.example`: `RESEND_API_KEY`, `EMAIL_REMETENTE`,
   pedido da própria pessoa. A regra de só mudá-lo com a CAPI continua valendo.
 - `enviado_whatsapp` em `leads` ficou sem uso (a coluna foi mantida; o stub de
   WhatsApp foi removido).
+
+### Simulação de financiamento por e-mail
+Só financiamento. Ao mover `criado` → `simulacao` (arrastar ou botão do modal) abre
+`DialogoSimulacao`: o admin anexa o PDF da Creditas, a leitura roda **no navegador**
+(`pdfjs-dist`), a prévia vem da rota `POST /api/admin/crm/simulacao/` e as ações são
+**Mover e enviar**, **Mover sem enviar** e **Cancelar**. Especificação em
+`docs/crm-spec.md` §3.7.
+
+- Gatilho puro `exigeSimulacao` (`lib/simulacao/gatilho.ts`). Home equity **não muda**.
+- "Mover e enviar" chama `moverLead` com `suprimirAvisoLead` (some só o `etapa-lead`;
+  o e-mail ao dono segue) e depois a rota. "Mover sem enviar" mantém o aviso normal.
+- A rota **não** usa `exigirAdmin` (corretor também opera o CRM): lê o lead com o
+  cliente de cookies e a RLS decide (404 para quem não vê). Nome e e-mail do cliente
+  vêm do banco, nunca do corpo; a referência do documento e do arquivo é `leads.protocolo`.
+- PDF gerado no servidor com `puppeteer-core` + `@sparticuz/chromium` (`serverExternalPackages`
+  e `outputFileTracingIncludes` em `next.config.ts`); fora da Vercel use
+  `SIMULACAO_CHROME_PATH`. Fontes embutidas em base64 (`lib/simulacao/fontes-asset.ts`,
+  gerado por `scripts/gerar-fontes-simulacao.mjs`) porque `public/` não existe na função.
+- E-mail com anexo **nunca é agendado** (`EmailParaEnviar.anexos`). Histórico em
+  `crm_simulacoes` + bucket privado `crm-simulacoes` (migration 030); `excluirLead`
+  apaga os PDFs do bucket. Prévia não exige a chave de serviço; envio exige.
+- Blocos novos no modal só existem para financiamento; sem a tabela, o bloco fica vazio
+  (`getSimulacoes` nunca lança).
 
 ### Imagens de imóveis
 Toda imagem enviada em `/admin` para as 3 galerias e para as plantas da aba

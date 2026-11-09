@@ -94,4 +94,29 @@ describe("cancelar", () => {
 
     expect(await emailer.cancelar("re_9")).toEqual({ cancelado: false, erro: "já enviado" });
   });
+
+  test("anexo vai como attachments (Buffer) e nunca é agendado", async () => {
+    const { cliente, send } = clienteFalso();
+    const emailer = criarEmailer({ chave: "k", remetente: "r", cliente });
+    const pdf = new Uint8Array([37, 80, 68, 70]);
+
+    await emailer.enviar({
+      ...EMAIL,
+      agendarPara: new Date("2026-01-01T12:10:00.000Z"),
+      anexos: [{ nome: "Simulacao-RT-RT-1.pdf", conteudo: pdf }],
+    });
+
+    const payload = (send.mock.calls as unknown as [{ attachments?: { filename: string; content: Buffer }[]; scheduledAt?: string }][])[0][0];
+    expect(payload.scheduledAt).toBeUndefined();
+    expect(payload.attachments).toHaveLength(1);
+    expect(payload.attachments![0].filename).toBe("Simulacao-RT-RT-1.pdf");
+    expect(Buffer.isBuffer(payload.attachments![0].content)).toBe(true);
+    expect([...payload.attachments![0].content]).toEqual([37, 80, 68, 70]);
+  });
+
+  test("sem anexo o payload não leva attachments", async () => {
+    const { cliente, send } = clienteFalso();
+    await criarEmailer({ chave: "k", remetente: "r", cliente }).enviar(EMAIL);
+    expect((send.mock.calls as unknown as unknown[][])[0][0]).not.toHaveProperty("attachments");
+  });
 });

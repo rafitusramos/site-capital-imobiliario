@@ -170,6 +170,9 @@ export const moverLeadBaseSchema = z.object({
   etapa: z.string().min(1, "Selecione uma etapa."),
   motivo: z.string().optional(),
   motivoObs: z.string().optional(),
+  // Só suprime o aviso ao lead (etapa-lead): o dono continua sendo avisado.
+  // Usado quando a simulação de financiamento é enviada junto com o movimento.
+  suprimirAvisoLead: z.boolean().optional(),
   // Concorrência otimista (docs/crm-spec.md §5, caso de borda 3): viaja para
   // o RPC mover_lead_crm comparar contra leads.updated_at.
   //

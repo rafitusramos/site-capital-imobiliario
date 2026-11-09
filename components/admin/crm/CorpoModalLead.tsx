@@ -6,6 +6,7 @@ import { PainelOrigem } from "@/components/admin/crm/PainelOrigem";
 import { LinhaDoTempo } from "@/components/admin/crm/LinhaDoTempo";
 import { NovaInteracao } from "@/components/admin/crm/NovaInteracao";
 import { ListaLembretes } from "@/components/admin/crm/ListaLembretes";
+import { PainelSimulacoes } from "@/components/admin/crm/PainelSimulacoes";
 import type { AcaoResultado } from "@/app/actions/admin-crm";
 import type { DetalheLeadCarregado } from "@/components/admin/crm/carregar-lead";
 import type { DominiosCRM } from "@/lib/queries/admin-crm";
@@ -25,6 +26,8 @@ export type CorpoModalLeadProps = {
   executarAcao: (promessa: Promise<AcaoResultado>, mensagemSucesso: string) => Promise<boolean>;
   onMudarEtapa: (etapa: LeadEtapaSlug) => void;
   etapaPendente: boolean;
+  /** Abre o diálogo de simulação sem mover (só financiamento). */
+  onEnviarSimulacao: () => void;
 };
 
 /**
@@ -36,7 +39,7 @@ export type CorpoModalLeadProps = {
  * chegou — se o hook morasse no ModalLead, a primeira montagem (com
  * `detalhe = null`) semearia o estado vazio e ficaria errado depois.
  */
-export function CorpoModalLead({ detalhe, dominios, leadId, executarAcao, onMudarEtapa, etapaPendente }: CorpoModalLeadProps) {
+export function CorpoModalLead({ detalhe, dominios, leadId, executarAcao, onMudarEtapa, etapaPendente, onEnviarSimulacao }: CorpoModalLeadProps) {
   // DetalheOrigemLead["dados"] é um union de Rows específicas
   // (lead_financiamento | lead_home_equity | ...) — o hook e PainelOrigem.tsx
   // são deliberadamente genéricos sobre a origem, então recebem como Record
@@ -73,6 +76,10 @@ export function CorpoModalLead({ detalhe, dominios, leadId, executarAcao, onMuda
           origemLabel={LABEL_ORIGEM[detalhe.lead.tipo]}
         />
       </div>
+
+      {detalhe.lead.tipo === "financiamento" ? (
+        <PainelSimulacoes simulacoes={detalhe.simulacoes} onEnviar={onEnviarSimulacao} />
+      ) : null}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <ListaLembretes lembretes={detalhe.lembretes} executarAcao={executarAcao} />

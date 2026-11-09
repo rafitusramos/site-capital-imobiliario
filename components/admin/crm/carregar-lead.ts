@@ -1,6 +1,6 @@
 "use server";
 
-import { getLead, getLembretes, getTimeline, getUsuarioCRM, type LeadDetalhado, type LinhaTimelineCRM, type UsuarioCRM } from "@/lib/queries/admin-crm";
+import { getLead, getLembretes, getSimulacoes, getTimeline, getUsuarioCRM, type LeadDetalhado, type LinhaTimelineCRM, type SimulacaoEnviada, type UsuarioCRM } from "@/lib/queries/admin-crm";
 import type { Database } from "@/types/database";
 
 /**
@@ -27,13 +27,20 @@ export type DetalheLeadCarregado = LeadDetalhado & {
   lembretes: Database["public"]["Tables"]["crm_lembretes"]["Row"][];
   /** Quem abriu o modal — a timeline só oferece editar/apagar nas interações dele (ou todas, se admin). */
   usuario: UsuarioCRM;
+  /** Só para financiamento; vazio nas demais origens (e quando a migration 030 ainda não rodou). */
+  simulacoes: SimulacaoEnviada[];
 };
 
 export async function carregarDetalheLead(leadId: string): Promise<DetalheLeadCarregado | null> {
   const detalhado = await getLead(leadId);
   if (!detalhado) return null;
 
-  const [timeline, lembretes, usuario] = await Promise.all([getTimeline(leadId), getLembretes(leadId), getUsuarioCRM()]);
+  const [timeline, lembretes, usuario, simulacoes] = await Promise.all([
+    getTimeline(leadId),
+    getLembretes(leadId),
+    getUsuarioCRM(),
+    detalhado.lead.tipo === "financiamento" ? getSimulacoes(leadId) : Promise.resolve([]),
+  ]);
 
-  return { ...detalhado, timeline, lembretes, usuario };
+  return { ...detalhado, timeline, lembretes, usuario, simulacoes };
 }
