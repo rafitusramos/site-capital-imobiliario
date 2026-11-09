@@ -69,7 +69,7 @@ alter table public.crm_lembretes
 create or replace function public.somar_dias_uteis(p_inicio timestamptz, p_dias int)
 returns timestamptz
 language plpgsql
-immutable
+stable
 set search_path = public, pg_temp
 as $$
 declare
@@ -131,8 +131,11 @@ begin
 end;
 $$;
 
--- Função de trigger fora da API REST (mesmo padrão da 018/0181).
+-- Funções fora da API REST (mesmo padrão da 018/0181). somar_dias_uteis é só
+-- de uso interno, e exposta deixaria um anônimo prender o banco no laço com um
+-- p_dias enorme. O trigger segue funcionando: a função dele é security definer.
 revoke execute on function public.agendar_lembrete_sla() from public, anon, authenticated;
+revoke execute on function public.somar_dias_uteis(timestamptz, int) from public, anon, authenticated;
 
 create trigger trg_leads_lembrete_sla
   after insert or update of status on public.leads
