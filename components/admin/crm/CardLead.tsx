@@ -71,16 +71,6 @@ export function CardLead({
   const estado = estadoDaEtapaDoLead(lead, agora);
   const corBarra = COR_BARRA[estado];
 
-  const estilo = {
-    ...estiloContorno,
-    // Barra de tempo (docs/crm-spec.md §4): borda esquerda de 3px cuja cor
-    // é o único acento cromático do card. Aplicada via style (não classe
-    // Tailwind) porque a cor é dinâmica (calculada por lead, não uma das
-    // classes fixas do tema).
-    borderLeftWidth: 3,
-    borderLeftColor: corBarra,
-  };
-
   // Estado do lembrete: comparação de instante (lib/crm/lembretes.ts). Dirige
   // o contorno do card e a cor do texto. `agora` vem do mesmo default do resto
   // do card, então não cria divergência nova de hidratação: o estado só muda
@@ -101,6 +91,16 @@ export function CardLead({
   const estiloContorno = corContorno
     ? { boxShadow: `0 0 0 1.5px ${corContorno}, 0 1px 2px 0 rgb(0 0 0 / 0.05)` }
     : undefined;
+
+  const estilo = {
+    ...estiloContorno,
+    // Barra de tempo (docs/crm-spec.md §4): borda esquerda de 3px cuja cor
+    // é o único acento cromático do card. Aplicada via style (não classe
+    // Tailwind) porque a cor é dinâmica (calculada por lead, não uma das
+    // classes fixas do tema).
+    borderLeftWidth: 3,
+    borderLeftColor: corBarra,
+  };
 
   return (
     <div className={`group relative ${isDragging ? "z-10" : ""}`}>

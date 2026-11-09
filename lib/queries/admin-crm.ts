@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { etapasDoTipo, ETAPAS_POR_TIPO } from "@/lib/crm/etapas";
+import { responsaveisVisiveis, type ResponsavelCRM } from "@/lib/crm/responsaveis";
 import type { Database, LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 
 /**
@@ -278,7 +279,7 @@ export type DominiosCRM = {
   motivosPerda: Database["public"]["Tables"]["crm_motivos_perda"]["Row"][];
   tiposInteracao: Database["public"]["Tables"]["crm_interacao_tipos"]["Row"][];
   tags: Database["public"]["Tables"]["crm_tags"]["Row"][];
-  corretores: Pick<Database["public"]["Tables"]["profiles"]["Row"], "id" | "full_name" | "avatar_url" | "role">[];
+  corretores: ResponsavelCRM[];
 };
 
 /** Domínio do módulo, cacheado por request (React `cache`) — várias partes da página pedem a mesma coisa. */
@@ -288,7 +289,13 @@ export const getDominios = cache(async function getDominios(): Promise<DominiosC
     supabase.from("crm_motivos_perda").select("*").eq("ativo", true).order("ordem", { ascending: true }),
     supabase.from("crm_interacao_tipos").select("*").eq("ativo", true).order("ordem", { ascending: true }),
     supabase.from("crm_tags").select("*").eq("ativo", true).order("ordem", { ascending: true }),
-    supabase.from("profiles").select("id, full_name, avatar_url, role").order("full_name", { ascending: true }),
+    // select("*") de propósito: listar `oculto_no_crm` aqui derrubaria o CRM
+    // no intervalo entre o deploy da branch e a migration 029 rodar (ela só é
+    // aplicada no merge em Preview, e a branch é testada antes, contra o
+    // mesmo banco). Com "*", a coluna ausente só significa "ninguém oculto".
+    // O filtro e o recorte para 4 campos ficam em `responsaveisVisiveis`:
+    // nada além disso chega ao cliente.
+    supabase.from("profiles").select("*").order("full_name", { ascending: true }),
   ]);
 
   if (motivos.error) throw motivos.error;
@@ -301,7 +308,7 @@ export const getDominios = cache(async function getDominios(): Promise<DominiosC
     motivosPerda: motivos.data ?? [],
     tiposInteracao: tiposInteracao.data ?? [],
     tags: tags.data ?? [],
-    corretores: corretores.data ?? [],
+    corretores: responsaveisVisiveis(corretores.data ?? []),
   };
 });
 
