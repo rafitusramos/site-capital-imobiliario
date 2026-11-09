@@ -93,3 +93,46 @@ test.describe("/financiamento/ — simulador", () => {
     await expect(page.getByText("Parcela fixa aproximada")).toBeVisible();
   });
 });
+
+// Data de nascimento (migration 033): obrigatória nos dois modais de lead. Só abre o
+// modal e mede; "Próximo" com campos vazios apenas exibe erros, nada é enviado.
+const modais = [
+  { caminho: "/financiamento/", botao: "Solicitar pré-aprovação sem custo" },
+  { caminho: "/home_equity/", botao: "Solicitar análise sem custo" },
+];
+for (const { caminho, botao } of modais) {
+  test.describe(`${caminho} — modal de lead, data de nascimento`, () => {
+    test.use({ viewport: { width: 375, height: 667 } });
+
+    test("campo existe com label e o botão de navegação fica visível sem rolar", async ({ page }) => {
+      await new LandingPage(page, caminho).goto();
+      const abrir = page.getByRole("button", { name: botao });
+      const painel = page.locator(".scrim.aberto .painel");
+      // Clique antes da hidratação é perdido: repete até o modal abrir.
+      await expect(async () => {
+        await abrir.click();
+        await expect(painel).toBeVisible({ timeout: 1_000 });
+      }).toPass();
+
+      const campo = painel.getByLabel("Data de nascimento");
+      await expect(campo).toBeVisible();
+      await expect(campo).toHaveAttribute("autocomplete", "bday");
+      await expect(campo).toHaveAttribute("inputmode", "numeric");
+
+      const avancar = painel.locator(".form-nav .cta");
+      const cabe = async () => {
+        const caixa = await avancar.boundingBox();
+        const altura = page.viewportSize()!.height;
+        expect(caixa, "botão do formulário").not.toBeNull();
+        expect(caixa!.y).toBeGreaterThanOrEqual(0);
+        expect(caixa!.y + caixa!.height).toBeLessThanOrEqual(altura);
+      };
+      await cabe();
+
+      // Com as mensagens de erro à mostra continua à vista (não envia: etapa 1 inválida).
+      await avancar.click();
+      await expect(painel.getByText("Informe uma data de nascimento válida.")).toBeVisible();
+      await cabe();
+    });
+  });
+}

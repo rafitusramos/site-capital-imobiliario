@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1099 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **029**.
+Suíte em Vitest: `npm test` — 1131 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **033**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -105,6 +105,29 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 - Tags vivem no catálogo compartilhado `crm_tags`, com FK em `lead_tags`: não
   existe tag solta por lead. Criar tag pela interface exige admin (RLS
   `crm_tags_admin_write`).
+
+### Data de nascimento do lead (migration 033)
+Obrigatória nos formulários de **financiamento** e **home equity** (a idade entra no
+seguro MIP e muda a parcela); imóveis não pede. Regra única em `lib/data-nascimento.ts`
+(pura, travada em `tests/unidade/data-nascimento.test.ts`): data real, idade de 18 a 100
+anos, "hoje" sempre em `America/Sao_Paulo`. O campo é texto com máscara `dd/mm/aaaa`
+(`mascaraData`), vai ao servidor em ISO `aaaa-mm-dd` e nunca passa por `Date` na
+exibição (`formatarDataNascimento`). Coluna `data_nascimento date` em
+`lead_financiamento` e `lead_home_equity`; o RPC aceita `p_data_nascimento date default
+null` e o banco rejeita data futura. CRM: campo editável (`bloco: "lead"`, tipo `data`),
+só exige data real não futura (`isoDataNaoFutura`). O e-mail ao dono mostra data e idade.
+Fora do CSV do quadro (a view `leads_quadro` não tem a coluna).
+
+- **Fallback transitório em `app/actions/leads.ts` (`chamarRpcLead`)**: o deploy da
+  branch sobe antes da 033 e usa o mesmo banco; o RPC antigo não conhece
+  `p_data_nascimento` (PGRST202). Só nesse erro a action repete sem o parâmetro (com
+  `console.error`) para o lead real não se perder. **Remover o helper depois que a 033
+  estiver aplicada.** Salvar lead no CRM antes da 033 falha na coluna nova: só ocorre
+  no deploy de branch, que o dono não usa para o CRM.
+- Layout: CPF e data lado a lado (`.dupla`, 2 colunas também no celular) para não
+  somar altura. Causa-raiz de o botão sair da tela em telas baixas era `.painel form` sem
+  `display:flex` (o `<form>` nunca encolhia): hoje o miolo (`.bloco`) rola e o rodapé fica
+  sempre visível.
 
 ### E-mails
 Provider **Resend** (`lib/email/`). Variáveis só de servidor (nunca `NEXT_PUBLIC_`),

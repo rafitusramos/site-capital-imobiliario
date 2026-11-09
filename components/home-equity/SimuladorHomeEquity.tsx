@@ -9,7 +9,8 @@ import {
   telefoneValido,
   parseDecimalBr,
 } from "@/lib/financeiro";
-import { mascaraMoeda, mascaraTelefone, mascaraCpf, mascaraCep, mascaraNumDec, mascaraNum } from "@/lib/mascaras";
+import { dataBrParaIso, dataNascimentoValida } from "@/lib/data-nascimento";
+import { mascaraData, mascaraMoeda, mascaraTelefone, mascaraCpf, mascaraCep, mascaraNumDec, mascaraNum } from "@/lib/mascaras";
 import {
   LeadFormShell,
   type LeadFormShellHandle,
@@ -30,6 +31,8 @@ function validarCampo(campo: string, valores: ValoresFormulario): boolean {
       return String(valores.nome ?? "").trim().length >= 3;
     case "c-cpf":
       return !valores.cpf || cpfValido(String(valores.cpf));
+    case "c-nasc":
+      return dataNascimentoValida(String(valores.dataNascimento ?? ""));
     case "c-tel":
       return telefoneValido(String(valores.telefone ?? ""));
     case "c-email":
@@ -96,6 +99,8 @@ export function SimuladorHomeEquity({
       email: valores.email,
       telefone: valores.telefone,
       cpf: valores.cpf || undefined,
+      // dd/mm/aaaa -> ISO; texto inválido segue vazio e o schema do servidor recusa.
+      dataNascimento: dataBrParaIso(String(valores.dataNascimento ?? "")) ?? "",
       renda: digitos(valores.renda),
       tipoRemuneracao: valores.tipoRemuneracao,
       objetivoCredito: valores.objetivoCredito,
@@ -220,7 +225,7 @@ export function SimuladorHomeEquity({
         etapas={[
           {
             nome: "Etapa 1 de 3 · Dados pessoais",
-            camposObrigatorios: ["c-nome", "c-cpf", "c-tel", "c-email"],
+            camposObrigatorios: ["c-nome", "c-cpf", "c-nasc", "c-tel", "c-email"],
             render: ({ valores, setValor, erros }) => (
               <>
                 <div className={campoClasse(erros, "c-nome")} id="c-nome">
@@ -236,18 +241,37 @@ export function SimuladorHomeEquity({
                   />
                   <span className="msg-erro">Informe seu nome completo.</span>
                 </div>
-                <div className={campoClasse(erros, "c-cpf")} id="c-cpf">
-                  <label htmlFor="f-cpf">CPF</label>
-                  <input
-                    id="f-cpf"
-                    name="cpf"
-                    type="text"
-                    inputMode="numeric"
-                    placeholder="000.000.000-00"
-                    value={String(valores.cpf ?? "")}
-                    onChange={(e) => setValor("cpf", mascaraCpf(e.target.value))}
-                  />
-                  <span className="msg-erro">Informe um CPF válido.</span>
+                <div className="dupla">
+                  <div className={campoClasse(erros, "c-cpf")} id="c-cpf">
+                    <label htmlFor="f-cpf">CPF</label>
+                    <input
+                      id="f-cpf"
+                      name="cpf"
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="000.000.000-00"
+                      value={String(valores.cpf ?? "")}
+                      onChange={(e) => setValor("cpf", mascaraCpf(e.target.value))}
+                    />
+                    <span className="msg-erro">Informe um CPF válido.</span>
+                  </div>
+                  <div className={campoClasse(erros, "c-nasc")} id="c-nasc">
+                    <label htmlFor="f-nasc">Data de nascimento</label>
+                    <input
+                      id="f-nasc"
+                      name="dataNascimento"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="bday"
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
+                      value={String(valores.dataNascimento ?? "")}
+                      onChange={(e) => setValor("dataNascimento", mascaraData(e.target.value))}
+                      aria-required="true"
+                      required
+                    />
+                    <span className="msg-erro">Informe uma data de nascimento válida.</span>
+                  </div>
                 </div>
                 <div className={campoClasse(erros, "c-tel")} id="c-tel">
                   <label htmlFor="f-tel">Telefone de contato</label>

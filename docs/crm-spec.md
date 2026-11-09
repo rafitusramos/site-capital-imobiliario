@@ -17,7 +17,7 @@ parte do domínio:
 | Já existe | Serve para |
 |---|---|
 | `leads` + protocolo sequencial `RT-2026-0001` | núcleo do card |
-| `lead_financiamento`, `lead_home_equity`, `lead_imovel`, `lead_consorcio` (1:1) | campos por origem |
+| `lead_financiamento`, `lead_home_equity`, `lead_imovel`, `lead_consorcio` (1:1) | campos por origem (financiamento e home equity ganharam `data_nascimento`, migration 033: editável no bloco "Dados do lead", fora do CSV) |
 | `lead_status_historico` + trigger `log_lead_status_change` | trilha de auditoria e carimbo de transição |
 | `lead_interacoes` | base da linha do tempo |
 | `vw_leads_crm` | consulta consolidada |

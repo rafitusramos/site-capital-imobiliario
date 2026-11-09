@@ -1,5 +1,5 @@
 -- =====================================================================
--- 032_lead_data_nascimento.sql
+-- 033_lead_data_nascimento.sql
 -- Data de nascimento do lead de financiamento e de home equity (a idade entra
 -- no seguro MIP, que muda a parcela). Coluna `data_nascimento date` em
 -- lead_financiamento e lead_home_equity, gravada pelos RPCs criar_lead_*.
@@ -8,8 +8,10 @@
 -- Sobrecarga: como em 012, `create or replace` com assinatura diferente criaria
 -- um OVERLOAD e a chamada nomeada do supabase-js ficaria ambígua. Por isso cada
 -- função antiga (assinatura exata da 012) é removida antes de recriar.
--- Grants/security: iguais aos de hoje — plpgsql, sem security definer, sem
--- grant explícito (roda via service_role). Nada a replicar.
+-- Grants/security: plpgsql, sem security definer, chamada só pelo servidor com
+-- a service_role (app/actions/leads.ts). Função recriada ganha de novo o
+-- execute padrão (PUBLIC, mais anon/authenticated pelos default privileges do
+-- Supabase); o fim do arquivo revoga, na linha do hot-fix 031.
 --
 -- O parâmetro novo é `default null`, de propósito: o código anterior (que não
 -- envia p_data_nascimento) continua criando leads depois desta migration. A
@@ -149,3 +151,16 @@ begin
   return v_lead;
 end;
 $$;
+
+-- Só a service_role chama estes RPCs: nada de execute para a chave pública.
+revoke execute on function public.criar_lead_financiamento(
+  text, text, text, text, text, text, jsonb,
+  numeric, numeric, numeric, numeric, int, numeric, numeric, boolean,
+  text, text, text, text, text, boolean, date
+) from public, anon, authenticated;
+
+revoke execute on function public.criar_lead_home_equity(
+  text, text, text, text, text, text, jsonb,
+  numeric, boolean, numeric, numeric, int, numeric, text, text,
+  numeric, text, text, text, numeric, boolean, date
+) from public, anon, authenticated;

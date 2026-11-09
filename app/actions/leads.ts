@@ -128,14 +128,14 @@ function parametrosImovel(
 }
 
 /**
- * TRANSITÓRIO — remover quando a migration 032 estiver aplicada em produção.
+ * TRANSITÓRIO — remover quando a migration 033 estiver aplicada em produção.
  *
  * O deploy da branch (e o de Preview) usa o MESMO banco de produção e sobe
- * ANTES da 032 rodar. Chamar o RPC com `p_data_nascimento` enquanto a função
+ * ANTES da 033 rodar. Chamar o RPC com `p_data_nascimento` enquanto a função
  * nova não existe devolve PGRST202 (função não encontrada) e o lead real se
  * perderia. Então, só nesse caso, repete sem o parâmetro: o lead entra sem a
  * data (que fica só no log) e o erro é registrado. Qualquer outro erro continua
- * subindo. Depois da 032, apague este helper e chame `admin.rpc` direto.
+ * subindo. Depois da 033, apague este helper e chame `admin.rpc` direto.
  */
 async function chamarRpcLead(
   admin: ReturnType<typeof createAdminClient>,
@@ -147,7 +147,7 @@ async function chamarRpcLead(
   if (codigo !== "PGRST202") return primeira;
 
   console.error(
-    `[criarLead] ${nome} sem p_data_nascimento no banco (migration 032 pendente); repetindo sem o parâmetro:`,
+    `[criarLead] ${nome} sem p_data_nascimento no banco (migration 033 pendente); repetindo sem o parâmetro:`,
     primeira.error,
   );
   const { p_data_nascimento: _descartado, ...semData } = params;
