@@ -1,13 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import {
-  etapaAnterior,
-  etapaInicial,
-  etapaPorSlug,
-  etapaProxima,
-  etapasDoTipo,
-} from "@/lib/crm/etapas";
 import { cpfValido, telefoneValido } from "@/lib/financeiro";
 import { mascaraCpf, mascaraTelefone } from "@/lib/mascaras";
 import {
@@ -19,7 +12,8 @@ import {
   type AcaoResultado,
 } from "@/app/actions/admin-crm";
 import { useToast } from "@/lib/admin/toast";
-import { IconeEstrela, IconeEstrelaPreenchida, IconeSetaDireita, IconeSetaEsquerda } from "@/components/admin/crm/icones";
+import { IconeEstrela, IconeEstrelaPreenchida } from "@/components/admin/crm/icones";
+import { BarraEtapa } from "@/components/admin/crm/BarraEtapa";
 import { CampoOrigemInput } from "@/components/admin/crm/CampoOrigemInput";
 import type { CampoCRM } from "@/lib/crm/campos";
 import type { Database, LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
@@ -30,12 +24,6 @@ const CAMPO =
 const LABEL = "mb-1 block text-sm font-medium text-[var(--abissal)]";
 const BOTAO_PRIMARIO =
   "rounded-md bg-[var(--jade)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#175840] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)] disabled:opacity-50";
-// Botão de mover etapa (item 8 dos ajustes de CRM): a cor vem por `style`
-// (corBg/corTexto da etapa de destino), não daqui — esta classe só cuida de
-// forma, tamanho e estado.
-const BOTAO_ETAPA =
-  "flex min-h-[44px] w-full items-center justify-between gap-2 rounded-full px-4 py-2.5 text-sm font-medium transition duration-200 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)]";
-
 type LeadRow = Database["public"]["Tables"]["leads"]["Row"];
 type TagCRM = Database["public"]["Tables"]["crm_tags"]["Row"];
 
@@ -111,13 +99,6 @@ export function PainelComum({
   // disparam o MESMO evento nativo de blur no input — sem isto, o onBlur não
   // teria como saber qual dos dois motivou o blur.
   const intencaoTagRef = useRef<"confirmar" | "cancelar">("confirmar");
-
-  const etapaAtual = etapaPorSlug(tipo, lead.status);
-  const emEtapaFinalNaoGanho = etapaAtual ? etapaAtual.isFinal && !etapaAtual.isGanho : false;
-  const anterior = etapaAnterior(tipo, lead.status);
-  const proxima = etapaProxima(tipo, lead.status);
-  const etapasFinaisNaoGanho = etapasDoTipo(tipo).filter((e) => e.isFinal && !e.isGanho && e.slug !== lead.status);
-  const inicial = etapaInicial(tipo);
 
   function setValor<K extends keyof ValoresComuns>(campo: K, valor: string) {
     setValores((atual) => ({ ...atual, [campo]: valor }));
@@ -252,7 +233,9 @@ export function PainelComum({
 
   return (
     <div>
-      <div className="mb-3 flex items-center justify-between gap-2">
+      {/* min-h-7 = 28px: a altura do botão da estrela (h-5 + p-1). PainelOrigem
+          usa a mesma linha; sem isso a coluna da direita começava 8px acima. */}
+      <div className="mb-3 flex min-h-7 items-center justify-between gap-2">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Dados do lead</h3>
         <button
           type="button"
@@ -351,81 +334,7 @@ export function PainelComum({
         </button>
       </div>
 
-      <div className="mb-4">
-        <span className={LABEL}>Etapa</span>
-        {etapaAtual ? (
-          <span
-            className="inline-block rounded-full px-3 py-1 text-xs font-semibold"
-            style={{ backgroundColor: etapaAtual.corBg, color: etapaAtual.corTexto }}
-          >
-            {etapaAtual.label}
-          </span>
-        ) : null}
-
-        <p className="mb-2 mt-3 text-xs text-neutral-500">Mover para</p>
-        <div className="flex flex-col gap-2">
-          {emEtapaFinalNaoGanho ? (
-            // Lead perdido/não qualificado está fora da sequência linear
-            // (lib/crm/etapas.ts `sequenciaLinear`): o histórico fica
-            // preservado na linha do tempo, reavançar são dois cliques a
-            // partir daqui.
-            <button
-              type="button"
-              onClick={() => onMudarEtapa(inicial.slug)}
-              disabled={etapaPendente}
-              aria-label={`Reabrir em ${inicial.label}`}
-              style={{ backgroundColor: inicial.corBg, color: inicial.corTexto }}
-              className={BOTAO_ETAPA}
-            >
-              <IconeSetaEsquerda className="h-4 w-4 flex-none" />
-              <span>Reabrir em {inicial.label}</span>
-            </button>
-          ) : (
-            <>
-              {anterior ? (
-                <button
-                  type="button"
-                  onClick={() => onMudarEtapa(anterior.slug)}
-                  disabled={etapaPendente}
-                  aria-label={`Mover para ${anterior.label}`}
-                  style={{ backgroundColor: anterior.corBg, color: anterior.corTexto }}
-                  className={BOTAO_ETAPA}
-                >
-                  <IconeSetaEsquerda className="h-4 w-4 flex-none" />
-                  <span>{anterior.label}</span>
-                </button>
-              ) : null}
-              {proxima ? (
-                <button
-                  type="button"
-                  onClick={() => onMudarEtapa(proxima.slug)}
-                  disabled={etapaPendente}
-                  aria-label={`Mover para ${proxima.label}`}
-                  style={{ backgroundColor: proxima.corBg, color: proxima.corTexto }}
-                  className={BOTAO_ETAPA}
-                >
-                  <span>{proxima.label}</span>
-                  <IconeSetaDireita className="h-4 w-4 flex-none" />
-                </button>
-              ) : null}
-              {etapasFinaisNaoGanho.map((etapa) => (
-                <button
-                  key={etapa.slug}
-                  type="button"
-                  onClick={() => onMudarEtapa(etapa.slug)}
-                  disabled={etapaPendente}
-                  aria-label={`Mover para ${etapa.label}`}
-                  style={{ backgroundColor: etapa.corBg, color: etapa.corTexto }}
-                  className={BOTAO_ETAPA}
-                >
-                  <span>{etapa.label}</span>
-                  <IconeSetaDireita className="h-4 w-4 flex-none" />
-                </button>
-              ))}
-            </>
-          )}
-        </div>
-      </div>
+      <BarraEtapa tipo={tipo} status={lead.status} onMudarEtapa={onMudarEtapa} etapaPendente={etapaPendente} />
 
       <div className="mb-4">
         <label className={LABEL} htmlFor="pc-responsavel">
