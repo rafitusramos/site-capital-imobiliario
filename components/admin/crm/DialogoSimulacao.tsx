@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { AcaoResultado } from "@/app/actions/admin-crm";
+import { simulacaoPendenteDoLead } from "@/app/actions/admin-simulacao";
 import { IconeFechar } from "@/components/admin/crm/icones";
+import { formatarData } from "@/lib/crm/tempo";
 import { CONFIG_SIMULACAO } from "@/lib/simulacao/config";
 import { ErroExtracao } from "@/lib/simulacao/extrair";
 import { lerPdfCreditas } from "@/lib/simulacao/extrair-pdf";
@@ -23,8 +25,8 @@ function elementosFocaveis(container: HTMLElement): HTMLElement[] {
 /** Como o diálogo terminou; quem o abriu decide o toast. */
 export type ResultadoDialogoSimulacao =
   | { tipo: "cancelado" }
-  /** Enviou a simulação sem mover (reenvio/nova simulação). */
-  | { tipo: "enviado" }
+  /** Modo "anexar": o PDF foi gravado no lead. Nenhum e-mail saiu. */
+  | { tipo: "anexado" }
   | { tipo: "movido-e-enviado" }
   | { tipo: "movido-sem-envio" }
   /** O lead FOI movido, mas o envio falhou e a pessoa fechou. */
@@ -34,8 +36,8 @@ export type EstadoDialogoSimulacao = {
   leadId: string;
   /** E-mail do lead: onde a simulação será entregue. */
   destinatario: string;
-  /** "mover": decorre de mover para Simulação. "avulso": botão "Enviar simulação" do modal. */
-  modo: "mover" | "avulso";
+  /** "mover": decorre de mover para Simulação. "anexar": botão "Anexar simulação" do modal. */
+  modo: "mover" | "anexar";
   etapaLabel?: string;
 };
 
@@ -47,7 +49,7 @@ export type DialogoSimulacaoProps = {
   onFinalizar: (resultado: ResultadoDialogoSimulacao) => void;
 };
 
-type Etapa = "anexar" | "lendo" | "gerando" | "previa" | "enviando";
+type Etapa = "buscando" | "anexar" | "lendo" | "gerando" | "previa" | "enviando";
 
 const BOTAO_PRIMARIO =
   "rounded-md bg-[var(--jade)] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#175840] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)] disabled:cursor-not-allowed disabled:opacity-50";
@@ -58,14 +60,18 @@ const BOTAO_TERCIARIO =
 
 /**
  * Simulação de financiamento no fluxo do CRM (docs/crm-spec.md §3.7). Mesmo
- * contrato de foco/Esc de DialogoMotivo.tsx. Passos: anexar o PDF da Creditas,
- * leitura no navegador, prévia do documento (gerado no servidor, sem gravar
- * nada) e as ações. A regra de ouro: nunca se envia nada que a pessoa não viu
- * na prévia, e um PDF não reconhecido nunca gera documento.
+ * contrato de foco/Esc de DialogoMotivo.tsx. Dois modos:
  *
- * Ordem do "Mover e enviar": primeiro o movimento (sem o aviso ao lead), depois
- * o envio. Se mover falha, nada é enviado; se o envio falha, o lead fica movido
- * e o diálogo oferece "Tentar enviar de novo".
+ * - "anexar" (bloco Simulações do modal): PDF da Creditas -> leitura no navegador
+ *   -> prévia -> "Anexar" grava o PDF no lead. NENHUM e-mail sai.
+ * - "mover" (Criado -> Simulação, por arrasto ou botão): se o lead já tem simulação
+ *   anexada e não enviada, abre direto na prévia dela (com a opção de trocar o PDF);
+ *   senão pede o PDF. Ações: Mover e enviar, Mover sem enviar, Cancelar.
+ *
+ * Ordem do "Mover e enviar": anexar (se o PDF é novo), mover (sem o aviso de etapa
+ * ao lead) e só então enviar o PDF gravado. Mover falhou: nada é enviado. Envio
+ * falhou: o lead fica movido e o diálogo oferece "Tentar enviar de novo" com a
+ * MESMA simulação (nada é anexado de novo).
  */
 export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: DialogoSimulacaoProps) {
   const [etapa, setEtapa] = useState<Etapa>("anexar");
@@ -74,6 +80,10 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
   const [erro, setErro] = useState<string | null>(null);
   const [movido, setMovido] = useState(false);
   const [nomeArquivo, setNomeArquivo] = useState<string | null>(null);
+  /** Simulação já gravada que o "Mover e enviar" envia. Nula até anexar (ou achar a pendente). */
+  const [simulacaoId, setSimulacaoId] = useState<string | null>(null);
+  /** Data em que a simulação pendente foi anexada (só quando veio do banco). */
+  const [anexadaEm, setAnexadaEm] = useState<string | null>(null);
 
   const painelRef = useRef<HTMLDivElement>(null);
   const ultimoFocoRef = useRef<HTMLElement | null>(null);
@@ -81,8 +91,10 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
   const idTitulo = useId();
   const idStatus = useId();
 
-  const ocupado = etapa === "lendo" || etapa === "gerando" || etapa === "enviando";
+  const ocupado = etapa === "buscando" || etapa === "lendo" || etapa === "gerando" || etapa === "enviando";
   const aberto = estado !== null;
+  const leadId = estado?.leadId;
+  const modoEstado = estado?.modo;
 
   const limparPrevia = useCallback(() => {
     setUrlPrevia((atual) => {
@@ -91,19 +103,66 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
     });
   }, []);
 
-  // Reinicia tudo a cada abertura.
+  // Reinicia tudo a cada abertura e, no modo "mover", procura a simulação pendente.
   useEffect(() => {
-    if (!aberto) return;
-    setEtapa("anexar");
+    if (!aberto || !leadId) return;
     setDados(null);
     setErro(null);
     setMovido(false);
     setNomeArquivo(null);
+    setSimulacaoId(null);
+    setAnexadaEm(null);
     limparPrevia();
     ultimoFocoRef.current = document.activeElement as HTMLElement | null;
-    const controle = abortRef;
+    const controle = new AbortController();
+    abortRef.current = controle;
+
+    if (modoEstado === "mover") {
+      setEtapa("buscando");
+      void (async () => {
+        try {
+          const achada = await simulacaoPendenteDoLead(leadId);
+          if (controle.signal.aborted) return;
+          if (!achada.sucesso) {
+            setErro(achada.erro ?? "Não foi possível consultar as simulações do lead.");
+            setEtapa("anexar");
+            return;
+          }
+          if (!achada.simulacao) {
+            setEtapa("anexar");
+            return;
+          }
+          const resposta = await fetch(URL_ROTA, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ acao: "obter", leadId, simulacaoId: achada.simulacao.id }),
+            signal: controle.signal,
+          });
+          if (!resposta.ok) {
+            const corpo = (await resposta.json().catch(() => null)) as { erro?: string } | null;
+            setErro(corpo?.erro ?? "Não foi possível abrir a simulação anexada. Anexe o PDF de novo.");
+            setEtapa("anexar");
+            return;
+          }
+          const blob = await resposta.blob();
+          if (controle.signal.aborted) return;
+          setUrlPrevia(URL.createObjectURL(blob));
+          setSimulacaoId(achada.simulacao.id);
+          setAnexadaEm(achada.simulacao.anexadaEm);
+          setEtapa("previa");
+        } catch (e) {
+          if (controle.signal.aborted) return;
+          console.error("[simulacao] não foi possível carregar a simulação anexada:", e);
+          setErro("Não foi possível abrir a simulação anexada. Anexe o PDF de novo.");
+          setEtapa("anexar");
+        }
+      })();
+    } else {
+      setEtapa("anexar");
+    }
+
     return () => {
-      controle.current?.abort();
+      controle.abort();
       ultimoFocoRef.current?.focus();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reinicia só quando abre/fecha
@@ -203,6 +262,9 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
     if (!arquivo) return;
     setErro(null);
     setDados(null);
+    // Um PDF novo substitui a simulação pendente: o envio passa a usar a que for anexada agora.
+    setSimulacaoId(null);
+    setAnexadaEm(null);
     limparPrevia();
     setNomeArquivo(arquivo.name);
     if (arquivo.type && arquivo.type !== "application/pdf") {
@@ -225,6 +287,32 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
     }
   }
 
+  /** Grava o PDF lido no lead (`acao: "anexar"`): sem e-mail. Devolve o id, ou null com `erro` preenchido. */
+  async function anexarDados(): Promise<string | null> {
+    if (!estado || !dados) return null;
+    const controle = new AbortController();
+    abortRef.current = controle;
+    try {
+      const resposta = await fetch(URL_ROTA, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acao: "anexar", leadId: estado.leadId, dados }),
+        signal: controle.signal,
+      });
+      const corpo = (await resposta.json().catch(() => null)) as { ok?: boolean; erro?: string; simulacaoId?: string } | null;
+      if (!resposta.ok || !corpo?.ok || !corpo.simulacaoId) {
+        setErro(corpo?.erro ?? "Não foi possível anexar a simulação.");
+        return null;
+      }
+      return corpo.simulacaoId;
+    } catch (e) {
+      if (controle.signal.aborted) return null;
+      console.error("[simulacao] anexar falhou:", e);
+      setErro("Não foi possível anexar a simulação. Verifique a conexão e tente de novo.");
+      return null;
+    }
+  }
+
   async function mover(suprimirAvisoLead: boolean): Promise<boolean> {
     if (movido) return true;
     if (!executarMovimento) return false;
@@ -237,23 +325,46 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
     return true;
   }
 
-  async function enviar() {
+  /** Modo "anexar": confirma e grava. Nenhum e-mail. */
+  async function anexar() {
     if (!estado || !dados) return;
     setErro(null);
     setEtapa("enviando");
-    if (estado.modo === "mover" && !movido) {
-      if (!(await mover(true))) {
+    const id = await anexarDados();
+    if (!id) {
+      setEtapa("previa");
+      return;
+    }
+    onFinalizar({ tipo: "anexado" });
+  }
+
+  /** Modo "mover": anexa (se o PDF é novo), move sem o aviso de etapa e envia o PDF gravado. */
+  async function moverEEnviar() {
+    if (!estado) return;
+    setErro(null);
+    setEtapa("enviando");
+
+    let id = simulacaoId;
+    if (!id) {
+      id = await anexarDados();
+      if (!id) {
         setEtapa("previa");
         return;
       }
+      setSimulacaoId(id);
     }
+    if (!movido && !(await mover(true))) {
+      setEtapa("previa");
+      return;
+    }
+
     const controle = new AbortController();
     abortRef.current = controle;
     try {
       const resposta = await fetch(URL_ROTA, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ acao: "enviar", leadId: estado.leadId, dados }),
+        body: JSON.stringify({ acao: "enviar", leadId: estado.leadId, simulacaoId: id }),
         signal: controle.signal,
       });
       const corpo = (await resposta.json().catch(() => null)) as { ok?: boolean; erro?: string } | null;
@@ -262,7 +373,7 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
         setEtapa("previa");
         return;
       }
-      onFinalizar({ tipo: estado.modo === "mover" ? "movido-e-enviado" : "enviado" });
+      onFinalizar({ tipo: "movido-e-enviado" });
     } catch (e) {
       console.error("[simulacao] envio falhou:", e);
       setErro("Não foi possível enviar a simulação. Verifique a conexão e tente de novo.");
@@ -276,27 +387,35 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
     setEtapa("enviando");
     const ok = await mover(false);
     if (!ok) {
-      setEtapa(dados ? "previa" : "anexar");
+      setEtapa(urlPrevia ? "previa" : "anexar");
       return;
     }
     onFinalizar({ tipo: "movido-sem-envio" });
   }
 
+  function trocarPdf() {
+    setErro(null);
+    setDados(null);
+    setSimulacaoId(null);
+    setAnexadaEm(null);
+    setNomeArquivo(null);
+    limparPrevia();
+    setEtapa("anexar");
+  }
+
   if (!estado) return null;
 
   const modoMover = estado.modo === "mover";
-  const titulo = modoMover ? `Mover para ${estado.etapaLabel ?? "Simulação"}` : "Enviar simulação";
+  const titulo = modoMover ? `Mover para ${estado.etapaLabel ?? "Simulação"}` : "Anexar simulação";
   const falhouDepoisDeMover = movido && erro !== null && etapa === "previa";
-  const rotuloEnviar = falhouDepoisDeMover
-    ? "Tentar enviar de novo"
-    : modoMover && !movido
-      ? "Mover e enviar"
-      : "Enviar simulação";
+  const rotuloEnviar = falhouDepoisDeMover ? "Tentar enviar de novo" : "Mover e enviar";
+  const podeAcionar = !ocupado && etapa === "previa" && (dados !== null || simulacaoId !== null);
 
   let status = "";
-  if (etapa === "lendo") status = "Lendo o PDF…";
+  if (etapa === "buscando") status = "Procurando a simulação anexada…";
+  else if (etapa === "lendo") status = "Lendo o PDF…";
   else if (etapa === "gerando") status = "Gerando o documento… a primeira geração pode levar alguns segundos.";
-  else if (etapa === "enviando") status = movido || !modoMover ? "Enviando…" : "Movendo e enviando…";
+  else if (etapa === "enviando") status = !modoMover ? "Anexando…" : movido ? "Enviando…" : "Movendo e enviando…";
 
   return (
     <div
@@ -320,8 +439,8 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
             </h2>
             <p className="mt-0.5 text-sm text-neutral-600">
               {modoMover
-                ? "Anexe a simulação da Creditas. O documento segue para o e-mail do lead depois do movimento."
-                : "Anexe a simulação da Creditas para gerar o documento e enviá-lo ao lead, sem mudar a etapa."}
+                ? "A simulação segue para o e-mail do lead junto com o movimento, em um único envio."
+                : "Anexe a simulação da Creditas ao lead. Nada é enviado agora: o e-mail sai quando o lead for movido para Simulação."}
             </p>
           </div>
           <button
@@ -365,6 +484,22 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
               </p>
             ) : null}
 
+            {anexadaEm && etapa !== "anexar" ? (
+              <div className="space-y-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-3 text-sm">
+                <p className="font-semibold text-[var(--abissal)]">Simulação já anexada ao lead</p>
+                <p className="text-xs text-neutral-600">Anexada em {formatarData(anexadaEm)}</p>
+                <div>
+                  <p className="text-xs text-neutral-500">Enviar para</p>
+                  <p className="break-all font-medium">{estado.destinatario}</p>
+                </div>
+                {modoMover && !movido ? (
+                  <button type="button" onClick={trocarPdf} disabled={ocupado} className={BOTAO_SECUNDARIO}>
+                    Trocar por outro PDF
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
             {resumo && dados && etapa !== "anexar" ? (
               <dl className="space-y-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-3 text-sm">
                 <div>
@@ -381,10 +516,12 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
                     <dd className="font-medium [font-family:var(--mono),monospace]">R$ {brl(resumo.primeira)}</dd>
                   </div>
                 </div>
-                <div>
-                  <dt className="text-xs text-neutral-500">Enviar para</dt>
-                  <dd className="break-all font-medium">{estado.destinatario}</dd>
-                </div>
+                {modoMover ? (
+                  <div>
+                    <dt className="text-xs text-neutral-500">Enviar para</dt>
+                    <dd className="break-all font-medium">{estado.destinatario}</dd>
+                  </div>
+                ) : null}
               </dl>
             ) : null}
           </div>
@@ -398,7 +535,7 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
               />
             ) : (
               <div className="flex h-[60vh] min-h-[22rem] items-center justify-center rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-4 text-center text-sm text-neutral-500">
-                {etapa === "lendo" || etapa === "gerando"
+                {etapa === "buscando" || etapa === "lendo" || etapa === "gerando"
                   ? "Preparando a prévia…"
                   : "A prévia do documento aparece aqui depois que o PDF for lido."}
               </div>
@@ -415,14 +552,15 @@ export function DialogoSimulacao({ estado, executarMovimento, onFinalizar }: Dia
               Mover sem enviar
             </button>
           ) : null}
-          <button
-            type="button"
-            onClick={enviar}
-            disabled={ocupado || etapa !== "previa" || !dados}
-            className={BOTAO_PRIMARIO}
-          >
-            {rotuloEnviar}
-          </button>
+          {modoMover ? (
+            <button type="button" onClick={moverEEnviar} disabled={!podeAcionar} className={BOTAO_PRIMARIO}>
+              {rotuloEnviar}
+            </button>
+          ) : (
+            <button type="button" onClick={anexar} disabled={!podeAcionar} className={BOTAO_PRIMARIO}>
+              Anexar
+            </button>
+          )}
         </div>
       </div>
     </div>

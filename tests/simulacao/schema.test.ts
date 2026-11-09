@@ -59,3 +59,25 @@ describe("corpoSimulacaoSchema", () => {
     expect(r.success && "nome" in r.data).toBe(false);
   });
 });
+
+describe("corpoSimulacaoSchema: anexar e enviar", () => {
+  const SIM = "22222222-2222-4222-8222-222222222222";
+  test("anexar leva os dados, como a prévia", () => {
+    expect(corpoSimulacaoSchema.safeParse({ ...corpo(), acao: "anexar" }).success).toBe(true);
+  });
+  test("enviar leva só o simulacaoId do PDF já gravado, sem dados", () => {
+    const r = corpoSimulacaoSchema.safeParse({ acao: "enviar", leadId: LEAD, simulacaoId: SIM });
+    expect(r.success).toBe(true);
+  });
+  test("enviar sem simulacaoId ou com id inválido é recusado", () => {
+    expect(corpoSimulacaoSchema.safeParse({ acao: "enviar", leadId: LEAD }).success).toBe(false);
+    expect(corpoSimulacaoSchema.safeParse({ acao: "enviar", leadId: LEAD, simulacaoId: "x" }).success).toBe(false);
+  });
+  test("enviar não aceita dados do cliente (o PDF é o gravado, nunca regerado)", () => {
+    const r = corpoSimulacaoSchema.safeParse({ ...corpo(), acao: "enviar", simulacaoId: SIM });
+    expect(r.success && "dados" in r.data).toBe(false);
+  });
+  test("obter devolve o PDF gravado: leadId + simulacaoId", () => {
+    expect(corpoSimulacaoSchema.safeParse({ acao: "obter", leadId: LEAD, simulacaoId: SIM }).success).toBe(true);
+  });
+});

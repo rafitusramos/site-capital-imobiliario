@@ -38,11 +38,19 @@ describe("toastDoDesfecho", () => {
       texto: "Lead movido para Simulação e simulação enviada por e-mail.",
     });
   });
-  test("envio que falhou depois de mover é erro e diz que a etapa mudou", () => {
+  test("envio que falhou depois de mover é erro, diz que a etapa mudou e que a simulação segue anexada", () => {
     const t = toastDoDesfecho("movido-envio-falhou", "Simulação")!;
     expect(t.tipo).toBe("erro");
     expect(t.texto).toMatch(/etapa mudou/);
     expect(t.texto).toMatch(/NÃO foi enviada/);
+    expect(t.texto).toMatch(/anexada/);
+    expect(t.texto).not.toMatch(/Enviar simulação/); // não existe mais envio fora do movimento
+  });
+  test("anexar só confirma o anexo: nenhum e-mail é prometido", () => {
+    const t = toastDoDesfecho("anexado", "")!;
+    expect(t.tipo).toBe("sucesso");
+    expect(t.texto).toMatch(/anexada/i);
+    expect(t.texto).not.toMatch(/e-mail/i);
   });
   test("mover sem enviar é só o movimento", () => {
     expect(toastDoDesfecho("movido-sem-envio", "Simulação")?.texto).toBe("Lead movido para Simulação.");

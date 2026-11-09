@@ -4,26 +4,22 @@ import { useState } from "react";
 import { urlDownloadSimulacao } from "@/app/actions/admin-simulacao";
 import { useToast } from "@/lib/admin/toast";
 import { formatarData } from "@/lib/crm/tempo";
+import { rotuloStatusSimulacao } from "@/lib/simulacao/historico";
 import type { SimulacaoEnviada } from "@/lib/queries/admin-crm";
-
-const ROTULO_STATUS: Record<SimulacaoEnviada["email_status"], string> = {
-  enviado: "E-mail enviado",
-  falhou: "Falha no envio",
-  "sem-chave": "Envio não configurado",
-};
 
 export type PainelSimulacoesProps = {
   simulacoes: SimulacaoEnviada[];
-  /** Abre o diálogo de simulação sem mover (reenvio/nova simulação, em qualquer etapa). */
-  onEnviar: () => void;
+  /** Abre o diálogo em modo "anexar": lê o PDF, mostra a prévia e grava. Nada é enviado. */
+  onAnexar: () => void;
 };
 
 /**
  * Bloco "Simulações" do modal de lead de financiamento (docs/crm-spec.md §3.7):
- * histórico de envios e o botão que abre o mesmo diálogo do movimento, sem mover.
- * O PDF baixa por URL assinada de 60 s; o bucket é privado.
+ * histórico (anexada / enviada em ... / falhou) e o botão "Anexar simulação".
+ * Anexar só guarda o PDF; o e-mail sai no movimento Criado -> Simulação, e não há
+ * botão de enviar aqui. O PDF baixa por URL assinada de 60 s; o bucket é privado.
  */
-export function PainelSimulacoes({ simulacoes, onEnviar }: PainelSimulacoesProps) {
+export function PainelSimulacoes({ simulacoes, onAnexar }: PainelSimulacoesProps) {
   const { mostrarToast } = useToast();
   const [baixando, setBaixando] = useState<string | null>(null);
 
@@ -49,26 +45,28 @@ export function PainelSimulacoes({ simulacoes, onEnviar }: PainelSimulacoesProps
         </h3>
         <button
           type="button"
-          onClick={onEnviar}
+          onClick={onAnexar}
           className="min-h-[44px] rounded-md border border-[var(--jade)] px-3 text-sm font-semibold text-[var(--jade)] transition hover:bg-[var(--jade)] hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--jade)]"
         >
-          Enviar simulação
+          Anexar simulação
         </button>
       </div>
 
       {simulacoes.length === 0 ? (
         <p className="rounded-md border border-dashed border-neutral-300 px-3 py-4 text-sm text-neutral-500">
-          Nenhuma simulação enviada a este lead ainda.
+          Nenhuma simulação anexada a este lead ainda.
         </p>
       ) : (
         <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
-          {simulacoes.map((s) => (
+          {simulacoes.map((s) => {
+            const status = rotuloStatusSimulacao(s);
+            return (
             <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm">
               <div className="min-w-0">
                 <p className="font-medium text-[var(--abissal)]">{formatarData(s.created_at)}</p>
                 <p className="text-xs text-neutral-500">
                   {s.autor ? `Por ${s.autor} · ` : ""}
-                  <span className={s.email_status === "enviado" ? "" : "text-[var(--erro)]"}>{ROTULO_STATUS[s.email_status]}</span>
+                  <span className={status.problema ? "text-[var(--erro)]" : ""}>{status.texto}</span>
                 </p>
               </div>
               <button
@@ -80,7 +78,8 @@ export function PainelSimulacoes({ simulacoes, onEnviar }: PainelSimulacoesProps
                 {baixando === s.id ? "Abrindo…" : "Baixar PDF"}
               </button>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </section>

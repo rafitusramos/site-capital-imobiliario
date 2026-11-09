@@ -52,3 +52,41 @@ export async function urlDownloadSimulacao(simulacaoId: string): Promise<UrlSimu
     return { sucesso: false, erro: "Não foi possível gerar o link do PDF." };
   }
 }
+
+export interface SimulacaoPendenteResultado {
+  sucesso: boolean;
+  /** A mais recente que ainda não foi enviada; null = não há (o diálogo pede o PDF). */
+  simulacao?: { id: string; anexadaEm: string } | null;
+  erro?: string;
+}
+
+/**
+ * Qual simulação o diálogo de mover deve enviar: a mais recente do lead que
+ * ainda NÃO foi enviada (anexada, ou com envio que falhou). Lida com o cliente
+ * de cookies, então a RLS decide quem vê. Nunca derruba o diálogo: falha de
+ * leitura vira console.error e "sem simulação", e a pessoa anexa o PDF.
+ */
+export async function simulacaoPendenteDoLead(leadId: string): Promise<SimulacaoPendenteResultado> {
+  const { supabase, user } = await usuarioAutenticado();
+  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  if (!idSchema.safeParse(leadId).success) return { sucesso: false, erro: "Lead inválido." };
+
+  try {
+    const { data, error } = await supabase
+      .from("crm_simulacoes")
+      .select("id, created_at")
+      .eq("lead_id", leadId)
+      .neq("email_status", "enviado")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) {
+      console.error("[simulacaoPendenteDoLead] não foi possível ler as simulações:", error);
+      return { sucesso: true, simulacao: null };
+    }
+    return { sucesso: true, simulacao: data ? { id: data.id, anexadaEm: data.created_at } : null };
+  } catch (e) {
+    console.error("[simulacaoPendenteDoLead] exceção ao ler as simulações:", e);
+    return { sucesso: true, simulacao: null };
+  }
+}

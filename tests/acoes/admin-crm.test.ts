@@ -208,6 +208,74 @@ describe("moverLead — e-mails", () => {
     expect(chamada.suprimirAvisoLead).toBeFalsy();
   });
 
+  describe("aviso de etapa quando o lead tem simulação", () => {
+    const leituras = (falso: ReturnType<typeof montarSupabase>) =>
+      falso.chamadas.filter((c) => c.tabela === "crm_simulacoes");
+
+    test("financiamento indo para simulação COM simulação anexada: o aviso ao lead é suprimido, venha de onde vier", async () => {
+      const { falso, agendados } = preparar("criado");
+      falso.programarResposta("crm_simulacoes", "select", { data: [{ id: "sim-1" }], error: null });
+
+      // Sem suprimirAvisoLead no input: é o caso do "Mover sem enviar" do teste manual.
+      const resultado = await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
+
+      expect(resultado).toEqual({ sucesso: true });
+      expect(leituras(falso)[0].filtros).toEqual(expect.arrayContaining([{ metodo: "eq", args: ["lead_id", LEAD_1] }]));
+      await agendados[0]();
+      expect(dispararAvisosMudancaEtapa).toHaveBeenCalledWith(expect.objectContaining({ suprimirAvisoLead: true, para: "simulacao" }));
+    });
+
+    test("financiamento indo para simulação SEM simulação: o aviso normal segue (não suprimido)", async () => {
+      const { falso, agendados } = preparar("criado");
+      falso.programarResposta("crm_simulacoes", "select", { data: [], error: null });
+
+      await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
+
+      await agendados[0]();
+      expect(vi.mocked(dispararAvisosMudancaEtapa).mock.calls[0][0].suprimirAvisoLead).toBeFalsy();
+    });
+
+    test("leitura de crm_simulacoes falhando não derruba o movimento: console.error e segue como sem simulação", async () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => {});
+      const { falso, agendados } = preparar("criado");
+      falso.programarResposta("crm_simulacoes", "select", { data: null, error: { message: "relation does not exist" } });
+
+      const resultado = await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
+
+      expect(resultado).toEqual({ sucesso: true });
+      expect(falso.chamadasRpc.find((c) => c.nome === "mover_lead_crm")).toBeDefined();
+      expect(log).toHaveBeenCalled();
+      await agendados[0]();
+      expect(vi.mocked(dispararAvisosMudancaEtapa).mock.calls[0][0].suprimirAvisoLead).toBeFalsy();
+      log.mockRestore();
+    });
+
+    test("outra etapa de destino não consulta simulações nem suprime", async () => {
+      const { falso, agendados } = preparar("simulacao");
+      await moverLead({ leadId: LEAD_1, etapa: "pre-aprovacao" });
+      expect(leituras(falso)).toEqual([]);
+      await agendados[0]();
+      expect(vi.mocked(dispararAvisosMudancaEtapa).mock.calls[0][0].suprimirAvisoLead).toBeFalsy();
+    });
+
+    test("home equity para simulação não consulta simulações (a regra é só do financiamento)", async () => {
+      const falso = montarSupabase();
+      falso.definirUsuario({ id: "user-1", email: "rafael@rt.com" });
+      falso.programarResposta("leads", "select", { data: { ...LEAD_ANTES, tipo: "home-equity" }, error: null });
+      falso.programarRpc("mover_lead_crm", { data: { id: LEAD_1 }, error: null });
+      const agendados: Array<() => unknown> = [];
+      vi.mocked(after).mockImplementation(((cb: () => unknown) => {
+        agendados.push(cb);
+      }) as never);
+
+      await moverLead({ leadId: LEAD_1, etapa: "simulacao" });
+
+      expect(leituras(falso)).toEqual([]);
+      await agendados[0]();
+      expect(vi.mocked(dispararAvisosMudancaEtapa).mock.calls[0][0].suprimirAvisoLead).toBeFalsy();
+    });
+  });
+
   test("etapa de destino igual à atual não envia nada", async () => {
     const { agendados } = preparar("simulacao");
     await moverLead({ leadId: LEAD_1, etapa: "simulacao" });

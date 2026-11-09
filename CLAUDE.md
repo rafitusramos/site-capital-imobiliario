@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1192 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **030**.
+Suíte em Vitest: `npm test` — 1221 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **031**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -137,15 +137,29 @@ documentadas em `.env.local.example`: `RESEND_API_KEY`, `EMAIL_REMETENTE`,
   WhatsApp foi removido).
 
 ### Simulação de financiamento por e-mail
-Só financiamento. Ao mover `criado` → `simulacao` (arrastar ou botão do modal) abre
-`DialogoSimulacao`: o admin anexa o PDF da Creditas, a leitura roda **no navegador**
-(`pdfjs-dist`), a prévia vem da rota `POST /api/admin/crm/simulacao/` e as ações são
-**Mover e enviar**, **Mover sem enviar** e **Cancelar**. Especificação em
-`docs/crm-spec.md` §3.7.
+Só financiamento. **Anexar e enviar são coisas separadas.** O botão **"Anexar simulação"**
+do modal (bloco Simulações) lê o PDF da Creditas **no navegador** (`pdfjs-dist`), mostra a
+prévia e, ao confirmar ("Anexar"), grava o PDF no bucket e a linha em `crm_simulacoes`
+(`email_status = 'anexado'`). **Nenhum e-mail sai ao anexar, em nenhuma etapa.** O e-mail
+só sai no movimento `criado` → `simulacao` (arrastar ou botão), que abre `DialogoSimulacao`:
+se há simulação anexada e não enviada, abre direto na prévia dela (com "Trocar por outro PDF");
+senão pede o PDF. Ações: **Mover e enviar**, **Mover sem enviar** e **Cancelar**.
+Especificação em `docs/crm-spec.md` §3.7.
 
 - Gatilho puro `exigeSimulacao` (`lib/simulacao/gatilho.ts`). Home equity **não muda**.
-- "Mover e enviar" chama `moverLead` com `suprimirAvisoLead` (some só o `etapa-lead`;
-  o e-mail ao dono segue) e depois a rota. "Mover sem enviar" mantém o aviso normal.
+- Rota `POST /api/admin/crm/simulacao/`, ações `previa`, `anexar`, `obter` (devolve o PDF
+  gravado) e `enviar` (recebe só `simulacaoId`, lê o PDF **do bucket**, nunca regera;
+  confere que a simulação é do `leadId`, que o lead é visível pela RLS e que ainda não foi
+  enviada; trava de clique duplo por `enviado_em`). Atualiza `email_status`/`resend_id`/`enviado_em`.
+  Não há envio fora do movimento. Falha no envio mantém o lead movido e o diálogo oferece
+  "Tentar enviar de novo" com a mesma `simulacaoId`.
+- **Regra no servidor, em `moverLead`:** lead de financiamento indo para `simulacao` com
+  qualquer linha em `crm_simulacoes` (anexada ou enviada) **não recebe** o aviso `etapa-lead`,
+  venha o movimento de onde vier ("Mover sem enviar" incluso); o e-mail ao dono segue.
+  Leitura falhando = `console.error` e segue como sem simulação. Foi o bug do teste manual:
+  o lead recebeu a simulação e o aviso "avançou: simulação". Sem simulação, o aviso é normal.
+- Migration 031: `email_status` aceita `anexado` e há `enviado_em`. Antes dela rodar, anexar
+  falha com mensagem clara (e `console.error`); o histórico cai para a leitura sem `enviado_em`.
 - A rota **não** usa `exigirAdmin` (corretor também opera o CRM): lê o lead com o
   cliente de cookies e a RLS decide (404 para quem não vê). Nome e e-mail do cliente
   vêm do banco, nunca do corpo; a referência do documento e do arquivo é `leads.protocolo`.

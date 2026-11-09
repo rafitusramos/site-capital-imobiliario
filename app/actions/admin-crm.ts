@@ -249,8 +249,8 @@ export interface MoverLeadInput {
   motivo?: string;
   motivoObs?: string;
   /**
-   * Suprime só o aviso `etapa-lead` (o e-mail ao dono segue). Usado pela tela de
-   * simulação: com a simulação enviada, o aviso "avançou: simulação" seria redundante.
+   * Suprime só o aviso `etapa-lead` (o e-mail ao dono segue). O servidor já o faz sozinho
+   * quando o lead de financiamento tem simulação e vai para `simulacao` (ver `leadTemSimulacao`).
    */
   suprimirAvisoLead?: boolean;
   /** Concorrência otimista (docs/crm-spec.md §5, caso de borda 3): comparado contra leads.updated_at dentro do RPC. */
@@ -302,6 +302,12 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
   if (!data) return { sucesso: false, erro: "Lead não encontrado." };
 
   if (antesDoMovimento && antesDoMovimento.status !== parsed.data.etapa) {
+    // Lead de financiamento que entra em Simulação já com simulação anexada (ou enviada)
+    // não recebe o aviso "avançou: simulação": a simulação é o aviso. Vale para qualquer
+    // origem do movimento (diálogo, arrastar, "Mover sem enviar"). O dono segue avisado.
+    const simulacaoTemSubstitutoDoAviso =
+      parsed.data.suprimirAvisoLead === true ||
+      (await leadTemSimulacao(supabase, antesDoMovimento.tipo, antesDoMovimento.id, parsed.data.etapa));
     const quemMoveu = await nomeDeQuemMoveu(supabase, user.id, user.email);
     const mudanca = {
       lead: {
@@ -317,7 +323,7 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
       motivo: parsed.data.motivo,
       motivoObs: parsed.data.motivoObs,
       quemMoveu,
-      ...(parsed.data.suprimirAvisoLead ? { suprimirAvisoLead: true } : {}),
+      ...(simulacaoTemSubstitutoDoAviso ? { suprimirAvisoLead: true } : {}),
     };
     // Depois da resposta, e sem nunca afetar o movimento (Fase 5: e-mails).
     try {
@@ -329,6 +335,31 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
 
   revalidarQuadro();
   return { sucesso: true };
+}
+
+/**
+ * O lead de financiamento que vai para `simulacao` já tem alguma linha em
+ * crm_simulacoes? A leitura nunca derruba o movimento: erro vira console.error e
+ * a resposta é "não" (o lead recebe o aviso normal).
+ */
+async function leadTemSimulacao(
+  supabase: SupabaseServerClient,
+  tipo: string,
+  leadId: string,
+  etapaDestino: string,
+): Promise<boolean> {
+  if (tipo !== "financiamento" || etapaDestino !== "simulacao") return false;
+  try {
+    const { data, error } = await supabase.from("crm_simulacoes").select("id").eq("lead_id", leadId).limit(1);
+    if (error) {
+      console.error("[moverLead] não foi possível ler as simulações do lead:", error);
+      return false;
+    }
+    return (data ?? []).length > 0;
+  } catch (e) {
+    console.error("[moverLead] exceção ao ler as simulações do lead:", e);
+    return false;
+  }
 }
 
 async function nomeDeQuemMoveu(

@@ -761,26 +761,43 @@ Só origem **financiamento**. Gatilho puro `exigeSimulacao(tipo, de, para)`
 o modal (`ModalLead.tsx`) abrem `DialogoSimulacao.tsx` no mesmo molde de promise do
 `DialogoMotivo`.
 
-Passos do diálogo: (1) anexar o PDF da Creditas (só PDF, até 5 MB); (2) leitura
+**Anexar e enviar são separados.** Anexar guarda o PDF no lead e **nunca** envia
+e-mail; o e-mail só sai no movimento `criado` → `simulacao`.
+
+Passos comuns: (1) anexar o PDF da Creditas (só PDF, até 5 MB); (2) leitura
 **no navegador** (`pdfjs-dist`, import dinâmico; `lib/simulacao/extrair.ts` é a parte
 pura e testada, `extrair-pdf.ts` a casca com pdf.js e o recorte dos logos por
 canvas). PDF não reconhecido ou com linha/coluna faltando é erro: nunca se gera
 documento com dado parcial; (3) prévia: `POST /api/admin/crm/simulacao/` com
-`acao: "previa"` devolve o PDF, sem gravar nem enviar; (4) ações: **Mover e
-enviar**, **Mover sem enviar**, **Cancelar**.
+`acao: "previa"` devolve o PDF, sem gravar nem enviar.
 
-- **Mover e enviar:** primeiro `moverLead` com `suprimirAvisoLead: true` (só o
-  `etapa-lead` é suprimido; o e-mail ao dono e o cancelamento dos agendados
-  seguem), depois `acao: "enviar"`. Mover falhou: nada é enviado. Envio falhou: o
-  lead fica movido, o diálogo mostra o erro com **Tentar enviar de novo** e o toast
-  diz que a etapa mudou mas a simulação não foi enviada.
-- **Mover sem enviar:** move normalmente e o aviso "avançou: simulação" vai ao lead.
+- **Anexar simulação** (botão do bloco "Simulações", modo `anexar`): após a prévia,
+  o botão **Anexar** chama `acao: "anexar"` (gera, grava no bucket e em
+  `crm_simulacoes` com `email_status = 'anexado'`). Vale em qualquer etapa e nada é
+  enviado. Se o lead já está em Simulação ou adiante, também não há botão de enviar.
+- **Mover (criado → simulação)**, modo `mover`: o diálogo consulta a simulação mais
+  recente ainda não enviada (`simulacaoPendenteDoLead`). Com ela, abre direto na prévia
+  (lida por `acao: "obter"`), mostra a data em que foi anexada e oferece **Trocar por
+  outro PDF**; sem ela, pede o PDF. Ações: **Mover e enviar**, **Mover sem enviar**,
+  **Cancelar**.
+- **Mover e enviar:** (a) se o PDF é novo, anexa agora; (b) `moverLead` com
+  `suprimirAvisoLead: true`; (c) `acao: "enviar"` com o `simulacaoId`. Mover falhou:
+  nada é enviado. Envio falhou: o lead fica movido, o diálogo mostra o erro com **Tentar
+  enviar de novo** (mesma `simulacaoId`, nada é anexado de novo) e o toast diz que a
+  etapa mudou mas a simulação não foi enviada.
+- **Mover sem enviar:** move; a simulação anexada (se houver) continua guardada.
+- **Regra do aviso de etapa (servidor, `moverLead`):** lead de financiamento indo para
+  `simulacao` com **qualquer** linha em `crm_simulacoes` (anexada ou enviada) não recebe
+  o `etapa-lead`, venha o movimento de onde vier. O e-mail ao dono segue sempre. Sem
+  simulação, "Mover sem enviar" manda o aviso normal. A leitura de `crm_simulacoes`
+  falhando não derruba o movimento: `console.error` e segue como sem simulação.
 - O quadro não tem "desfazer"; um e-mail enviado não se recolhe.
-- **Bloco "Simulações"** do modal (financiamento): histórico (data, quem, status do
-  e-mail, baixar o PDF por URL assinada de 60 s) e o botão **Enviar simulação**, que
-  abre o mesmo diálogo sem mover (reenvio/nova simulação em qualquer etapa). O envio
-  cancela antes os `etapa-lead` pendentes (`cancelarAgendados`). Sem a tabela da
-  migration 030, `getSimulacoes` devolve lista vazia com `console.error`.
+- **Bloco "Simulações"** do modal (financiamento): histórico com o status de cada linha
+  (**Anexada**, **Enviada em ...**, **Falhou**, **Envio não configurado**; `rotuloStatusSimulacao`),
+  baixar o PDF por URL assinada de 60 s e o botão **Anexar simulação**. O envio cancela
+  antes os `etapa-lead` pendentes (`cancelarAgendados`). Sem a tabela da migration 030,
+  `getSimulacoes` devolve lista vazia com `console.error`; sem a coluna `enviado_em`
+  (031 ainda não aplicada), lê sem ela.
 
 **Rota** (`app/api/admin/crm/simulacao/route.ts`, nodejs, `maxDuration` 60):
 autentica com o usuário logado e lê o lead com o cliente de cookies, então a RLS
@@ -789,6 +806,10 @@ autentica com o usuário logado e lê o lead com o cliente de cookies, então a 
 Corpo validado por zod (`lib/simulacao/schema.ts`: números finitos, limites de
 tamanho, logo só `data:image/png;base64,`, total < 4 MB). Nome e e-mail do cliente
 vêm **sempre** do banco; a referência do documento e do arquivo é `leads.protocolo`.
+Ações: `previa`, `anexar` (corpo com `dados`; resposta JSON com `simulacaoId`, sem e-mail),
+`obter` e `enviar` (corpo só com `simulacaoId`: a simulação precisa ser do `leadId`; o PDF é
+lido do bucket com a service role, sem regerar; já enviada = 409; clique duplo barrado
+pela trava `enviado_em`). Falha do envio: 502 e a linha segue anexada para nova tentativa.
 
 **Documento:** 2 páginas A4, 6 etapas (etapa atual 1, ainda que o CRM tenha 5), regras
 do `lib/simulacao/config.ts` (só TR compara, Volpi fora, "Brasil" vira "Banco do
@@ -797,11 +818,11 @@ Brasil", comprometimento 30%). HTML em `lib/simulacao/html.ts`, PDF em
 exceto `data:`). Fontes (Archivo, Libre Caslon Text, IBM Plex Mono) embutidas em base64
 (`fontes-asset.ts`, gerado por `scripts/gerar-fontes-simulacao.mjs`).
 
-**Persistência (migration 030):** bucket privado `crm-simulacoes` (sem policy),
+**Persistência (migrations 030 e 031):** bucket privado `crm-simulacoes` (sem policy),
 `crm_simulacoes` (select por quem vê o lead; escrita só service role) e
-`crm_emails.tipo` aceita `simulacao`. O e-mail leva o PDF em anexo e **nunca é
-agendado**. Falha ao gravar PDF/histórico não bloqueia o e-mail (a resposta traz
-`registrado: false`). `excluirLead` remove os PDFs do bucket (LGPD) sem deixar falha
+`crm_emails.tipo` aceita `simulacao`. A 031 faz `email_status` aceitar `anexado` e cria
+`enviado_em`. O e-mail leva o PDF em anexo e **nunca é agendado**. Anexar com a 031 ainda
+não aplicada falha com mensagem clara e `console.error` (o PDF órfão é removido do bucket). `excluirLead` remove os PDFs do bucket (LGPD) sem deixar falha
 de storage bloquear a exclusão.
 
 ---
@@ -961,7 +982,7 @@ custar um byte a mais de download.
 
 ## 8. Testes (Vitest)
 
-A suíte atual tem 367 passando + 1 *expected fail* intencional, que **continua
+A suíte atual tem 1221 passando + 1 *expected fail* intencional, que **continua
 existindo**.
 
 | Arquivo | Cobre |

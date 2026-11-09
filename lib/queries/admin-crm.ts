@@ -237,13 +237,16 @@ export async function getLembretes(leadId: string): Promise<LembreteRow[]> {
 export type SimulacaoEnviada = {
   id: string;
   created_at: string;
-  email_status: "enviado" | "falhou" | "sem-chave";
-  /** Nome de quem enviou; null se o perfil foi removido. */
+  /** `anexado`: PDF gravado, nenhum e-mail enviado (migration 031). */
+  email_status: "anexado" | "enviado" | "falhou" | "sem-chave";
+  /** Quando o e-mail saiu (031); nulo = não enviada, ou enviada antes da coluna existir. */
+  enviado_em: string | null;
+  /** Nome de quem anexou; null se o perfil foi removido. */
   autor: string | null;
 };
 
 /**
- * Histórico de simulações enviadas ao lead (migration 030). Nunca lança: o
+ * Histórico de simulações do lead, anexadas ou enviadas (migrations 030/031). Nunca lança: o
  * bloco "Simulações" não pode derrubar o modal, e a tabela pode ainda não
  * existir num deploy que chegou antes da migration. Erro vira console.error e
  * lista vazia.
@@ -251,16 +254,26 @@ export type SimulacaoEnviada = {
 export async function getSimulacoes(leadId: string): Promise<SimulacaoEnviada[]> {
   try {
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const completa = await supabase
       .from("crm_simulacoes")
-      .select("id, created_at, email_status, criado_por")
+      .select("id, created_at, email_status, enviado_em, criado_por")
       .eq("lead_id", leadId)
       .order("created_at", { ascending: false });
-    if (error) {
-      console.error("[getSimulacoes] não foi possível ler o histórico:", error);
-      return [];
+    let linhas = completa.data ?? [];
+    if (completa.error) {
+      // Deploy que chegou antes da 031: sem a coluna enviado_em o histórico ainda precisa aparecer.
+      console.error("[getSimulacoes] leitura com enviado_em falhou; tentando sem a coluna:", completa.error);
+      const semColuna = await supabase
+        .from("crm_simulacoes")
+        .select("id, created_at, email_status, criado_por")
+        .eq("lead_id", leadId)
+        .order("created_at", { ascending: false });
+      if (semColuna.error) {
+        console.error("[getSimulacoes] não foi possível ler o histórico:", semColuna.error);
+        return [];
+      }
+      linhas = (semColuna.data ?? []).map((l) => ({ ...l, enviado_em: null }));
     }
-    const linhas = data ?? [];
     const ids = [...new Set(linhas.map((l) => l.criado_por).filter((v): v is string => Boolean(v)))];
     const nomes = new Map<string, string>();
     if (ids.length > 0) {
@@ -271,6 +284,7 @@ export async function getSimulacoes(leadId: string): Promise<SimulacaoEnviada[]>
       id: l.id,
       created_at: l.created_at,
       email_status: l.email_status,
+      enviado_em: l.enviado_em,
       autor: l.criado_por ? (nomes.get(l.criado_por) ?? null) : null,
     }));
   } catch (e) {

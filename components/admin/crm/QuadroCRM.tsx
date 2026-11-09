@@ -232,7 +232,7 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     if (!etapaAlvo) return; // não deveria acontecer: over.id sempre vem de uma coluna deste pipeline
 
     // Financiamento: criado -> simulação passa pela tela de simulação (anexar o PDF,
-    // prévia, enviar). O diálogo é quem move, para poder mover SEM o aviso ao lead
+    // prévia, mover e enviar). O diálogo é quem move, para poder mover SEM o aviso ao lead
     // quando a simulação vai junto. Cancelar não grava nada e o card volta.
     if (exigeSimulacao(tipo, lead.status, novaEtapa)) {
       startTransition(async () => {
