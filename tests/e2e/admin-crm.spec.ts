@@ -98,3 +98,111 @@ test.describe("/admin/crm/arquivados/", () => {
     expect(acoesServidor, "nenhuma Server Action deve ser disparada").toEqual([]);
   });
 });
+
+/*
+ * Lote de melhorias do CRM (PR #72) — SOMENTE LEITURA. Nenhum clique em botão
+ * de etapa: só se mede geometria, atributos e texto. Dado ausente = skip com motivo.
+ */
+test.describe("/admin/crm/financiamento/ — lote de melhorias", () => {
+  test("card não mostra 'Últ. contato' nem 'Sem interação ainda'", async ({ page }) => {
+    await abrirAdmin(page, `/admin/crm/${ORIGEM}/`);
+    const cards = page.getByRole("button", { name: /^Lead .+, protocolo / });
+    test.skip((await cards.count()) === 0, "nenhum lead nesta aba");
+    await expect(cards.first()).toBeVisible();
+    await expect(page.getByText(/Últ\. contato/)).toHaveCount(0);
+    await expect(page.getByText(/Sem interação ainda/)).toHaveCount(0);
+  });
+
+  test("console sem erro de hidratação (React #418)", async ({ page }) => {
+    const erros: string[] = [];
+    page.on("console", (m) => m.type() === "error" && erros.push(m.text()));
+    page.on("pageerror", (e) => erros.push(e.message));
+    await abrirAdmin(page, `/admin/crm/${ORIGEM}/`);
+    await expect(page.getByRole("navigation", { name: "Origem dos leads" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const hidratacao = erros.filter((e) => /#418|#423|#425|hydrat/i.test(e));
+    expect(hidratacao, hidratacao.join("\n")).toEqual([]);
+  });
+
+  test("contorno de lembrete atrasado: box-shadow --erro e borda esquerda de 3px", async ({ page }) => {
+    await abrirAdmin(page, `/admin/crm/${ORIGEM}/`);
+    const atrasado = page
+      .getByRole("button", { name: /^Lead .+, protocolo / })
+      .filter({ hasText: /Atrasado ·/ });
+    test.skip((await atrasado.count()) === 0, "nenhum lead com lembrete atrasado nesta aba; estado amarelo (--aviso) idem: não exercitado");
+    const card = atrasado.first();
+    const erro = await page.evaluate(() => {
+      const el = document.createElement("span");
+      el.style.color = "var(--erro)";
+      document.body.appendChild(el);
+      const cor = getComputedStyle(el).color;
+      el.remove();
+      return cor;
+    });
+    const css = await card.evaluate((el) => {
+      const s = getComputedStyle(el);
+      return { sombra: s.boxShadow, borda: s.borderLeftWidth };
+    });
+    expect(css.sombra).toContain(erro);
+    expect(css.borda).toBe("3px");
+  });
+
+  test.describe("modal do lead", () => {
+    async function abrirModal(page: import("@playwright/test").Page) {
+      await abrirAdmin(page, `/admin/crm/${ORIGEM}/`);
+      const editar = page.getByRole("button", { name: "Editar lead" });
+      test.skip((await editar.count()) === 0, "nenhum lead nesta aba");
+      await editar.first().click();
+      const modal = page.getByRole("dialog", { name: /^Lead / });
+      await expect(modal).toBeVisible();
+      await expect(modal.locator('[aria-current="step"]')).toBeVisible();
+      return modal;
+    }
+
+    test("barra de etapa: etapa atual centralizada e botões com aria-label e altura >= 44px", async ({ page }) => {
+      const modal = await abrirModal(page);
+      const atual = modal.locator('[aria-current="step"]');
+      const botoes = modal.getByRole("button", { name: /^(Mover para|Reabrir em) / });
+      expect(await botoes.count(), "ao menos um botão de etapa").toBeGreaterThan(0);
+      for (const b of await botoes.all()) {
+        const alt = (await b.boundingBox())!.height;
+        expect(alt, `altura de "${await b.getAttribute("aria-label")}"`).toBeGreaterThanOrEqual(44);
+      }
+
+      const medidas = await atual.evaluate((el) => {
+        const grid = el.parentElement!;
+        const g = grid.getBoundingClientRect();
+        const ultimo = grid.lastElementChild!.getBoundingClientRect();
+        const gap = parseFloat(getComputedStyle(grid).columnGap) || 0;
+        const c = el.getBoundingClientRect();
+        return { centro: c.left + c.width / 2, esperado: g.left + (g.width - ultimo.width - gap) / 2 };
+      });
+      expect(Math.abs(medidas.centro - medidas.esperado)).toBeLessThanOrEqual(2);
+    });
+
+    test("botão Perdido: só ícone, com title e aria-label; sem bloco 'Mover para' visível", async ({ page }) => {
+      const modal = await abrirModal(page);
+      await expect(modal.getByText(/^Mover para/)).toHaveCount(0);
+      const perdido = modal.getByRole("button", { name: "Mover para Perdido" });
+      test.skip((await perdido.count()) === 0, "lead aberto está em etapa final; botão Perdido não é exibido");
+      expect((await perdido.innerText()).trim()).toBe("");
+      await expect(perdido).toHaveAttribute("title", "Perdido");
+      await expect(perdido).toHaveAttribute("aria-label", "Mover para Perdido");
+      await expect(perdido.locator("svg")).toHaveCount(1);
+    });
+
+    test("colunas 'Dados do lead' e 'Origem' começam na mesma altura", async ({ page }) => {
+      const modal = await abrirModal(page);
+      const primeiroCampo = (titulo: string) =>
+        modal
+          .getByRole("heading", { name: new RegExp(`^${titulo}`) })
+          .locator("xpath=../following-sibling::*[1]/*[1]");
+      const dados = primeiroCampo("Dados do lead");
+      const origem = primeiroCampo("Origem");
+      test.skip((await origem.count()) === 0, "painel Origem sem campos");
+      const a = (await dados.boundingBox())!.y;
+      const b = (await origem.boundingBox())!.y;
+      expect(Math.abs(a - b)).toBeLessThanOrEqual(1);
+    });
+  });
+});
