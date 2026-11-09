@@ -30,7 +30,7 @@ export type ModalLeadProps = {
 };
 
 type EstadoDialogoSimulacao = {
-  modo: "mover" | "avulso";
+  modo: "mover" | "anexar";
   etapa?: LeadEtapaSlug;
   etapaLabel: string;
   resolver: (r: ResultadoDialogoSimulacao) => void;
@@ -217,10 +217,10 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
     await recarregar();
   }
 
-  /** "Enviar simulação" do bloco Simulações: mesmo diálogo, sem mover. */
-  async function enviarSimulacaoAvulsa() {
+  /** "Anexar simulação" do bloco Simulações: mesmo diálogo, só anexa (sem mover, sem e-mail). */
+  async function anexarSimulacao() {
     const resultado = await new Promise<ResultadoDialogoSimulacao>((resolve) =>
-      setDialogoSimulacao({ modo: "avulso", etapaLabel: "", resolver: resolve }),
+      setDialogoSimulacao({ modo: "anexar", etapaLabel: "", resolver: resolve }),
     );
     setDialogoSimulacao(null);
     const aviso = toastDoDesfecho(resultado.tipo, "");
@@ -321,7 +321,7 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
               executarAcao={executarAcao}
               onMudarEtapa={mudarEtapa}
               etapaPendente={movendoEtapa}
-              onEnviarSimulacao={enviarSimulacaoAvulsa}
+              onAnexarSimulacao={anexarSimulacao}
             />
           ) : null}
         </div>

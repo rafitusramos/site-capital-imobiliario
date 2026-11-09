@@ -51,10 +51,17 @@ export const dadosSimulacaoSchema = z
     });
   });
 
-export const corpoSimulacaoSchema = z.object({
-  acao: z.enum(["previa", "enviar"]),
-  leadId: z.string().uuid(),
-  dados: dadosSimulacaoSchema,
-});
+/**
+ * Quatro ações (docs/crm-spec.md §3.7):
+ * - previa / anexar: levam os dados lidos do PDF da Creditas (a prévia não grava; anexar grava);
+ * - enviar / obter: levam só o `simulacaoId` do PDF JÁ gravado. Enviar nunca regera o
+ *   documento a partir do que o navegador manda; obter só devolve o PDF para a prévia.
+ */
+export const corpoSimulacaoSchema = z.discriminatedUnion("acao", [
+  z.object({ acao: z.literal("previa"), leadId: z.string().uuid(), dados: dadosSimulacaoSchema }),
+  z.object({ acao: z.literal("anexar"), leadId: z.string().uuid(), dados: dadosSimulacaoSchema }),
+  z.object({ acao: z.literal("enviar"), leadId: z.string().uuid(), simulacaoId: z.string().uuid() }),
+  z.object({ acao: z.literal("obter"), leadId: z.string().uuid(), simulacaoId: z.string().uuid() }),
+]);
 
 export type CorpoSimulacao = z.infer<typeof corpoSimulacaoSchema>;

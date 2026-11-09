@@ -2,11 +2,11 @@ import type { Page, Request } from "@playwright/test";
 import { abrirAdmin, ESTADO_ADMIN, expect, test } from "./apoio/admin";
 
 /*
- * Simulação de financiamento no CRM (PR #74) — SOMENTE LEITURA.
+ * Simulação de financiamento no CRM (anexar no modal, enviar só no movimento) — SOMENTE LEITURA.
  *
  * Todo deploy usa o MESMO banco de produção e a rota pode enviar e-mail a
- * cliente real. Proibido aqui: "Mover e enviar", "Mover sem enviar", "Enviar",
- * botão de etapa, arrastar, `acao: "enviar"`. Só se abre o diálogo, anexa
+ * cliente real. Proibido aqui: "Mover e enviar", "Mover sem enviar", "Anexar" confirmado,
+ * botão de etapa, arrastar, `acao: "anexar"` ou `"enviar"`. Só se abre o diálogo, escolhe
  * arquivo FICTÍCIO que não é simulação (nunca gera prévia) e fecha.
  * A prévia só é pedida na rota com leadId inexistente (404 antes de gerar PDF).
  * Nenhum dado, nome ou protocolo de lead real entra nestes specs.
@@ -44,8 +44,8 @@ function semEnvioNemMovimento(
   base: number,
 ) {
   expect(
-    chamadas.filter((c) => c.acao === "enviar"),
-    'nenhum POST com acao "enviar"',
+    chamadas.filter((c) => c.acao === "enviar" || c.acao === "anexar"),
+    'nenhum POST com acao "enviar" nem "anexar"',
   ).toEqual([]);
   expect(chamadas, "nenhuma chamada à rota da simulação neste teste").toEqual(
     [],
@@ -101,7 +101,7 @@ function pdfFicticio(): Buffer {
 }
 
 test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
-  test("modal de lead mostra o bloco Simulações e o botão Enviar simulação; sem histórico não quebra", async ({
+  test("modal de lead mostra o bloco Simulações e o botão Anexar simulação; sem histórico não quebra", async ({
     page,
     acoesServidor,
   }) => {
@@ -119,11 +119,15 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
       modal.getByRole("heading", { name: "Simulações" }),
     ).toBeVisible();
     await expect(
-      modal.getByRole("button", { name: "Enviar simulação" }),
+      modal.getByRole("button", { name: "Anexar simulação" }),
     ).toBeVisible();
+    // Não existe envio fora do movimento: nenhum botão "Enviar simulação" no modal.
+    await expect(
+      modal.getByRole("button", { name: "Enviar simulação" }),
+    ).toHaveCount(0);
     // Sem a migration 030 (tabela ausente) a lista vem vazia; com ela, vem o histórico. Os dois são válidos.
     const vazio = modal.getByText(
-      "Nenhuma simulação enviada a este lead ainda.",
+      "Nenhuma simulação anexada a este lead ainda.",
     );
     const historico = modal.getByRole("button", { name: "Baixar PDF" });
     await expect(vazio.or(historico.first())).toBeVisible();
@@ -139,7 +143,7 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
     semEnvioNemMovimento(chamadas, acoesServidor, base);
   });
 
-  test("Enviar simulação abre o diálogo: foco preso, input só PDF, Cancelar; Esc fecha só o diálogo", async ({
+  test("Anexar simulação abre o diálogo: foco preso, input só PDF, Cancelar; Esc fecha só o diálogo", async ({
     page,
     acoesServidor,
   }) => {
@@ -150,9 +154,9 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
       "nenhum lead em financiamento",
       acoesServidor,
     );
-    await modal.getByRole("button", { name: "Enviar simulação" }).click();
+    await modal.getByRole("button", { name: "Anexar simulação" }).click();
 
-    const dialogo = page.getByRole("dialog", { name: "Enviar simulação" });
+    const dialogo = page.getByRole("dialog", { name: "Anexar simulação" });
     await expect(dialogo).toBeVisible();
     await expect(dialogo).toHaveAttribute("aria-modal", "true");
     const arquivo = dialogo.getByLabel("PDF da Creditas");
@@ -162,9 +166,9 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
     await expect(
       dialogo.getByRole("button", { name: "Cancelar" }),
     ).toBeVisible();
-    // Antes de um PDF lido, o botão de envio não pode estar habilitado.
+    // Antes de um PDF lido, o botão de confirmar não pode estar habilitado.
     await expect(
-      dialogo.getByRole("button", { name: "Enviar simulação" }),
+      dialogo.getByRole("button", { name: "Anexar", exact: true }),
     ).toBeDisabled();
 
     // Foco preso: muitos Tabs nunca saem do diálogo.
@@ -207,7 +211,7 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
     await expect(page).toHaveURL(/lead=/);
 
     // Reabre e fecha por Cancelar.
-    await modal.getByRole("button", { name: "Enviar simulação" }).click();
+    await modal.getByRole("button", { name: "Anexar simulação" }).click();
     await expect(dialogo).toBeVisible();
     await dialogo.getByRole("button", { name: "Cancelar" }).click();
     await expect(dialogo).toBeHidden();
@@ -226,8 +230,8 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
       "nenhum lead em financiamento",
       acoesServidor,
     );
-    await modal.getByRole("button", { name: "Enviar simulação" }).click();
-    const dialogo = page.getByRole("dialog", { name: "Enviar simulação" });
+    await modal.getByRole("button", { name: "Anexar simulação" }).click();
+    const dialogo = page.getByRole("dialog", { name: "Anexar simulação" });
     await expect(dialogo).toBeVisible();
 
     await dialogo.getByLabel("PDF da Creditas").setInputFiles({
@@ -240,7 +244,7 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
     await expect(alerta).toContainText(/Creditas|PDF|ler|tabela|Bancos/i);
     await expect(dialogo.getByTitle("Prévia da simulação")).toHaveCount(0);
     await expect(
-      dialogo.getByRole("button", { name: "Enviar simulação" }),
+      dialogo.getByRole("button", { name: "Anexar", exact: true }),
     ).toBeDisabled();
     await expect(
       dialogo.getByText("Melhor banco (menor CET em TR)"),
@@ -262,8 +266,8 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
       "nenhum lead em financiamento",
       acoesServidor,
     );
-    await modal.getByRole("button", { name: "Enviar simulação" }).click();
-    const dialogo = page.getByRole("dialog", { name: "Enviar simulação" });
+    await modal.getByRole("button", { name: "Anexar simulação" }).click();
+    const dialogo = page.getByRole("dialog", { name: "Anexar simulação" });
     await expect(dialogo).toBeVisible();
 
     await dialogo.getByLabel("PDF da Creditas").setInputFiles({
@@ -282,7 +286,7 @@ test.describe("/admin/crm/financiamento/ — bloco Simulações", () => {
 });
 
 test.describe("/admin/crm/home-equity/ — modal sem o bloco Simulações", () => {
-  test("lead de home equity não tem 'Simulações' nem 'Enviar simulação'", async ({
+  test("lead de home equity não tem 'Simulações' nem 'Anexar simulação'", async ({
     page,
     acoesServidor,
   }) => {
@@ -297,7 +301,7 @@ test.describe("/admin/crm/home-equity/ — modal sem o bloco Simulações", () =
       modal.getByRole("heading", { name: "Simulações" }),
     ).toHaveCount(0);
     await expect(
-      modal.getByRole("button", { name: "Enviar simulação" }),
+      modal.getByRole("button", { name: "Anexar simulação" }),
     ).toHaveCount(0);
     await modal.getByRole("button", { name: "Fechar" }).click();
     await expect(modal).toBeHidden();

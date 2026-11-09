@@ -487,8 +487,10 @@ export interface Database {
           /** Dados lidos do PDF da Creditas, SEM os logos. */
           dados: Record<string, unknown>;
           criado_por: string | null;
-          email_status: "enviado" | "falhou" | "sem-chave";
+          email_status: "anexado" | "enviado" | "falhou" | "sem-chave";
           resend_id: string | null;
+          /** Quando o e-mail foi enviado (migration 032). Nulo = ainda não enviada. */
+          enviado_em: string | null;
           created_at: string;
         };
         Insert: {
@@ -497,8 +499,9 @@ export interface Database {
           storage_path: string;
           dados: Record<string, unknown>;
           criado_por?: string | null;
-          email_status: "enviado" | "falhou" | "sem-chave";
+          email_status: "anexado" | "enviado" | "falhou" | "sem-chave";
           resend_id?: string | null;
+          enviado_em?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["crm_simulacoes"]["Insert"]>;

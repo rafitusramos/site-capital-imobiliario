@@ -17,7 +17,7 @@ export function nomeArquivoSimulacao(protocolo: string): string {
 
 export type DesfechoSimulacao =
   | "cancelado"
-  | "enviado"
+  | "anexado"
   | "movido-e-enviado"
   | "movido-sem-envio"
   | "movido-envio-falhou";
@@ -30,8 +30,8 @@ export function toastDoDesfecho(
   switch (desfecho) {
     case "cancelado":
       return null;
-    case "enviado":
-      return { tipo: "sucesso", texto: "Simulação enviada por e-mail." };
+    case "anexado":
+      return { tipo: "sucesso", texto: "Simulação anexada ao lead. Nada foi enviado ainda." };
     case "movido-e-enviado":
       return { tipo: "sucesso", texto: `Lead movido para ${etapaLabel} e simulação enviada por e-mail.` };
     case "movido-sem-envio":
@@ -39,7 +39,7 @@ export function toastDoDesfecho(
     case "movido-envio-falhou":
       return {
         tipo: "erro",
-        texto: `A etapa mudou para ${etapaLabel}, mas a simulação NÃO foi enviada. Abra o lead e use "Enviar simulação".`,
+        texto: `A etapa mudou para ${etapaLabel}, mas a simulação NÃO foi enviada. Ela continua anexada ao lead.`,
       };
   }
 }

@@ -27,7 +27,7 @@ export type CorpoModalLeadProps = {
   onMudarEtapa: (etapa: LeadEtapaSlug) => void;
   etapaPendente: boolean;
   /** Abre o diálogo de simulação sem mover (só financiamento). */
-  onEnviarSimulacao: () => void;
+  onAnexarSimulacao: () => void;
 };
 
 /**
@@ -39,7 +39,7 @@ export type CorpoModalLeadProps = {
  * chegou — se o hook morasse no ModalLead, a primeira montagem (com
  * `detalhe = null`) semearia o estado vazio e ficaria errado depois.
  */
-export function CorpoModalLead({ detalhe, dominios, leadId, executarAcao, onMudarEtapa, etapaPendente, onEnviarSimulacao }: CorpoModalLeadProps) {
+export function CorpoModalLead({ detalhe, dominios, leadId, executarAcao, onMudarEtapa, etapaPendente, onAnexarSimulacao }: CorpoModalLeadProps) {
   // DetalheOrigemLead["dados"] é um union de Rows específicas
   // (lead_financiamento | lead_home_equity | ...) — o hook e PainelOrigem.tsx
   // são deliberadamente genéricos sobre a origem, então recebem como Record
@@ -78,7 +78,7 @@ export function CorpoModalLead({ detalhe, dominios, leadId, executarAcao, onMuda
       </div>
 
       {detalhe.lead.tipo === "financiamento" ? (
-        <PainelSimulacoes simulacoes={detalhe.simulacoes} onEnviar={onEnviarSimulacao} />
+        <PainelSimulacoes simulacoes={detalhe.simulacoes} onAnexar={onAnexarSimulacao} />
       ) : null}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">

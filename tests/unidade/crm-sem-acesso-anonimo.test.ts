@@ -65,3 +65,12 @@ describe("031: CRM sem acesso anônimo", () => {
     }
   });
 });
+
+describe("032: funções do CRM sem execute para PUBLIC", () => {
+  // Revogar só do anon (031) não basta: o grant padrão de função é para PUBLIC.
+  const sql032 = readFileSync(join(PASTA, "032_crm_simulacoes_anexo.sql"), "utf8").replace(/--.*$/gm, "");
+
+  test.each(["mover_lead_crm", "registrar_interacao_crm", "definir_tags_lead"])("%s", (funcao) => {
+    expect(sql032).toMatch(new RegExp(`revoke execute on function public\\.${funcao}\\([^)]*\\) from public;`));
+  });
+});
