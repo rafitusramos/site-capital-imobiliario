@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   ETAPAS_POR_TIPO,
@@ -98,7 +100,7 @@ describe("exigeMotivo", () => {
   });
 });
 
-describe("cores e SLA (seeds da migration 014)", () => {
+describe("cores (seeds da migration 014) e SLA (migration 029)", () => {
   test("'ganho', 'perdido' e 'nao-qualificado' têm sla_dias nulo (etapas finais)", () => {
     expect(etapaPorSlug("financiamento", "ganho")?.slaDias).toBeNull();
     expect(etapaPorSlug("financiamento", "perdido")?.slaDias).toBeNull();
@@ -112,8 +114,38 @@ describe("cores e SLA (seeds da migration 014)", () => {
     expect(etapa?.corTexto).toBe("#4A4437");
   });
 
-  test("'vistoria' tem sla_dias 10", () => {
-    expect(etapaPorSlug("financiamento", "vistoria")?.slaDias).toBe(10);
+  // SLA em DIAS ÚTEIS (seg-sex), vigente desde a migration 029.
+  const SLA_UTEIS: Record<string, number> = {
+    criado: 1,
+    simulacao: 2,
+    qualificacao: 2,
+    apresentacao: 2,
+    "pre-aprovacao": 5,
+    vistoria: 5,
+    visita: 5,
+    proposta: 5,
+    contrato: 10,
+  };
+
+  test.each(Object.entries(SLA_UTEIS))("'%s' tem sla_dias %i (dias úteis, migration 029)", (slug, sla) => {
+    for (const tipo of TODOS_OS_TIPOS) {
+      const etapa = etapaPorSlug(tipo, slug as never);
+      if (etapa) expect(etapa.slaDias).toBe(sla);
+    }
+  });
+
+  test("etapas.ts e a migration 029 não divergem nos prazos", () => {
+    const sql = readFileSync(join(process.cwd(), "supabase/migrations/029_crm_sla_lembretes.sql"), "utf8");
+    const doSql = new Map<string, number>();
+    for (const m of sql.matchAll(/^update public\.crm_etapas set sla_dias = (\d+)\s+where slug = '([a-z-]+)';/gm)) {
+      doSql.set(m[2], Number(m[1]));
+    }
+    expect(Object.fromEntries(doSql)).toEqual(SLA_UTEIS);
+    for (const tipo of TODOS_OS_TIPOS) {
+      for (const etapa of etapasDoTipo(tipo)) {
+        if (etapa.slaDias !== null) expect(doSql.get(etapa.slug)).toBe(etapa.slaDias);
+      }
+    }
   });
 
   test.each(TODOS_OS_TIPOS)("apenas 'ganho' é is_ganho no pipeline '%s'", (tipo) => {

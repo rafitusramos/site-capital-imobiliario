@@ -92,3 +92,19 @@ export function rotuloRelativo(agendadoPara: string | Date, agora: string | Date
   if (diffDias > 1) return `em ${diffDias} dias`;
   return `há ${Math.abs(diffDias)} dias`;
 }
+
+export type EstadoLembrete = "atrasado" | "vence-24h" | "normal";
+
+const VINTE_QUATRO_HORAS_MS = 24 * 3_600_000;
+
+/**
+ * Estado do lembrete para o contorno do card. Comparação de INSTANTE (como
+ * `estaAtrasado`), não de calendário: atrasado = já passou; vence-24h = de
+ * agora até 24h exatas à frente, inclusive; o resto é normal.
+ */
+export function estadoDoLembrete(agendadoPara: string | Date, agora: string | Date = new Date()): EstadoLembrete {
+  const diferenca = paraData(agendadoPara).getTime() - paraData(agora).getTime();
+  if (diferenca < 0) return "atrasado";
+  if (diferenca <= VINTE_QUATRO_HORAS_MS) return "vence-24h";
+  return "normal";
+}

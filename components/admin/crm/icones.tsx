@@ -153,6 +153,22 @@ export const IconeChevronBaixo = criarIcone(<path d="M4.5 7.5 10 13l5.5-5.5" />)
 export const IconeSetaDireita = criarIcone(<path d="M4 10h12M11 5l5 5-5 5" />);
 export const IconeSetaEsquerda = criarIcone(<path d="M16 10H4M9 5l-5 5 5 5" />);
 
+/** Círculo com X dentro: "Perdido" (barra de etapa do modal). */
+export const IconeCirculoX = criarIcone(
+  <>
+    <circle cx="10" cy="10" r="7.5" />
+    <path d="M7.2 7.2l5.6 5.6M12.8 7.2l-5.6 5.6" />
+  </>,
+);
+
+/** Círculo com barra diagonal: "Não Qualificado" — distinto do X de Perdido para não serem confundidos. */
+export const IconeCirculoBarra = criarIcone(
+  <>
+    <circle cx="10" cy="10" r="7.5" />
+    <path d="M4.7 4.7l10.6 10.6" />
+  </>,
+);
+
 /** Catálogo por slug — casa com `crm_interacao_tipos.icone` (banco). */
 export const ICONES_INTERACAO: Record<string, ComponentType<IconeProps>> = {
   ligacao: IconeTelefone,

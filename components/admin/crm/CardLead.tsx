@@ -2,8 +2,8 @@
 
 import { useDraggable } from "@dnd-kit/core";
 import type { LeadQuadroCRM } from "@/lib/queries/admin-crm";
-import { estadoDaEtapa, type EstadoEtapa } from "@/lib/crm/tempo";
-import { ehHoje, estaAtrasado, rotuloRelativo } from "@/lib/crm/lembretes";
+import { estadoDaEtapaDoLead, type EstadoEtapa } from "@/lib/crm/tempo";
+import { estadoDoLembrete, rotuloRelativo } from "@/lib/crm/lembretes";
 import { formatarMoeda } from "@/lib/crm/calculos";
 import { mascaraTelefone } from "@/lib/mascaras";
 import { AcoesCard } from "@/components/admin/crm/AcoesCard";
@@ -68,10 +68,32 @@ export function CardLead({
     disabled: !arrastavel,
   });
 
-  const estado = estadoDaEtapa(lead.dias_na_etapa ?? 0, lead.sla_dias);
+  const estado = estadoDaEtapaDoLead(lead, agora);
   const corBarra = COR_BARRA[estado];
 
+  // Estado do lembrete: comparação de instante (lib/crm/lembretes.ts). Dirige
+  // o contorno do card e a cor do texto. `agora` vem do mesmo default do resto
+  // do card, então não cria divergência nova de hidratação: o estado só muda
+  // se o relógio cruzar o instante exato do lembrete entre SSR e cliente.
+  const estadoLembrete = lead.proximo_lembrete_em ? estadoDoLembrete(lead.proximo_lembrete_em, agora) : "normal";
+  const lembreteVencido = estadoLembrete === "atrasado";
+  // Texto: --aviso (amarelo-ouro) NÃO serve para texto (contraste < 4.5:1);
+  // quem vence em 24h usa --bronze, o atrasado --erro.
+  const corLembrete = lembreteVencido
+    ? "text-[var(--erro)]"
+    : estadoLembrete === "vence-24h"
+      ? "text-[var(--bronze)]"
+      : "text-neutral-500";
+  // Contorno de ~1.5px por box-shadow (não borda): a borda esquerda de 3px da
+  // barra de tempo fica intacta. Sem contorno no fantasma do DragOverlay.
+  const corContorno =
+    fantasma || estadoLembrete === "normal" ? null : lembreteVencido ? "var(--erro)" : "var(--aviso)";
+  const estiloContorno = corContorno
+    ? { boxShadow: `0 0 0 1.5px ${corContorno}, 0 1px 2px 0 rgb(0 0 0 / 0.05)` }
+    : undefined;
+
   const estilo = {
+    ...estiloContorno,
     // Barra de tempo (docs/crm-spec.md §4): borda esquerda de 3px cuja cor
     // é o único acento cromático do card. Aplicada via style (não classe
     // Tailwind) porque a cor é dinâmica (calculada por lead, não uma das
@@ -79,10 +101,6 @@ export function CardLead({
     borderLeftWidth: 3,
     borderLeftColor: corBarra,
   };
-
-  const lembreteVencido = lead.proximo_lembrete_em ? estaAtrasado(lead.proximo_lembrete_em, agora) : false;
-  const lembreteHoje = lead.proximo_lembrete_em ? ehHoje(lead.proximo_lembrete_em, agora) : false;
-  const corLembrete = lembreteVencido ? "text-[var(--erro)]" : lembreteHoje ? "text-[var(--bronze)]" : "text-neutral-500";
 
   return (
     <div className={`group relative ${isDragging ? "z-10" : ""}`}>
@@ -162,12 +180,6 @@ export function CardLead({
             </span>
           ) : null}
         </div>
-
-        <p className="mb-1 text-[11px] text-neutral-500">
-          {lead.ultima_interacao_em
-            ? `Últ. contato · ${rotuloRelativo(lead.ultima_interacao_em, agora)}`
-            : "Sem interação ainda"}
-        </p>
 
         {lead.proximo_lembrete_em ? (
           <p className={`mb-1.5 flex items-center gap-1 text-[11px] font-medium ${corLembrete}`}>
