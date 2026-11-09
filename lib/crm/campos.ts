@@ -118,6 +118,10 @@ export const CAMPOS_POR_ORIGEM: Record<LeadTipoSlug, CampoCRM[]> = {
     // Não vêm do RPC: preenchidos pelo corretor depois da simulação. Por
     // isso ficam no bloco "lead" (item 10 dos ajustes de CRM) — o corretor
     // negocia e grava junto com nome/telefone/e-mail, numa chamada só.
+    // Veio do formulário do site (obrigatória ali), mas o corretor corrige quando
+    // o lead errou a digitação; por isso editável, no bloco "lead". A idade entra no
+    // seguro MIP.
+    { chave: "data_nascimento", label: "Data de nascimento", tipo: "data", fonte: "coluna", bloco: "lead" },
     { chave: "banco_simulado", label: "Banco simulado", tipo: "texto", fonte: "coluna", bloco: "lead" },
     { chave: "primeiro_imovel", label: "Primeiro imóvel", tipo: "booleano", fonte: "coluna", bloco: "lead" },
   ],
@@ -200,6 +204,7 @@ export const CAMPOS_POR_ORIGEM: Record<LeadTipoSlug, CampoCRM[]> = {
     // Não vêm do RPC: só existem depois que o corretor negocia com o
     // cliente. Bloco "lead" (item 10 dos ajustes de CRM): negociados e
     // gravados junto com nome/telefone/e-mail.
+    { chave: "data_nascimento", label: "Data de nascimento", tipo: "data", fonte: "coluna", bloco: "lead" },
     {
       chave: "pessoa",
       label: "Pessoa",

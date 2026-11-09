@@ -45,3 +45,10 @@ export function mascaraNumDec(valorAtual: string): string {
 export function mascaraUf(valorAtual: string): string {
   return valorAtual.replace(/[^a-zA-Z]/g, "").slice(0, 2).toUpperCase();
 }
+
+export function mascaraData(valorAtual: string): string {
+  const d = valorAtual.replace(/\D/g, "").slice(0, 8);
+  if (d.length > 4) return d.slice(0, 2) + "/" + d.slice(2, 4) + "/" + d.slice(4);
+  if (d.length > 2) return d.slice(0, 2) + "/" + d.slice(2);
+  return d;
+}

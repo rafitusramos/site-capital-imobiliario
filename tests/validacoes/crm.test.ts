@@ -408,3 +408,14 @@ describe("atribuirResponsavelSchema", () => {
     expect(atribuirResponsavelSchema.safeParse({ leadId, corretorId: "não-é-uuid" }).success).toBe(false);
   });
 });
+
+describe("dataNascimento no CRM (financiamento e home equity)", () => {
+  test("aceita ISO real não futuro e é opcional", () => {
+    expect(criarLeadFinanciamentoSchema.safeParse({ ...baseComum(), dataNascimento: "1985-05-15" }).success).toBe(true);
+    expect(criarLeadFinanciamentoSchema.safeParse(baseComum()).success).toBe(true);
+  });
+  test("rejeita futura e inexistente", () => {
+    expect(criarLeadFinanciamentoSchema.safeParse({ ...baseComum(), dataNascimento: "2999-01-01" }).success).toBe(false);
+    expect(criarLeadFinanciamentoSchema.safeParse({ ...baseComum(), dataNascimento: "1990-02-30" }).success).toBe(false);
+  });
+});

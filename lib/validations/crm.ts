@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { cpfValido, telefoneValido } from "@/lib/financeiro";
+import { isoDataNaoFutura } from "@/lib/data-nascimento";
 import { etapaPorSlug, exigeMotivo as etapaExigeMotivo } from "@/lib/crm/etapas";
 import type { LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 
@@ -73,6 +74,13 @@ export const dormitoriosMinSchema = z.number().int().min(0).max(20);
 // de criação manual e o do site nunca aceitarem valores diferentes para o
 // "mesmo" campo.
 
+// Data de nascimento no CRM: corretor pode corrigir o que o lead digitou, então
+// só exige data real e não futura (a faixa 18–100 vale para o formulário do site).
+export const dataNascimentoCrmSchema = z
+  .string()
+  .refine((v) => isoDataNaoFutura(v), "Informe uma data de nascimento válida.")
+  .optional();
+
 export const criarLeadFinanciamentoSchema = leadComumSchema.extend({
   valorImovel: valorMonetarioSchema.optional(),
   percentualEntrada: z.number().finite().gte(0).lte(100).optional(),
@@ -80,6 +88,7 @@ export const criarLeadFinanciamentoSchema = leadComumSchema.extend({
   valorCredito: valorMonetarioSchema.optional(),
   prazoMeses: prazoMesesSchema.optional(),
   parcelaEstimada: valorMonetarioSchema.optional(),
+  dataNascimento: dataNascimentoCrmSchema,
   bancoSimulado: z.string().trim().min(1).optional(),
   rendaMensal: valorMonetarioSchema.optional(),
   usaFgts: z.boolean().optional(),
@@ -104,6 +113,7 @@ export const criarLeadHomeEquitySchema = leadComumSchema.extend({
   parcelaEstimada: valorMonetarioSchema.optional(),
   finalidade: z.string().trim().min(1).optional(),
   tipoImovel: z.string().trim().min(1).optional(),
+  dataNascimento: dataNascimentoCrmSchema,
   pessoa: z.enum(["fisica", "juridica"]).optional(),
   rendaMensal: valorMonetarioSchema.optional(),
   tipoRemuneracao: z.string().trim().min(1).optional(),
