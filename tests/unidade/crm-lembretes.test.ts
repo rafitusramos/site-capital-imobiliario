@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
-import { ehHoje, estaAtrasado, rotuloRelativo } from "@/lib/crm/lembretes";
+import { ehHoje, estaAtrasado, estadoDoLembrete, rotuloRelativo } from "@/lib/crm/lembretes";
 
 // "Agora" fixo: 15/07/2026 14:00 em São Paulo (UTC-3) = 17:00 UTC. Vitest
 // mocka `Date`/`Date.now()` no fuso do PROCESSO (que já é UTC neste
@@ -87,5 +87,36 @@ describe("rotuloRelativo", () => {
 
   test("respeita `agora` explícito em vez do relógio mockado", () => {
     expect(rotuloRelativo("2026-01-02T12:00:00.000Z", "2026-01-01T12:00:00.000Z")).toBe("amanhã 09:00");
+  });
+});
+
+describe("estadoDoLembrete", () => {
+  const agora = new Date("2026-07-15T15:00:00.000Z");
+  const emHoras = (h: number) => new Date(agora.getTime() + h * 3_600_000);
+
+  test("já passou (por 1 ms) é atrasado", () => {
+    expect(estadoDoLembrete(new Date(agora.getTime() - 1), agora)).toBe("atrasado");
+  });
+
+  test("exatamente agora não é atrasado: vence nas próximas 24h", () => {
+    expect(estadoDoLembrete(agora, agora)).toBe("vence-24h");
+  });
+
+  test("até 24h exatas à frente (inclusive) é vence-24h", () => {
+    expect(estadoDoLembrete(emHoras(24), agora)).toBe("vence-24h");
+    expect(estadoDoLembrete(emHoras(1), agora)).toBe("vence-24h");
+  });
+
+  test("1 ms além de 24h é normal", () => {
+    expect(estadoDoLembrete(new Date(emHoras(24).getTime() + 1), agora)).toBe("normal");
+  });
+
+  test("é comparação de instante, não de calendário: amanhã 09:00 SP a 20h de distância é vence-24h", () => {
+    // agora = 12:00 SP; alvo = amanhã 08:00 SP (20h à frente), outro dia civil.
+    expect(estadoDoLembrete("2026-07-16T11:00:00.000Z", agora)).toBe("vence-24h");
+  });
+
+  test("aceita string ISO", () => {
+    expect(estadoDoLembrete("2026-07-15T14:00:00.000Z", "2026-07-15T15:00:00.000Z")).toBe("atrasado");
   });
 });

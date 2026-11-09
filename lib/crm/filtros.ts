@@ -1,5 +1,5 @@
 import { estaAtrasado } from "@/lib/crm/lembretes";
-import { estadoDaEtapa } from "@/lib/crm/tempo";
+import { estadoDaEtapaDoLead } from "@/lib/crm/tempo";
 import type { LeadQuadroCRM } from "@/lib/queries/admin-crm";
 
 /**
@@ -75,14 +75,16 @@ export function filtrarAtrasados<T extends LeadQuadroCRM>(
 
 /**
  * "Parado além do SLA": passou do prazo da etapa (estado "atenção" ou
- * "parado" de `estadoDaEtapa`, lib/crm/tempo.ts). Etapa final não tem SLA e
- * lead sem `dias_na_etapa` nunca entram — não há relógio correndo.
+ * "parado" de `estadoDaEtapaDoLead`, lib/crm/tempo.ts, em dias úteis). Etapa
+ * final não tem SLA e lead sem `status_alterado_em` válido nunca entram — não há relógio correndo.
  */
-export function filtrarParados<T extends LeadQuadroCRM>(leads: T[], somenteParados: boolean | undefined): T[] {
+export function filtrarParados<T extends LeadQuadroCRM>(
+  leads: T[],
+  somenteParados: boolean | undefined,
+  agora: string | Date = new Date(),
+): T[] {
   if (!somenteParados) return leads;
-  return leads.filter(
-    (lead) => lead.dias_na_etapa !== null && estadoDaEtapa(lead.dias_na_etapa, lead.sla_dias) !== "no-prazo",
-  );
+  return leads.filter((lead) => estadoDaEtapaDoLead(lead, agora) !== "no-prazo");
 }
 
 /** Dia civil (AAAA-MM-DD) de um instante em São Paulo — o servidor roda em UTC, o operador não. */
@@ -137,7 +139,7 @@ export function aplicarFiltros<T extends LeadQuadroCRM>(
   resultado = filtrarPorTag(resultado, filtros.tag);
   resultado = filtrarFavoritos(resultado, filtros.somenteFavoritos);
   resultado = filtrarAtrasados(resultado, filtros.somenteAtrasados, agora);
-  resultado = filtrarParados(resultado, filtros.somenteParados);
+  resultado = filtrarParados(resultado, filtros.somenteParados, agora);
   resultado = filtrarSemLembrete(resultado, filtros.semLembrete);
   resultado = filtrarPorPeriodo(resultado, filtros.criadoDe, filtros.criadoAte);
   return resultado;

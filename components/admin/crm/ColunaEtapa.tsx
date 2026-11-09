@@ -3,7 +3,7 @@
 import { useDroppable } from "@dnd-kit/core";
 import type { EtapaCRM } from "@/lib/crm/etapas";
 import type { LeadQuadroCRM } from "@/lib/queries/admin-crm";
-import { estadoDaEtapa } from "@/lib/crm/tempo";
+import { estadoDaEtapaDoLead } from "@/lib/crm/tempo";
 import { formatarMoeda } from "@/lib/crm/calculos";
 import { CardLead, type TagCatalogo } from "@/components/admin/crm/CardLead";
 import { EstadoVazio } from "@/components/admin/crm/EstadoVazio";
@@ -49,7 +49,7 @@ export function ColunaEtapa({
     ? leads.reduce((acc, l) => acc + (l.valor_negocio ?? 0), 0)
     : contagemBase.somaValorNegocio;
 
-  const parados = leads.filter((l) => estadoDaEtapa(l.dias_na_etapa ?? 0, l.sla_dias) === "parado").length;
+  const parados = leads.filter((l) => estadoDaEtapaDoLead(l) === "parado").length;
 
   return (
     <div

@@ -169,23 +169,31 @@ describe("filtrarAtrasados", () => {
 });
 
 describe("filtrarParados", () => {
-  // criado: SLA 1 dia -> 1 dia no prazo, 2 dias atenção, 3+ parado.
-  const noPrazo = lead({ id: "1", status: "criado", sla_dias: 1, dias_na_etapa: 1 });
-  const atencao = lead({ id: "2", status: "criado", sla_dias: 1, dias_na_etapa: 2 });
-  const parado = lead({ id: "3", status: "criado", sla_dias: 1, dias_na_etapa: 5 });
-  const semSla = lead({ id: "4", status: "ganho", sla_dias: null, dias_na_etapa: 90 });
-  const semDias = lead({ id: "5", status: "criado", sla_dias: 1, dias_na_etapa: null });
+  // SLA em dias ÚTEIS (seg-sex, SP). Hoje = quarta 22/07/2026 10:00 SP.
+  // criado (SLA 1): 1 útil no prazo, 2 atenção, 3+ parado.
+  const HOJE = new Date("2026-07-22T13:00:00.000Z");
+  const noPrazo = lead({ id: "1", status: "criado", sla_dias: 1, status_alterado_em: "2026-07-21T13:00:00.000Z" }); // 1 útil
+  const atencao = lead({ id: "2", status: "criado", sla_dias: 1, status_alterado_em: "2026-07-20T13:00:00.000Z" }); // 2 úteis
+  const parado = lead({ id: "3", status: "criado", sla_dias: 1, status_alterado_em: "2026-07-15T13:00:00.000Z" }); // 5 úteis
+  const fimDeSemana = lead({ id: "6", status: "criado", sla_dias: 1, status_alterado_em: "2026-07-17T13:00:00.000Z" }); // sex -> qua = 3 úteis
+  const semSla = lead({ id: "4", status: "ganho", sla_dias: null, status_alterado_em: "2026-01-01T13:00:00.000Z" });
+  const semData = lead({ id: "5", status: "criado", sla_dias: 1, dias_na_etapa: null, status_alterado_em: "" });
 
   test("desligado devolve a lista inteira", () => {
-    expect(filtrarParados([noPrazo, parado], false)).toEqual([noPrazo, parado]);
+    expect(filtrarParados([noPrazo, parado], false, HOJE)).toEqual([noPrazo, parado]);
   });
 
-  test("ligado mantém quem passou do SLA (atenção e parado)", () => {
-    expect(filtrarParados([noPrazo, atencao, parado], true)).toEqual([atencao, parado]);
+  test("ligado mantém quem passou do SLA em dias úteis (atenção e parado)", () => {
+    expect(filtrarParados([noPrazo, atencao, parado, fimDeSemana], true, HOJE)).toEqual([atencao, parado, fimDeSemana]);
   });
 
-  test("etapa final (sem SLA) e lead sem dias_na_etapa nunca contam como parados", () => {
-    expect(filtrarParados([semSla, semDias], true)).toEqual([]);
+  test("fim de semana não consome prazo: sexta -> segunda ainda está no prazo", () => {
+    const segunda = new Date("2026-07-20T13:00:00.000Z");
+    expect(filtrarParados([fimDeSemana], true, segunda)).toEqual([]);
+  });
+
+  test("etapa final (sem SLA) e lead sem data nunca contam como parados", () => {
+    expect(filtrarParados([semSla, semData], true, HOJE)).toEqual([]);
   });
 });
 

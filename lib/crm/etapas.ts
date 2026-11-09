@@ -3,8 +3,11 @@ import type { LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 /**
  * Espelha os seeds de `crm_etapas` em `supabase/migrations/014_crm_pipelines.sql`.
  * Este arquivo e a migration 014 TÊM DE ANDAR JUNTOS: qualquer mudança de
- * label, cor, ordem, sla_dias ou exige_motivo feita numa precisa ser refeita
- * na outra. A integridade "lead nunca numa etapa de outro pipeline" é
+ * label, cor, ordem ou exige_motivo feita numa precisa ser refeita na
+ * outra. EXCEÇÃO: `slaDias` — o SLA vigente vem da migration 029
+ * (`supabase/migrations/029_crm_sla_lembretes.sql`), que sobrescreve os da 014,
+ * e `slaDias` significa DIAS ÚTEIS (seg-sex, sem feriados). Mudou o prazo,
+ * mude na 029 e aqui; tests/unidade/crm-etapas.test.ts compara os dois. A integridade "lead nunca numa etapa de outro pipeline" é
  * garantida pela FK composta `(tipo, status)` no banco — este arquivo só
  * espelha o que já está lá para a interface não precisar de round-trip para
  * saber quais etapas existem, quais cores usar e qual é a etapa inicial.
@@ -37,14 +40,14 @@ const APARENCIA: Record<
   { label: string; corBg: string; corTexto: string; slaDias: number | null }
 > = {
   criado: { label: "Criado", corBg: "#E9E5DA", corTexto: "#4A4437", slaDias: 1 },
-  simulacao: { label: "Simulação", corBg: "#F0E2C8", corTexto: "#6B4E22", slaDias: 3 },
+  simulacao: { label: "Simulação", corBg: "#F0E2C8", corTexto: "#6B4E22", slaDias: 2 },
   qualificacao: { label: "Qualificação", corBg: "#F0E2C8", corTexto: "#6B4E22", slaDias: 2 },
-  apresentacao: { label: "Apresentação", corBg: "#F0E2C8", corTexto: "#6B4E22", slaDias: 3 },
-  "pre-aprovacao": { label: "Pré-Aprovação", corBg: "#D8E6DC", corTexto: "#1C4633", slaDias: 7 },
+  apresentacao: { label: "Apresentação", corBg: "#F0E2C8", corTexto: "#6B4E22", slaDias: 2 },
+  "pre-aprovacao": { label: "Pré-Aprovação", corBg: "#D8E6DC", corTexto: "#1C4633", slaDias: 5 },
   visita: { label: "Visita", corBg: "#BFD9C8", corTexto: "#143728", slaDias: 5 },
-  vistoria: { label: "Vistoria", corBg: "#BFD9C8", corTexto: "#143728", slaDias: 10 },
+  vistoria: { label: "Vistoria", corBg: "#BFD9C8", corTexto: "#143728", slaDias: 5 },
   proposta: { label: "Proposta", corBg: "#D8E6DC", corTexto: "#1C4633", slaDias: 5 },
-  contrato: { label: "Contrato", corBg: "#1F6B4E", corTexto: "#FFFFFF", slaDias: 15 },
+  contrato: { label: "Contrato", corBg: "#1F6B4E", corTexto: "#FFFFFF", slaDias: 10 },
   ganho: { label: "Ganho", corBg: "#0A241C", corTexto: "#E8D9B8", slaDias: null },
   perdido: { label: "Perdido", corBg: "#F3DEDA", corTexto: "#7A2E22", slaDias: null },
   "nao-qualificado": { label: "Não Qualificado", corBg: "#E4E1DB", corTexto: "#55504A", slaDias: null },

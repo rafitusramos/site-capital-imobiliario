@@ -27,10 +27,15 @@ export function PainelOrigem({ campos, dados, dadosParaCalculo, origemLabel }: P
 
   return (
     <div>
-      <h3 className="mb-3 flex items-baseline gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
-        Origem
-        <span className="normal-case text-[var(--abissal)]">{origemLabel}</span>
-      </h3>
+      {/* Mesma linha (min-h-7 + items-center) do cabeçalho "Dados do lead" em
+          PainelComum.tsx, que carrega o botão da estrela de 28px: as duas
+          colunas do modal começam na mesma altura. */}
+      <div className="mb-3 flex min-h-7 items-center">
+        <h3 className="flex items-baseline gap-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+          Origem
+          <span className="normal-case text-[var(--abissal)]">{origemLabel}</span>
+        </h3>
+      </div>
       {campos.length === 0 ? (
         <p className="text-sm text-neutral-500">Nenhum dado de formulário do site — este lead foi criado manualmente.</p>
       ) : (

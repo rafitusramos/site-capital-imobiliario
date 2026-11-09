@@ -47,6 +47,8 @@ export interface Database {
           avatar_url: string | null;
           phone: string | null;
           creci: string | null;
+          /** Escondido das listas de responsável do CRM (migration 029); sem grant de UPDATE. */
+          oculto_no_crm: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -57,6 +59,7 @@ export interface Database {
           avatar_url?: string | null;
           phone?: string | null;
           creci?: string | null;
+          oculto_no_crm?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -534,6 +537,8 @@ export interface Database {
           concluido_em: string | null;
           concluido_por: string | null;
           criado_por: string | null;
+          /** Criado pelo trigger de SLA (migration 029); substituído na troca de etapa. */
+          automatico: boolean;
           created_at: string;
         };
         Insert: {
@@ -546,6 +551,7 @@ export interface Database {
           concluido_em?: string | null;
           concluido_por?: string | null;
           criado_por?: string | null;
+          automatico?: boolean;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["crm_lembretes"]["Insert"]>;
