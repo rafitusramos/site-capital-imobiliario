@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1192 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **030**.
+Suíte em Vitest: `npm test` — 1211 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **031**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -498,6 +498,16 @@ Financiamento, Home Equity, Consórcio, Imóveis.
      importada dali. A regra `@next/next/no-html-link-for-pages` está
      desligada no `eslint.config.mjs` por causa disso; para religar, primeiro
      dispare `page_view` a cada mudança de rota em `lib/analytics/eventos.ts`.
+- **Policy sem `to authenticated` vale para o anônimo.** `create policy` sem
+  `to <papel>` vale para `public`, que inclui `anon` — a chave pública que vai
+  no navegador de todo visitante. Somado ao grant padrão do Supabase para
+  `anon` nas tabelas do schema public, a `leads_visiveis` (que libera
+  `corretor_id is null`) deixava qualquer visitante ler, alterar e apagar leads
+  sem responsável, com CPF e dados financeiros. Corrigido na 031: o `anon` não
+  tem privilégio em tabela nem view do CRM e toda policy do CRM é `to
+  authenticated` (travado em `tests/unidade/crm-sem-acesso-anonimo.test.ts`).
+  Tabela nova de CRM: policy com `to authenticated` **e** `revoke all ... from
+  anon`. O formulário do site grava pela service role e não precisa do anon.
 - **Escrita de conteúdo é só para admin, nas duas camadas.** Policy de escrita
   usa `public.eh_admin()` (migration 020), **nunca** `auth.role() =
   'authenticated'`: esta última deixa qualquer corretor logado apagar posts,
