@@ -45,6 +45,10 @@ h1 { font-family:'Caslon'; font-weight:400; font-size:16pt; color:var(--abissal)
 .pick .b > div { padding:3.4mm 4mm; border-bottom:1px solid rgba(242,239,231,.12); }
 .pick .b > div:nth-child(n+4) { border-bottom:0; } .pick .b > div:not(:nth-child(3n+1)) { border-left:1px solid rgba(242,239,231,.12); }
 .pick .b .l { font-size:6.8pt; opacity:.6; } .pick .b .v { font-family:'Plex'; font-size:10pt; } .pick .b .v.g { color:#9cc9b3; }
+.pick .b .s { font-size:6.6pt; opacity:.7; margin-top:.5mm; } .pick .b .s.g { color:#9cc9b3; opacity:1; }
+.cmp thead th.best { color:var(--jade); } .cmp thead th.ip { color:#7d7f79; }
+.evo th.best { color:var(--jade); } .evo th.ip { color:#7d7f79; }
+.logo.sm .mark::after { width:6px; height:6px; right:-3.5px; bottom:-3.5px; }
 .chart { margin-top:4mm; }
 .chart .t { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:1.5mm; }
 .chart h2, .steps h2 { font-family:'Caslon'; font-weight:400; font-size:11pt; color:var(--abissal); }

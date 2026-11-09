@@ -236,6 +236,8 @@ describe("enviarSimulacaoAoLead", () => {
     expect(email.agendarPara).toBeUndefined();
     expect(email.anexos).toEqual([{ nome: "Simulacao-RT-RT-1.pdf", conteudo: PDF }]);
     expect(email.assunto).toContain("RT-1");
+    // O texto convida a responder: a resposta precisa chegar a uma caixa lida.
+    expect((email as { replyTo?: string }).replyTo).toBe("rafael@rtcapitalimobiliario.com.br");
     expect(r).toEqual({ status: "enviado", resendId: "re_maria@example.com", erro: null });
     expect(insercoes(falso)).toEqual([
       expect.objectContaining({ lead_id: LEAD.id, tipo: "simulacao", destinatario: "maria@example.com", status: "enviado" }),

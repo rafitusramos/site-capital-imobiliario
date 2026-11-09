@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { etapaPorSlug } from "@/lib/crm/etapas";
+import { CONFIG_SIMULACAO } from "@/lib/simulacao/config";
 import type { Database, LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 import { emailerDoAmbiente, type Emailer, type ResultadoEnvio } from "./enviar";
 import type { CampoEmail, EmailPronto } from "./templates/base";
@@ -251,6 +252,8 @@ export async function enviarSimulacaoAoLead(
     assunto: email.assunto,
     html: email.html,
     texto: email.texto,
+    // O texto convida a responder; a resposta vai ao contato impresso no documento.
+    replyTo: CONFIG_SIMULACAO.contato.email,
     anexos: [{ nome: nomeArquivo, conteudo: pdf }],
   });
   const s = statusDoEnvio(resultado, false);
