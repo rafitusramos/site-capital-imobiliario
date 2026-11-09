@@ -108,21 +108,21 @@ function grafico(): string {
   let g = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="100%" style="display:block">`;
   for (let i = 0; i <= 4; i++) {
     const y = 8 + ((H - B - 8) * i) / 4;
-    const v = 5800 - i * 900;
+    const v = 5800 - i * 1000;
     g += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#C9BFAC" stroke-width=".6"/><text x="${L - 4}" y="${y + 3}" font-family="Plex" font-size="8" text-anchor="end" fill="#5c5f59">${brl0(v)}</text>`;
   }
   BANCOS.forEach((b, k) => {
     const pts: string[] = [];
     for (let m = 1; m <= meses; m += 12) {
       const x = L + ((W - L - 6) * (m - 1)) / (meses - 1);
-      const y = 8 + ((H - B - 8) * (5800 - parcela(b, m))) / 3600;
+      const y = 8 + ((H - B - 8) * (5800 - parcela(b, m))) / 4000;
       pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
     }
     g += `<polyline fill="none" stroke="${cores[k]}" stroke-width="${k === 0 ? 1.8 : 1.1}" ${b.cls === "ip" ? 'stroke-dasharray="4 3"' : ""} points="${pts.join(" ")}"/>`;
   });
   [1, 120, 240, 360].forEach((m) => {
     const x = L + ((W - L - 6) * (m - 1)) / (meses - 1);
-    g += `<text x="${x}" y="${H - 4}" font-family="Plex" font-size="8" text-anchor="middle" fill="#5c5f59">${m}º mês</text>`;
+    g += `<text x="${x}" y="${H - 4}" font-family="Plex" font-size="8" text-anchor="${m === 360 ? "end" : "middle"}" fill="#5c5f59">${m}º mês</text>`;
   });
   return g + "</svg>";
 }
