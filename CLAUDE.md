@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1068 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **028**.
+Suíte em Vitest: `npm test` — 1099 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **029**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -60,10 +60,39 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 - Contagens do cabeçalho (por etapa e por aba) vêm do RPC `contar_leads_crm`
   (migration 022), **nunca** somadas em JS: o max-rows do PostgREST truncaria em silêncio.
 - `lib/crm/etapas.ts` **espelha** os seeds de `crm_etapas` da migration 014. Os
-  dois têm de andar juntos: mudou label, cor, ordem, SLA ou `exige_motivo` numa
-  ponta, refaça na outra. **Exceção: `notifica_lead`** (migration 025) é lido do
+  dois têm de andar juntos: mudou label, cor, ordem ou `exige_motivo` numa
+  ponta, refaça na outra. **Exceção `slaDias`:** o SLA vigente vem da migration
+  **029** (não da 014) e significa **dias úteis**; `tests/unidade/crm-etapas.test.ts`
+  lê o `.sql` da 029 e compara com `etapas.ts`. **Exceção: `notifica_lead`** (migration 025) é lido do
   banco em tempo de execução e editado em `/admin/parametros`; **não** entra em
   `etapas.ts`, e a seed da 025 não precisa ser espelhada lá.
+- **SLA em dias úteis** (segunda a sexta, **sem** calendário de feriados, fuso
+  São Paulo): criado 1, simulação/qualificação/apresentação 2, pré-aprovação/
+  vistoria/visita/proposta 5, contrato 10. A barra de tempo do card compara
+  `diasUteisEntre(status_alterado_em, agora)` (`lib/crm/dias-uteis.ts`, mesma
+  régua de `somar_dias_uteis` da 029) com o SLA, via `estadoDaEtapaDoLead`
+  (`lib/crm/tempo.ts`) — ponto único de CardLead, ColunaEtapa e `filtrarParados`.
+  O texto "N dias em Etapa" do card segue em dias **corridos**.
+- **Lembrete automático por trigger** (`agendar_lembrete_sla`, migration 029,
+  `security definer`): ao entrar numa etapa com SLA (lead novo ou troca de
+  etapa), cria `crm_lembretes.automatico = true` para 18:00 do último dia útil
+  do prazo. Na troca de etapa **apaga antes** os automáticos pendentes do lead
+  (substituição); lembrete manual nunca é tocado. `criado_por` é nulo em lead do
+  site (a timeline já tolera). Falha vira `warning`, jamais derruba captação nem
+  movimento. Sem carga retroativa em leads existentes.
+- **Contorno do card por lembrete**: `estadoDoLembrete` (`lib/crm/lembretes.ts`,
+  comparação de instante) — atrasado = contorno `--erro`; vence em até 24h =
+  contorno `--aviso`; sem contorno no card fantasma do DragOverlay. É box-shadow,
+  não borda: a barra de tempo de 3px à esquerda segue intacta. `--aviso` nunca
+  em texto (o texto de vence-24h usa `--bronze`).
+- **`profiles.oculto_no_crm`** (migration 029, sem grant de UPDATE) tira o usuário
+  de QA das listas de responsável. `getDominios` lê `profiles` com `select("*")`
+  e filtra em JS (`responsaveisVisiveis`, `lib/crm/responsaveis.ts`) para não
+  quebrar o deploy da branch antes de a migration rodar; só `id, full_name,
+  avatar_url, role` chegam ao cliente.
+- Barra de etapa do modal: `components/admin/crm/BarraEtapa.tsx`, uma linha,
+  grid `1fr auto 1fr auto` (etapa atual centrada). Perdido / Não Qualificado são
+  botões só com ícone (`title` + `aria-label`).
 - Trocar um lead de etapa passa **sempre** pelo RPC `mover_lead_crm`, nunca por
   update solto. É lá que vivem o motivo obrigatório de perdido/não-qualificado
   e a concorrência otimista — e vale igual para o arrastar e para os botões do
@@ -349,7 +378,8 @@ O admin carrega ainda Geologica (`--geologica`), usada só na soma de valores do
 cabeçalho das colunas do CRM.
 Fontes hospedadas em `app/fonts/` via `next/font/local` (woff2 latin em `app/fonts/arquivos/`); os 3 root layouts importam de lá.
 Cores: `--jade`, `--bronze`, `--abissal`, `--marfim`, `--areia`, `--tinta`,
-`--branco`, `--erro`.
+`--branco`, `--erro`, `--aviso` (`#b8860b`, amarelo-ouro só do admin: contorno de
+lembrete vencendo; ≥3:1 sobre branco como elemento não textual, **nunca em texto**).
 
 ## Categorias do blog
 Financiamento, Home Equity, Consórcio, Imóveis.

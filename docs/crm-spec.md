@@ -188,17 +188,21 @@ create unique index uq_crm_etapa_inicial
 Seeds — cores derivadas da paleta do admin (`app/admin/admin.css`), todas com
 contraste ≥ 4.5:1 entre `cor_texto` e `cor_bg`:
 
+> **SLA vigente (migration 029):** a coluna `sla_dias` passou a significar **dias
+> úteis** (seg-sex, sem feriados) e a tabela abaixo já traz os valores da 029;
+> os seeds originais da 014 eram em dias corridos (1/3/2/3/7/5/10/5/15).
+
 | slug | label | cor_bg | cor_texto | sla_dias |
 |---|---|---|---|---|
 | `criado` | Criado | `#E9E5DA` | `#4A4437` | 1 |
-| `simulacao` | Simulação | `#F0E2C8` | `#6B4E22` | 3 |
+| `simulacao` | Simulação | `#F0E2C8` | `#6B4E22` | 2 |
 | `qualificacao` | Qualificação | `#F0E2C8` | `#6B4E22` | 2 |
-| `apresentacao` | Apresentação | `#F0E2C8` | `#6B4E22` | 3 |
-| `pre-aprovacao` | Pré-Aprovação | `#D8E6DC` | `#1C4633` | 7 |
+| `apresentacao` | Apresentação | `#F0E2C8` | `#6B4E22` | 2 |
+| `pre-aprovacao` | Pré-Aprovação | `#D8E6DC` | `#1C4633` | 5 |
 | `visita` | Visita | `#BFD9C8` | `#143728` | 5 |
-| `vistoria` | Vistoria | `#BFD9C8` | `#143728` | 10 |
+| `vistoria` | Vistoria | `#BFD9C8` | `#143728` | 5 |
 | `proposta` | Proposta | `#D8E6DC` | `#1C4633` | 5 |
-| `contrato` | Contrato | `#1F6B4E` | `#FFFFFF` | 15 |
+| `contrato` | Contrato | `#1F6B4E` | `#FFFFFF` | 10 |
 | `ganho` | Ganho | `#0A241C` | `#E8D9B8` | — |
 | `perdido` | Perdido | `#F3DEDA` | `#7A2E22` | — |
 | `nao-qualificado` | Não Qualificado | `#E4E1DB` | `#55504A` | — |
@@ -594,6 +598,7 @@ components/admin/crm/
   QuadroCRM.tsx              client: DndContext, estado, otimismo
   ColunaEtapa.tsx            coluna droppable
   CardLead.tsx               card draggable
+  BarraEtapa.tsx             bloco "Etapa" do modal: [← anterior] (atual) [próxima →] [ícones Perdido/Não Qualificado]
   AcoesCard.tsx              os dois botões circulares
   BarraFiltros.tsx           busca, responsável, tag, atrasados, ordenação
   ModalLead.tsx              casca do diálogo (foco preso, Esc, aria)
@@ -628,8 +633,8 @@ Sem Redux, sem Zustand, sem React Query. React 19 já dá o necessário:
   recarregar ou mandar o link reproduz a visão. Serialização pura em
   `lib/crm/filtros-url.ts`; valor inválido é ignorado. Parâmetros: `q` (busca),
   `resp` (uuid ou `sem`), `tag`, `fav=1`, `atrasados=1` (lembrete vencido),
-  `parados=1` (passou do SLA da etapa: estado `atencao` ou `parado` de
-  `estadoDaEtapa`), `sem_lembrete=1`, `de`/`ate` (criação, `AAAA-MM-DD` no dia de
+  `parados=1` (passou do SLA da etapa em dias úteis: estado `atencao` ou `parado` de
+  `estadoDaEtapaDoLead`), `sem_lembrete=1`, `de`/`ate` (criação, `AAAA-MM-DD` no dia de
   São Paulo, ambos inclusivos) e `ordem`. Todos valem em qualquer origem, então
   as abas de origem levam os filtros junto; `lead`/`novo` não (são de um
   modal daquela aba), mas abrir e fechar o modal preserva os filtros.
@@ -761,13 +766,17 @@ vence, um lead esfria, e a pergunta que decide a próxima ação quase nunca é
 "quem é esse?" — é "há quanto tempo isso está parado aqui?".
 
 Cada card carrega, na borda esquerda, uma régua vertical de 3px cuja cor vem de
-`dias_na_etapa` contra o `sla_dias` da etapa:
+dos **dias úteis** na etapa (seg-sex, São Paulo, de `status_alterado_em` até
+agora: `diasUteisEntre`, `lib/crm/dias-uteis.ts`) contra o `sla_dias` da etapa:
 
 | Estado | Condição | Cor |
 |---|---|---|
 | No prazo | `dias ≤ sla` | `--jade` `#1F6B4E` |
 | Atenção | `sla < dias ≤ 2×sla` | `--bronze` `#8A6C48` |
 | Parado | `dias > 2×sla` | `--erro` `#8A3B2E` |
+
+O texto "N dias em Etapa" do card continua em dias **corridos**
+(`dias_na_etapa` da view).
 
 É o único acento cromático do card. Todo o resto é tipografia e espaço em
 branco. Um quadro saudável é uma parede de traços verdes; um quadro em apuros se
@@ -799,8 +808,7 @@ custar um byte a mais de download.
 │ │ (19) 99812-4477            │  mono 12px
 │ │ marina@empresa.com.br      │  12px, truncado
 │ │ ─────────────────────────  │
-│ │ Últ. contato · há 3 dias   │  11px, tinta 60%
-│ │ ⏰ Retorno hoje 14:00      │  11px — âmbar se hoje, erro se vencido
+│ │ ⏰ Retorno hoje 14:00      │  11px — bronze se vence em 24h, erro se vencido
 │ │ [capital de giro]  RT      │  tags + iniciais do responsável
 │ │                     (✎)(🗑)│  botões circulares, canto inf. direito
 └─┴────────────────────────────┘
@@ -814,6 +822,15 @@ custar um byte a mais de download.
   no hover **e no foco de teclado**, e ficam sempre visíveis abaixo de 1024px —
   interface que só existe no hover não existe no toque.
 - Lembrete vencido: ícone + texto + cor. Nunca só a cor.
+- **Contorno por lembrete** (`estadoDoLembrete`, comparação de instante):
+  atrasado = contorno de ~1.5px em `--erro`; vence em até 24h exatas (inclusive)
+  = contorno em `--aviso` (`#b8860b`, só não textual). É `box-shadow`, não borda:
+  a barra de tempo de 3px à esquerda não muda. O card fantasma do DragOverlay
+  não leva contorno. A linha "Últ. contato" saiu do card (`ultima_interacao_em`
+  segue na view e no CSV).
+- **Lembrete automático** (migration 029): ao entrar em etapa com SLA o banco cria
+  um lembrete `automatico` para as 18:00 (SP) do prazo em dias úteis; trocar de
+  etapa apaga os automáticos pendentes e cria o da etapa nova. Manuais ficam.
 
 ### Regras transversais
 
