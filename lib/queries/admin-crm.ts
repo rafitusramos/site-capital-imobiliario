@@ -234,6 +234,51 @@ export async function getLembretes(leadId: string): Promise<LembreteRow[]> {
   return data ?? [];
 }
 
+export type SimulacaoEnviada = {
+  id: string;
+  created_at: string;
+  email_status: "enviado" | "falhou" | "sem-chave";
+  /** Nome de quem enviou; null se o perfil foi removido. */
+  autor: string | null;
+};
+
+/**
+ * Histórico de simulações enviadas ao lead (migration 030). Nunca lança: o
+ * bloco "Simulações" não pode derrubar o modal, e a tabela pode ainda não
+ * existir num deploy que chegou antes da migration. Erro vira console.error e
+ * lista vazia.
+ */
+export async function getSimulacoes(leadId: string): Promise<SimulacaoEnviada[]> {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("crm_simulacoes")
+      .select("id, created_at, email_status, criado_por")
+      .eq("lead_id", leadId)
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("[getSimulacoes] não foi possível ler o histórico:", error);
+      return [];
+    }
+    const linhas = data ?? [];
+    const ids = [...new Set(linhas.map((l) => l.criado_por).filter((v): v is string => Boolean(v)))];
+    const nomes = new Map<string, string>();
+    if (ids.length > 0) {
+      const { data: perfis } = await supabase.from("profiles").select("id, full_name").in("id", ids);
+      for (const p of perfis ?? []) if (p.full_name) nomes.set(p.id, p.full_name);
+    }
+    return linhas.map((l) => ({
+      id: l.id,
+      created_at: l.created_at,
+      email_status: l.email_status,
+      autor: l.criado_por ? (nomes.get(l.criado_por) ?? null) : null,
+    }));
+  } catch (e) {
+    console.error("[getSimulacoes] exceção ao ler o histórico:", e);
+    return [];
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Arquivados
 // ---------------------------------------------------------------------------

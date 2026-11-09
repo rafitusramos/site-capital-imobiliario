@@ -27,6 +27,8 @@ import { ColunaEtapa } from "@/components/admin/crm/ColunaEtapa";
 import { CardLead, type TagCatalogo } from "@/components/admin/crm/CardLead";
 import { BarraFiltros, reducerFiltros } from "@/components/admin/crm/BarraFiltros";
 import { DialogoMotivo, type MotivoOpcao } from "@/components/admin/crm/DialogoMotivo";
+import { DialogoSimulacao, type ResultadoDialogoSimulacao } from "@/components/admin/crm/DialogoSimulacao";
+import { exigeSimulacao, toastDoDesfecho } from "@/lib/simulacao/gatilho";
 import { ConfirmarAcao } from "@/components/admin/ConfirmarAcao";
 import { EstadoVazio } from "@/components/admin/crm/EstadoVazio";
 import { ModalLead } from "@/components/admin/crm/ModalLead";
@@ -145,6 +147,13 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     etapaLabel: string;
     resolver: (dados: { motivo: string; motivoObs?: string } | null) => void;
   } | null>(null);
+  const [dialogoSimulacao, setDialogoSimulacao] = useState<{
+    leadId: string;
+    destinatario: string;
+    etapaLabel: string;
+    executarMovimento: (o: { suprimirAvisoLead: boolean }) => ReturnType<typeof moverLead>;
+    resolver: (r: ResultadoDialogoSimulacao) => void;
+  } | null>(null);
   const [confirmarArquivar, setConfirmarArquivar] = useState<string | null>(null);
   const [arquivando, setArquivando] = useState(false);
 
@@ -159,7 +168,7 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
       // Também não dispara com um modal aberto (ModalLead/NovoLeadModal já
       // têm o próprio foco preso — "n" pressionado num botão do modal, fora
       // de um campo, não pode abrir um SEGUNDO modal por cima).
-      if (alvoEditavel(e.target) || dialogoMotivo || confirmarArquivar !== null || leadAbertoId || novoAberto) return;
+      if (alvoEditavel(e.target) || dialogoMotivo || dialogoSimulacao || confirmarArquivar !== null || leadAbertoId || novoAberto) return;
       if (e.key === "/") {
         e.preventDefault();
         refBusca.current?.focus();
@@ -171,7 +180,7 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
     document.addEventListener("keydown", aoTeclar);
     return () => document.removeEventListener("keydown", aoTeclar);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- urlComFiltros so le `filtros`/`pathname`, ja listados; ela e recriada a cada render e listar a funcao reataria o listener sem necessidade.
-  }, [router, pathname, filtros, dialogoMotivo, confirmarArquivar, leadAbertoId, novoAberto]);
+  }, [router, pathname, filtros, dialogoMotivo, dialogoSimulacao, confirmarArquivar, leadAbertoId, novoAberto]);
 
   const tagsCatalogo = useMemo<Record<string, TagCatalogo>>(() => {
     const mapa: Record<string, TagCatalogo> = {};
@@ -221,6 +230,31 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
 
     const etapaAlvo = etapaPorSlug(tipo, novaEtapa);
     if (!etapaAlvo) return; // não deveria acontecer: over.id sempre vem de uma coluna deste pipeline
+
+    // Financiamento: criado -> simulação passa pela tela de simulação (anexar o PDF,
+    // prévia, enviar). O diálogo é quem move, para poder mover SEM o aviso ao lead
+    // quando a simulação vai junto. Cancelar não grava nada e o card volta.
+    if (exigeSimulacao(tipo, lead.status, novaEtapa)) {
+      startTransition(async () => {
+        aplicarOtimista({ tipo: "mover", leadId, novaEtapa });
+        const resultado = await new Promise<ResultadoDialogoSimulacao>((resolve) => {
+          setDialogoSimulacao({
+            leadId,
+            destinatario: lead.email,
+            etapaLabel: etapaAlvo.label,
+            executarMovimento: (o) =>
+              moverLead({ leadId, etapa: novaEtapa, updatedAt: lead.updated_at, suprimirAvisoLead: o.suprimirAvisoLead }),
+            resolver: resolve,
+          });
+        });
+        setDialogoSimulacao(null);
+        const aviso = toastDoDesfecho(resultado.tipo, etapaAlvo.label);
+        if (aviso) mostrarToast(aviso.tipo, aviso.texto);
+        // O movimento ocorreu dentro do diálogo; atualiza o quadro com o que o servidor tem.
+        if (resultado.tipo !== "cancelado") router.refresh();
+      });
+      return;
+    }
 
     startTransition(async () => {
       aplicarOtimista({ tipo: "mover", leadId, novaEtapa });
@@ -411,6 +445,21 @@ export function QuadroCRM({ tipo, leadsIniciais, contagensPorEtapa, dominios, le
         motivos={motivos}
         onConfirmar={(dados) => dialogoMotivo?.resolver(dados)}
         onCancelar={() => dialogoMotivo?.resolver(null)}
+      />
+
+      <DialogoSimulacao
+        estado={
+          dialogoSimulacao
+            ? {
+                leadId: dialogoSimulacao.leadId,
+                destinatario: dialogoSimulacao.destinatario,
+                modo: "mover",
+                etapaLabel: dialogoSimulacao.etapaLabel,
+              }
+            : null
+        }
+        executarMovimento={dialogoSimulacao?.executarMovimento}
+        onFinalizar={(r) => dialogoSimulacao?.resolver(r)}
       />
 
       <ConfirmarAcao

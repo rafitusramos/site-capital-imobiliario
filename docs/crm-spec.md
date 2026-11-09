@@ -140,6 +140,10 @@ de origem e nada é gravado.
 **Mudar etapa pelo formulário:** o `select` de etapa dispara o mesmo diálogo de
 motivo quando aplicável.
 
+**Financiamento, `criado` → `simulacao`** (arrastar ou botão do modal): abre o
+diálogo de simulação (§3.7) em vez de mover direto. Cancelar não move e o card
+volta. Home equity segue como acima.
+
 
 ### 1.5 Arquivamento automático
 
@@ -749,6 +753,56 @@ não confia na formatação do cliente).
 | `interacao.conteudo` | mín. 1, máx. 5000 (também na edição) |
 | `exclusao.motivo` | trim, mín. 5, máx. 500 |
 | tags | máx. 8 por lead, slugs precisam existir |
+
+### 3.7 Simulação de financiamento por e-mail
+
+Só origem **financiamento**. Gatilho puro `exigeSimulacao(tipo, de, para)`
+(`lib/simulacao/gatilho.ts`): `criado` → `simulacao`. O quadro (`QuadroCRM.tsx`) e
+o modal (`ModalLead.tsx`) abrem `DialogoSimulacao.tsx` no mesmo molde de promise do
+`DialogoMotivo`.
+
+Passos do diálogo: (1) anexar o PDF da Creditas (só PDF, até 5 MB); (2) leitura
+**no navegador** (`pdfjs-dist`, import dinâmico; `lib/simulacao/extrair.ts` é a parte
+pura e testada, `extrair-pdf.ts` a casca com pdf.js e o recorte dos logos por
+canvas). PDF não reconhecido ou com linha/coluna faltando é erro: nunca se gera
+documento com dado parcial; (3) prévia: `POST /api/admin/crm/simulacao/` com
+`acao: "previa"` devolve o PDF, sem gravar nem enviar; (4) ações: **Mover e
+enviar**, **Mover sem enviar**, **Cancelar**.
+
+- **Mover e enviar:** primeiro `moverLead` com `suprimirAvisoLead: true` (só o
+  `etapa-lead` é suprimido; o e-mail ao dono e o cancelamento dos agendados
+  seguem), depois `acao: "enviar"`. Mover falhou: nada é enviado. Envio falhou: o
+  lead fica movido, o diálogo mostra o erro com **Tentar enviar de novo** e o toast
+  diz que a etapa mudou mas a simulação não foi enviada.
+- **Mover sem enviar:** move normalmente e o aviso "avançou: simulação" vai ao lead.
+- O quadro não tem "desfazer"; um e-mail enviado não se recolhe.
+- **Bloco "Simulações"** do modal (financiamento): histórico (data, quem, status do
+  e-mail, baixar o PDF por URL assinada de 60 s) e o botão **Enviar simulação**, que
+  abre o mesmo diálogo sem mover (reenvio/nova simulação em qualquer etapa). O envio
+  cancela antes os `etapa-lead` pendentes (`cancelarAgendados`). Sem a tabela da
+  migration 030, `getSimulacoes` devolve lista vazia com `console.error`.
+
+**Rota** (`app/api/admin/crm/simulacao/route.ts`, nodejs, `maxDuration` 60):
+autentica com o usuário logado e lê o lead com o cliente de cookies, então a RLS
+(`leads_visiveis`) decide: quem não vê o lead recebe 404. **Não** usa `exigirAdmin`
+(corretores também operam o CRM). 401 sem sessão. Recusa lead que não é financiamento.
+Corpo validado por zod (`lib/simulacao/schema.ts`: números finitos, limites de
+tamanho, logo só `data:image/png;base64,`, total < 4 MB). Nome e e-mail do cliente
+vêm **sempre** do banco; a referência do documento e do arquivo é `leads.protocolo`.
+
+**Documento:** 2 páginas A4, 6 etapas (etapa atual 1, ainda que o CRM tenha 5), regras
+do `lib/simulacao/config.ts` (só TR compara, Volpi fora, "Brasil" vira "Banco do
+Brasil", comprometimento 30%). HTML em `lib/simulacao/html.ts`, PDF em
+`lib/simulacao/pdf.ts` (puppeteer-core + `@sparticuz/chromium`, rede bloqueada
+exceto `data:`). Fontes (Archivo, Libre Caslon Text, IBM Plex Mono) embutidas em base64
+(`fontes-asset.ts`, gerado por `scripts/gerar-fontes-simulacao.mjs`).
+
+**Persistência (migration 030):** bucket privado `crm-simulacoes` (sem policy),
+`crm_simulacoes` (select por quem vê o lead; escrita só service role) e
+`crm_emails.tipo` aceita `simulacao`. O e-mail leva o PDF em anexo e **nunca é
+agendado**. Falha ao gravar PDF/histórico não bloqueia o e-mail (a resposta traz
+`registrado: false`). `excluirLead` remove os PDFs do bucket (LGPD) sem deixar falha
+de storage bloquear a exclusão.
 
 ---
 

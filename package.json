@@ -25,6 +25,7 @@
     "embla-carousel-react": "^8.6.0",
     "marked": "4.3.0",
     "next": "^15.5.21",
+    "pdfjs-dist": "6.5.438",
     "puppeteer-core": "25.11.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

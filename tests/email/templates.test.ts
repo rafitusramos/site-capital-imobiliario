@@ -4,6 +4,7 @@ import { novoLeadLead } from "@/lib/email/templates/novo-lead-lead";
 import { etapaAdmin } from "@/lib/email/templates/etapa-admin";
 import { etapaLead, etapasComTextoParaLead } from "@/lib/email/templates/etapa-lead";
 import { escaparHtml } from "@/lib/email/templates/base";
+import { simulacaoLead } from "@/lib/email/templates/simulacao-lead";
 
 const MALICIOSO = `<script>alert("x")</script> & "aspas"`;
 
@@ -131,5 +132,27 @@ describe("etapaLead", () => {
   test("escapa o nome no HTML", () => {
     const e = etapaLead({ nome: MALICIOSO, origem: "financiamento", etapa: "ganho", protocolo: "P" })!;
     expect(e.html).not.toContain("<script>");
+  });
+});
+
+describe("simulacaoLead", () => {
+  test("assunto com protocolo; corpo diz que a simulação segue em anexo, é ilustrativa e que haverá contato", () => {
+    const { assunto, html, texto } = simulacaoLead({ nome: "Maria Silva", protocolo: "RT-2026-0001" });
+    expect(assunto).toContain("RT-2026-0001");
+    expect(texto).toContain("Maria");
+    expect(texto).toMatch(/em anexo/i);
+    expect(texto).toMatch(/ilustrativa/i);
+    expect(texto).toMatch(/sem valor de proposta/i);
+    expect(texto).toMatch(/Rafael/);
+    expect(html).toContain("RT-2026-0001");
+  });
+  test("não promete aprovação de crédito", () => {
+    const { texto } = simulacaoLead({ nome: "Ana", protocolo: "P" });
+    expect(texto).not.toMatch(/garant|certeza|crédito aprovado|já está aprovado/i);
+  });
+  test("escapa o nome no HTML", () => {
+    const { html } = simulacaoLead({ nome: MALICIOSO, protocolo: "<b>x</b>" });
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain("<b>x</b>");
   });
 });

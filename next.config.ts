@@ -13,11 +13,11 @@ function hostDoSupabase(): string {
 
 const nextConfig: NextConfig = {
   trailingSlash: true,
-  // SPIKE (remover com a rota): o Chromium vem em binários .br que o tracing
-  // não enxerga sozinho; sem o include a função sobe sem eles.
+  // PDF da simulação (docs/crm-spec.md §3.7): o Chromium vem em binários .br que o
+  // tracing não enxerga sozinho; sem o include a função sobe sem eles.
   serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
   outputFileTracingIncludes: {
-    "/api/admin/spike-pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
+    "/api/admin/crm/simulacao": ["./node_modules/@sparticuz/chromium/bin/**"],
   },
   images: {
     // Só as fotos de imóvel passam pelo otimizador: o bucket público e nada além
