@@ -107,7 +107,7 @@ export async function executarSimulacao(
     .select("id")
     .single();
   if (error || !data) {
-    // Costuma ser a migration 031 ainda não aplicada (o check antigo não aceita 'anexado').
+    // Costuma ser a migration 032 ainda não aplicada (o check antigo não aceita 'anexado').
     console.error("[simulacao] não foi possível registrar a simulação anexada:", error);
     await removerArquivosSimulacao(admin, [gravado.caminho]);
     throw new ErroSimulacao("Não foi possível anexar a simulação. Tente novamente; se persistir, avise o suporte.", 502);

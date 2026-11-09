@@ -14,7 +14,7 @@ export function rotuloStatusSimulacao(s: {
     case "anexado":
       return { texto: "Anexada", problema: false };
     case "enviado":
-      // Linhas enviadas antes da migration 031 não têm enviado_em: a criação era o envio.
+      // Linhas enviadas antes da migration 032 não têm enviado_em: a criação era o envio.
       return { texto: `Enviada em ${formatarData(s.enviado_em ?? s.created_at)}`, problema: false };
     case "falhou":
       return { texto: "Falhou", problema: true };

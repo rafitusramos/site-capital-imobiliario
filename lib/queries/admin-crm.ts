@@ -237,16 +237,16 @@ export async function getLembretes(leadId: string): Promise<LembreteRow[]> {
 export type SimulacaoEnviada = {
   id: string;
   created_at: string;
-  /** `anexado`: PDF gravado, nenhum e-mail enviado (migration 031). */
+  /** `anexado`: PDF gravado, nenhum e-mail enviado (migration 032). */
   email_status: "anexado" | "enviado" | "falhou" | "sem-chave";
-  /** Quando o e-mail saiu (031); nulo = não enviada, ou enviada antes da coluna existir. */
+  /** Quando o e-mail saiu (032); nulo = não enviada, ou enviada antes da coluna existir. */
   enviado_em: string | null;
   /** Nome de quem anexou; null se o perfil foi removido. */
   autor: string | null;
 };
 
 /**
- * Histórico de simulações do lead, anexadas ou enviadas (migrations 030/031). Nunca lança: o
+ * Histórico de simulações do lead, anexadas ou enviadas (migrations 030/032). Nunca lança: o
  * bloco "Simulações" não pode derrubar o modal, e a tabela pode ainda não
  * existir num deploy que chegou antes da migration. Erro vira console.error e
  * lista vazia.
@@ -261,7 +261,7 @@ export async function getSimulacoes(leadId: string): Promise<SimulacaoEnviada[]>
       .order("created_at", { ascending: false });
     let linhas = completa.data ?? [];
     if (completa.error) {
-      // Deploy que chegou antes da 031: sem a coluna enviado_em o histórico ainda precisa aparecer.
+      // Deploy que chegou antes da 032: sem a coluna enviado_em o histórico ainda precisa aparecer.
       console.error("[getSimulacoes] leitura com enviado_em falhou; tentando sem a coluna:", completa.error);
       const semColuna = await supabase
         .from("crm_simulacoes")

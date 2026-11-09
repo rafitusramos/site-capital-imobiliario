@@ -120,7 +120,7 @@ describe("executarSimulacao: anexar", () => {
     log.mockRestore();
   });
 
-  test("migration 031 pendente (check recusa 'anexado'): console.error, PDF órfão removido e erro claro", async () => {
+  test("migration 032 pendente (check recusa 'anexado'): console.error, PDF órfão removido e erro claro", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     const { remove, enviar, deps } = montar({ insertErro: true });
     const erro = await executarSimulacao(deps, "anexar", LEAD, DADOS, "user-1").catch((e) => e);

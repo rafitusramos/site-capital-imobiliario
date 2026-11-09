@@ -797,7 +797,7 @@ documento com dado parcial; (3) prévia: `POST /api/admin/crm/simulacao/` com
   baixar o PDF por URL assinada de 60 s e o botão **Anexar simulação**. O envio cancela
   antes os `etapa-lead` pendentes (`cancelarAgendados`). Sem a tabela da migration 030,
   `getSimulacoes` devolve lista vazia com `console.error`; sem a coluna `enviado_em`
-  (031 ainda não aplicada), lê sem ela.
+  (032 ainda não aplicada), lê sem ela.
 
 **Rota** (`app/api/admin/crm/simulacao/route.ts`, nodejs, `maxDuration` 60):
 autentica com o usuário logado e lê o lead com o cliente de cookies, então a RLS
@@ -818,10 +818,10 @@ Brasil", comprometimento 30%). HTML em `lib/simulacao/html.ts`, PDF em
 exceto `data:`). Fontes (Archivo, Libre Caslon Text, IBM Plex Mono) embutidas em base64
 (`fontes-asset.ts`, gerado por `scripts/gerar-fontes-simulacao.mjs`).
 
-**Persistência (migrations 030 e 031):** bucket privado `crm-simulacoes` (sem policy),
+**Persistência (migrations 030 e 032):** bucket privado `crm-simulacoes` (sem policy),
 `crm_simulacoes` (select por quem vê o lead; escrita só service role) e
-`crm_emails.tipo` aceita `simulacao`. A 031 faz `email_status` aceitar `anexado` e cria
-`enviado_em`. O e-mail leva o PDF em anexo e **nunca é agendado**. Anexar com a 031 ainda
+`crm_emails.tipo` aceita `simulacao`. A 032 faz `email_status` aceitar `anexado` e cria
+`enviado_em`. O e-mail leva o PDF em anexo e **nunca é agendado**. Anexar com a 032 ainda
 não aplicada falha com mensagem clara e `console.error` (o PDF órfão é removido do bucket). `excluirLead` remove os PDFs do bucket (LGPD) sem deixar falha
 de storage bloquear a exclusão.
 

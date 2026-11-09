@@ -489,7 +489,7 @@ export interface Database {
           criado_por: string | null;
           email_status: "anexado" | "enviado" | "falhou" | "sem-chave";
           resend_id: string | null;
-          /** Quando o e-mail foi enviado (migration 031). Nulo = ainda não enviada. */
+          /** Quando o e-mail foi enviado (migration 032). Nulo = ainda não enviada. */
           enviado_em: string | null;
           created_at: string;
         };
