@@ -1,6 +1,10 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import sharp from "sharp";
 import { describe, expect, it } from "vitest";
 import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
-import { WEBSITE_NODE } from "@/lib/seo/negocio";
+import { NEGOCIO_NODE, RAFAEL_NODE, WEBSITE_NODE } from "@/lib/seo/negocio";
+import { montarProfilePage } from "@/lib/seo/perfil";
 import { montarFaqPage, type FaqItem } from "@/lib/seo/faq";
 import { montarItemList } from "@/lib/seo/lista";
 import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
@@ -102,5 +106,59 @@ describe("imagens do sitemap", () => {
       imagens: [{ url: "/c.jpg" }, { url: "https://x/y.webp" }, { url: "" }],
     });
     expect(urls).toEqual([`${SITE_URL}/c.jpg`, "https://x/y.webp"]);
+  });
+});
+
+const MAPS_CID = "https://www.google.com/maps?cid=1997059006678757798";
+const emPublic = (url: string) => path.join(process.cwd(), "public", url.replace(SITE_URL, ""));
+
+describe("NEGOCIO_NODE", () => {
+  it("logo é o PNG quadrado de marca, com lado >= 112 px", async () => {
+    expect(NEGOCIO_NODE.logo.endsWith("/images/logo-rt.png")).toBe(true);
+    const arquivo = emPublic(NEGOCIO_NODE.logo);
+    expect(existsSync(arquivo)).toBe(true);
+    const meta = await sharp(arquivo).metadata();
+    expect(meta.width).toBe(meta.height);
+    expect(meta.width ?? 0).toBeGreaterThanOrEqual(112);
+  });
+  it("sameAs e hasMap usam a URL do Maps por cid, sem share.google", () => {
+    expect(NEGOCIO_NODE.sameAs).toContain(MAPS_CID);
+    expect(NEGOCIO_NODE.hasMap).toBe(MAPS_CID);
+    expect(JSON.stringify([NEGOCIO_NODE, RAFAEL_NODE, WEBSITE_NODE])).not.toContain("share.google");
+  });
+  it("horário é 24 horas nos sete dias, igual à ficha do Google", () => {
+    const horario = NEGOCIO_NODE.openingHoursSpecification;
+    expect(horario.dayOfWeek).toHaveLength(7);
+    expect(horario.opens).toBe("00:00");
+    expect(horario.closes).toBe("23:59");
+  });
+});
+
+describe("RAFAEL_NODE", () => {
+  it("url aponta para /sobre/ e a imagem existe em public/", () => {
+    expect(RAFAEL_NODE.url).toBe(`${SITE_URL}/sobre/`);
+    expect(existsSync(emPublic(RAFAEL_NODE.image))).toBe(true);
+  });
+  it("sameAs só com https e knowsAbout preenchido", () => {
+    expect(RAFAEL_NODE.sameAs).toContain(
+      "https://www.linkedin.com/in/rafael-teixeira-capital-imobiliario/",
+    );
+    for (const u of RAFAEL_NODE.sameAs) expect(u.startsWith("https://")).toBe(true);
+    expect(RAFAEL_NODE.knowsAbout.length).toBeGreaterThan(0);
+  });
+  it("credencial do CRECI-SP leva o número do registro", () => {
+    const creci = RAFAEL_NODE.hasCredential.find((c) => c.recognizedBy.name === "CRECI-SP");
+    expect(creci).toBeDefined();
+    expect((creci as { identifier?: string }).identifier).toBe("283020-F");
+  });
+});
+
+describe("montarProfilePage", () => {
+  it("referencia #rafael por @id e não redeclara o Person", () => {
+    const p = montarProfilePage();
+    expect(p["@type"]).toBe("ProfilePage");
+    expect(p.url).toBe(`${SITE_URL}/sobre/`);
+    expect(p.mainEntity).toEqual({ "@id": `${SITE_URL}/#rafael` });
+    expect(JSON.stringify(p)).not.toContain("Person");
   });
 });

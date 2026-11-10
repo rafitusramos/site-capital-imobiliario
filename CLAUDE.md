@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1273 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 1280 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **033**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
@@ -367,7 +367,7 @@ Tudo sai de construtores puros em `lib/seo/` (travados em
   via `areaServida`), BreadcrumbList e FAQPage. O FAQ visível e o JSON-LD saem do
   mesmo array em `lib/seo/faqs-landings.ts` — edite lá, nunca no JSX. Fecham com
   o bloco "Leia também" (3 posts mais recentes da categoria).
-- `/sobre/`: BreadcrumbList. `/blog/`: BreadcrumbList + ItemList (ordem exibida).
+- `/sobre/`: BreadcrumbList + ProfilePage (`mainEntity` só referencia `#rafael`). `/blog/`: BreadcrumbList + ItemList (ordem exibida).
   `/imoveis/`: BreadcrumbList + ItemList. Artigo e imóvel: ver seções acima.
 - Sitemap: posts (capa) e imóveis (capa + galerias) levam `images`.
 - **`title.template` não foi adotado**: os sufixos das páginas divergem ("— Rafael
