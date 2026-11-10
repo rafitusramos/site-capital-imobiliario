@@ -376,6 +376,16 @@ Tudo sai de construtores puros em `lib/seo/` (travados em
 - Rótulos de seção da página de imóvel são `<h2 class="eyebrow">` (regra
   `h2.eyebrow` em `lp.css` zera o estilo de h2).
 
+### Robôs de IA e llms.txt
+Decisão do dono (2026-11-10): **todos os robôs de IA liberados, inclusive os de treino**.
+A lista vive em `lib/seo/robos-ia.ts` (busca, leitura sob demanda, treino) e `app/robots.ts` a
+usa num grupo próprio, travado em `tests/unidade/robots.test.ts`. Armadilha: grupo com
+user-agent específico **substitui** o `*` para aquele robô, por isso o `disallow: /admin` se
+repete no grupo; restrição futura no `*` não vale para eles. Bloquear só o treino é mover
+`ROBOS_IA_TREINO` para um grupo com `disallow: /`. O `/llms.txt` sai de `lib/seo/llms.ts`
+(construtor puro, `tests/unidade/llms.test.ts`) via `app/llms.txt/route.ts`, com `revalidate`
+de 1h; falha do Supabase omite artigos/imóveis em vez de responder 500.
+
 ### Simuladores
 Financiamento (`/financiamento/`) e home equity (`/home_equity/`). O de
 financiamento tem interruptor SAC/PRICE, com SAC como padrão.
