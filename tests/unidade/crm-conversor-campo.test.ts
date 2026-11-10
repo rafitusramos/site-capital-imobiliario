@@ -32,6 +32,7 @@ describe("chaveParaCamel — mesma tabela de lib/crm/campos.ts x lib/validations
     ["area_m2", "areaM2"],
     ["banco_simulado", "bancoSimulado"],
     ["primeiro_imovel", "primeiroImovel"],
+    ["data_nascimento", "dataNascimento"],
     ["tipo_remuneracao", "tipoRemuneracao"],
     ["momento_compra", "momentoCompra"],
     ["cep", "cep"],

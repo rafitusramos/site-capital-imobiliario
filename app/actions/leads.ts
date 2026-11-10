@@ -66,6 +66,7 @@ function parametrosFinanciamento(
     p_cidade: dados.cidade,
     p_estado: dados.estado,
     p_consentimento_lgpd: true,
+    p_data_nascimento: dados.dataNascimento,
   };
 }
 
@@ -97,6 +98,7 @@ function parametrosHomeEquity(
     p_numero: dados.numero,
     p_area_m2: dados.areaM2,
     p_consentimento_lgpd: true,
+    p_data_nascimento: dados.dataNascimento,
   };
 }
 
@@ -123,6 +125,33 @@ function parametrosImovel(
     p_observacoes: dados.observacoes ?? null,
     p_consentimento_lgpd: true,
   };
+}
+
+/**
+ * TRANSITÓRIO — remover quando a migration 033 estiver aplicada em produção.
+ *
+ * O deploy da branch (e o de Preview) usa o MESMO banco de produção e sobe
+ * ANTES da 033 rodar. Chamar o RPC com `p_data_nascimento` enquanto a função
+ * nova não existe devolve PGRST202 (função não encontrada) e o lead real se
+ * perderia. Então, só nesse caso, repete sem o parâmetro: o lead entra sem a
+ * data (que fica só no log) e o erro é registrado. Qualquer outro erro continua
+ * subindo. Depois da 033, apague este helper e chame `admin.rpc` direto.
+ */
+async function chamarRpcLead(
+  admin: ReturnType<typeof createAdminClient>,
+  nome: "criar_lead_financiamento" | "criar_lead_home_equity",
+  params: Record<string, unknown> & { p_data_nascimento?: unknown },
+) {
+  const primeira = await admin.rpc(nome, params as never);
+  const codigo = (primeira.error as { code?: string } | null)?.code;
+  if (codigo !== "PGRST202") return primeira;
+
+  console.error(
+    `[criarLead] ${nome} sem p_data_nascimento no banco (migration 033 pendente); repetindo sem o parâmetro:`,
+    primeira.error,
+  );
+  const { p_data_nascimento: _descartado, ...semData } = params;
+  return admin.rpc(nome, semData as never);
 }
 
 const ORIGEM_POR_TIPO: Record<LeadTipo, string> = {
@@ -169,13 +198,15 @@ export async function criarLead(input: CriarLeadInput): Promise<CriarLeadResulta
   let resultado: { data: Database["public"]["Tables"]["leads"]["Row"] | null; error: unknown };
   switch (input.tipo) {
     case "financiamento":
-      resultado = await admin.rpc(
+      resultado = await chamarRpcLead(
+        admin,
         "criar_lead_financiamento",
         parametrosFinanciamento(parsed.data as LeadFinanciamentoInput, origem, input.paginaUrl, utm),
       );
       break;
     case "home-equity":
-      resultado = await admin.rpc(
+      resultado = await chamarRpcLead(
+        admin,
         "criar_lead_home_equity",
         parametrosHomeEquity(parsed.data as LeadHomeEquityInput, origem, input.paginaUrl, utm),
       );

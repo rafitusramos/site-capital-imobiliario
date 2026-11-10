@@ -293,8 +293,12 @@
   .progresso .terco.feito::after{transform:scaleX(1);}
   .progresso .terco.atual::after{transform:scaleX(1);background:var(--bronze);}
 
-  .trilho-wrap{overflow:hidden;flex:1;min-height:0;}
-  .trilho{display:flex;width:300%;height:100%;transition:transform .38s cubic-bezier(.4,0,.2,1);}
+  /* O <form> é o filho flex do .painel; sem ser flex ele próprio nunca encolhia (min-height:auto)
+     e o .form-nav saía do painel (overflow:hidden) em telas baixas. Agora o miolo (.bloco) rola e o
+     rodapé (consentimento + navegação) fica sempre à vista. */
+  .painel form{display:flex;flex-direction:column;flex:1;min-height:0;}
+  .trilho-wrap{overflow:hidden;flex:1;min-height:0;display:flex;}
+  .trilho{display:flex;width:300%;flex:none;transition:transform .38s cubic-bezier(.4,0,.2,1);}
   @media(prefers-reduced-motion:reduce){.trilho{transition:none;}}
   .bloco{width:33.3333%;padding:6px 26px 20px;overflow-y:auto;}
 

@@ -42,6 +42,7 @@ function dadosFinanciamento() {
     valorCredito: 400000,
     prazoMeses: 360,
     parcelaEstimada: 4000,
+    dataNascimento: "1985-05-15",
   };
 }
 
@@ -62,6 +63,7 @@ function dadosHomeEquity() {
     valorCreditoEstimado: 300000,
     prazoMeses: 180,
     parcelaEstimada: 3000,
+    dataNascimento: "1985-05-15",
   };
 }
 
@@ -479,5 +481,101 @@ describe("criarLead — e-mails", () => {
     const resultado = await criarLead(entrada());
 
     expect(resultado).toEqual({ sucesso: true, protocolo: "FIN-0001" });
+  });
+});
+
+describe("criarLead — data de nascimento e migration 033", () => {
+  function programarOk(falso: ReturnType<typeof montarAdmin>, rpc: string) {
+    falso.programarRpc("registrar_tentativa_lead", { data: true, error: null });
+    return rpc;
+  }
+  const leadOk = { id: "lead-1", protocolo: "FIN-0001", nome: "Maria Silva", telefone: "19997834187" };
+
+  test("financiamento envia p_data_nascimento em ISO", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    programarOk(falso, "criar_lead_financiamento");
+    falso.programarRpc("criar_lead_financiamento", { data: leadOk, error: null });
+
+    await criarLead({ tipo: "financiamento", dados: dadosFinanciamento(), paginaUrl: "/f", consentimentoLgpd: true });
+
+    const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_financiamento")!;
+    expect((chamada.params as Record<string, unknown>).p_data_nascimento).toBe("1985-05-15");
+  });
+
+  test("home equity envia p_data_nascimento em ISO", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    programarOk(falso, "criar_lead_home_equity");
+    falso.programarRpc("criar_lead_home_equity", { data: { ...leadOk, protocolo: "HE-1" }, error: null });
+
+    await criarLead({ tipo: "home-equity", dados: dadosHomeEquity(), paginaUrl: "/h", consentimentoLgpd: true });
+
+    const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_home_equity")!;
+    expect((chamada.params as Record<string, unknown>).p_data_nascimento).toBe("1985-05-15");
+  });
+
+  test("antes da migration (PGRST202): repete sem o parâmetro novo, registra no log e o lead entra", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    const logErro = vi.spyOn(console, "error").mockImplementation(() => {});
+    programarOk(falso, "criar_lead_financiamento");
+    falso.programarRpc("criar_lead_financiamento", {
+      data: null,
+      error: { code: "PGRST202", message: "Could not find the function public.criar_lead_financiamento(p_data_nascimento, ...) in the schema cache" },
+    });
+    falso.programarRpc("criar_lead_financiamento", { data: leadOk, error: null });
+
+    const r = await criarLead({ tipo: "financiamento", dados: dadosFinanciamento(), paginaUrl: "/f", consentimentoLgpd: true });
+
+    expect(r).toEqual({ sucesso: true, protocolo: "FIN-0001" });
+    const chamadas = falso.chamadasRpc.filter((c) => c.nome === "criar_lead_financiamento");
+    expect(chamadas).toHaveLength(2);
+    expect("p_data_nascimento" in (chamadas[0].params as object)).toBe(true);
+    expect("p_data_nascimento" in (chamadas[1].params as object)).toBe(false);
+    expect((chamadas[1].params as Record<string, unknown>).p_consentimento_lgpd).toBe(true);
+    expect(logErro).toHaveBeenCalled();
+    logErro.mockRestore();
+  });
+
+  test("antes da migration vale igual para home equity", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    const logErro = vi.spyOn(console, "error").mockImplementation(() => {});
+    programarOk(falso, "criar_lead_home_equity");
+    falso.programarRpc("criar_lead_home_equity", { data: null, error: { code: "PGRST202", message: "x" } });
+    falso.programarRpc("criar_lead_home_equity", { data: { ...leadOk, protocolo: "HE-1" }, error: null });
+
+    const r = await criarLead({ tipo: "home-equity", dados: dadosHomeEquity(), paginaUrl: "/h", consentimentoLgpd: true });
+
+    expect(r.sucesso).toBe(true);
+    const chamadas = falso.chamadasRpc.filter((c) => c.nome === "criar_lead_home_equity");
+    expect(chamadas).toHaveLength(2);
+    expect("p_data_nascimento" in (chamadas[1].params as object)).toBe(false);
+    logErro.mockRestore();
+  });
+
+  test("outro erro de RPC não dispara a repetição e continua lançando", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    programarOk(falso, "criar_lead_financiamento");
+    falso.programarRpc("criar_lead_financiamento", { data: null, error: { code: "23505", message: "duplicado" } });
+
+    await expect(
+      criarLead({ tipo: "financiamento", dados: dadosFinanciamento(), paginaUrl: "/f", consentimentoLgpd: true }),
+    ).rejects.toMatchObject({ code: "23505" });
+    expect(falso.chamadasRpc.filter((c) => c.nome === "criar_lead_financiamento")).toHaveLength(1);
+  });
+
+  test("imóveis nunca recebe p_data_nascimento", async () => {
+    const falso = montarAdmin();
+    mockHeaders();
+    programarOk(falso, "criar_lead_imovel");
+    falso.programarRpc("criar_lead_imovel", { data: { ...leadOk, protocolo: "IMV-1" }, error: null });
+
+    await criarLead({ tipo: "imoveis", dados: dadosImovel(), paginaUrl: "/i", consentimentoLgpd: true });
+
+    const chamada = falso.chamadasRpc.find((c) => c.nome === "criar_lead_imovel")!;
+    expect("p_data_nascimento" in (chamada.params as object)).toBe(false);
   });
 });

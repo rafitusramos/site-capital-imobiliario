@@ -29,4 +29,16 @@ describe("camposDoFormulario", () => {
     const campos = camposDoFormulario("home-equity", { objetivoCredito: "Consumo", valorCreditoEstimado: 300000 });
     expect(campos.map((c) => c.rotulo)).toEqual(["Objetivo do crédito", "Crédito estimado"]);
   });
+
+  test("financiamento e home equity trazem data de nascimento com a idade", () => {
+    const agora = new Date("2026-06-15T15:00:00Z");
+    for (const tipo of ["financiamento", "home-equity"]) {
+      const campos = camposDoFormulario(tipo, { dataNascimento: "1985-05-15" }, agora);
+      expect(campos).toEqual([{ rotulo: "Data de nascimento", valor: "15/05/1985 (41 anos)" }]);
+    }
+  });
+
+  test("imóveis não lista data de nascimento", () => {
+    expect(camposDoFormulario("imoveis", { dataNascimento: "1985-05-15" })).toEqual([]);
+  });
 });

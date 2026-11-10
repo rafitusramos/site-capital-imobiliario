@@ -737,6 +737,7 @@ export interface Database {
           cidade: string | null;
           estado: string | null;
           created_at: string;
+          data_nascimento: string | null;
         };
         Insert: {
           lead_id: string;
@@ -756,6 +757,7 @@ export interface Database {
           cidade?: string | null;
           estado?: string | null;
           created_at?: string;
+          data_nascimento?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["lead_financiamento"]["Insert"]>;
         Relationships: [];
@@ -781,6 +783,7 @@ export interface Database {
           // quitado | financiado | alienado | inventario (016_crm_campos_e_tags.sql)
           situacao_imovel: string | null;
           created_at: string;
+          data_nascimento: string | null;
         };
         Insert: {
           lead_id: string;
@@ -801,6 +804,7 @@ export interface Database {
           area_m2?: number | null;
           situacao_imovel?: string | null;
           created_at?: string;
+          data_nascimento?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["lead_home_equity"]["Insert"]>;
         Relationships: [];
@@ -1044,6 +1048,7 @@ export interface Database {
           p_momento_compra: string;
           p_cidade: string;
           p_estado: string;
+          p_data_nascimento?: string | null;
         };
         Returns: Database["public"]["Tables"]["leads"]["Row"];
       };
@@ -1069,6 +1074,7 @@ export interface Database {
           p_cep: string;
           p_numero: string;
           p_area_m2: number;
+          p_data_nascimento?: string | null;
         };
         Returns: Database["public"]["Tables"]["leads"]["Row"];
       };
