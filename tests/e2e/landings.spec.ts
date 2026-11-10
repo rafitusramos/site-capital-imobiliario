@@ -136,3 +136,47 @@ for (const { caminho, botao } of modais) {
     });
   });
 }
+
+// Máscara e recusa de data (cliente apenas; nunca chega ao envio final).
+for (const { caminho, botao } of modais) {
+  test.describe(`${caminho} — data de nascimento, máscara e validação`, () => {
+    async function abrirModal(page: import("@playwright/test").Page) {
+      await new LandingPage(page, caminho).goto();
+      const painel = page.locator(".scrim.aberto .painel");
+      await expect(async () => {
+        await page.getByRole("button", { name: botao }).click();
+        await expect(painel).toBeVisible({ timeout: 1_000 });
+      }).toPass();
+      return painel;
+    }
+
+    test("aplica a máscara dd/mm/aaaa", async ({ page }) => {
+      const painel = await abrirModal(page);
+      const campo = painel.getByLabel("Data de nascimento");
+      await campo.pressSequentially("15031990");
+      await expect(campo).toHaveValue("15/03/1990");
+    });
+
+    for (const [rotulo, valor] of [
+      ["futura", "01012099"],
+      ["inexistente", "31021990"],
+      ["incompleta", "1503"],
+    ] as const) {
+      test(`recusa data ${rotulo}`, async ({ page }) => {
+        const painel = await abrirModal(page);
+        const campo = painel.getByLabel("Data de nascimento");
+        await campo.pressSequentially(valor);
+        await painel.locator(".form-nav .cta").click();
+        await expect(painel.getByText("Informe uma data de nascimento válida.")).toBeVisible();
+      });
+    }
+
+    test("botão de navegação visível sem rolar em viewport desktop", async ({ page }) => {
+      await page.setViewportSize({ width: 1280, height: 720 });
+      const painel = await abrirModal(page);
+      const caixa = await painel.locator(".form-nav .cta").boundingBox();
+      expect(caixa).not.toBeNull();
+      expect(caixa!.y + caixa!.height).toBeLessThanOrEqual(720);
+    });
+  });
+}
