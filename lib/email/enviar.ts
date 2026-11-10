@@ -19,6 +19,7 @@ export interface ClienteResend {
       text: string;
       replyTo?: string;
       scheduledAt?: string;
+      attachments?: Array<{ filename: string; content: Buffer }>;
     }): Promise<{ data: { id: string } | null; error: { message: string } | null }>;
     cancel(id: string): Promise<{ data: unknown; error: { message: string } | null }>;
   };
@@ -30,8 +31,13 @@ export interface EmailParaEnviar {
   html: string;
   texto: string;
   replyTo?: string;
-  /** Resend `scheduledAt`. Sem isso, envia na hora. */
+  /** Resend `scheduledAt`. Sem isso, envia na hora. Ignorado quando há `anexos`. */
   agendarPara?: Date;
+  /**
+   * Anexos. E-mail com anexo NUNCA é agendado: o Resend não combina `attachments`
+   * com `scheduledAt`, então o envio é imediato e `agendarPara` é descartado.
+   */
+  anexos?: Array<{ nome: string; conteudo: Uint8Array }>;
 }
 
 export type ResultadoEnvio =
@@ -73,6 +79,7 @@ export function criarEmailer(config: {
         return { enviado: false, motivo: "sem-chave" };
       }
       try {
+        const anexos = email.anexos ?? [];
         const { data, error } = await cliente().emails.send({
           from: config.remetente,
           to: email.para,
@@ -80,7 +87,10 @@ export function criarEmailer(config: {
           html: email.html,
           text: email.texto,
           ...(email.replyTo ? { replyTo: email.replyTo } : {}),
-          ...(email.agendarPara ? { scheduledAt: email.agendarPara.toISOString() } : {}),
+          ...(email.agendarPara && anexos.length === 0 ? { scheduledAt: email.agendarPara.toISOString() } : {}),
+          ...(anexos.length > 0
+            ? { attachments: anexos.map((a) => ({ filename: a.nome, content: Buffer.from(a.conteudo) })) }
+            : {}),
         });
         if (error || !data) {
           const erro = error?.message ?? "resposta sem id";

@@ -162,6 +162,24 @@ export function criarSupabaseFalso() {
         filtros.push({ metodo: "in", args });
         return builder;
       }),
+      // Filtros e ordenação que o código usa mas não mudam a resposta programada:
+      // só ficam registrados em `filtros` para o teste conferir.
+      neq: vi.fn((...args: unknown[]) => {
+        filtros.push({ metodo: "neq", args });
+        return builder;
+      }),
+      or: vi.fn((...args: unknown[]) => {
+        filtros.push({ metodo: "or", args });
+        return builder;
+      }),
+      order: vi.fn((...args: unknown[]) => {
+        filtros.push({ metodo: "order", args });
+        return builder;
+      }),
+      limit: vi.fn((...args: unknown[]) => {
+        filtros.push({ metodo: "limit", args });
+        return builder;
+      }),
       single: vi.fn(() => criarThenable(resposta)),
       maybeSingle: vi.fn(() => criarThenable(resposta)),
       then(resolve: (valor: RespostaFalsa) => unknown, reject?: (erro: unknown) => unknown) {

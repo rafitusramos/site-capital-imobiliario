@@ -24,7 +24,9 @@ setup("autenticar usuário de QA", async ({ page }) => {
   await page.getByLabel("Senha").fill(senha);
   await page.getByRole("button", { name: "Entrar" }).click();
   try {
-    await expect(page).toHaveURL(/\/admin\/(?!login)/);
+    // 20 s: o login em produção/preview a frio passa de 5 s (o padrão); com o tempo curto a suíte
+    // gravava estado vazio e pulava os specs de admin.
+    await expect(page).toHaveURL(/\/admin\/(?!login)/, { timeout: 20_000 });
   } catch {
     // Login recusado: não derruba a suíte pública (dependência de projeto).
     // Os specs de admin se pulam com o motivo em abrirAdmin().

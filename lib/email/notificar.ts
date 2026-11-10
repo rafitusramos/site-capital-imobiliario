@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { etapaPorSlug } from "@/lib/crm/etapas";
+import { CONFIG_SIMULACAO } from "@/lib/simulacao/config";
 import type { Database, LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 import { emailerDoAmbiente, type Emailer, type ResultadoEnvio } from "./enviar";
 import type { CampoEmail, EmailPronto } from "./templates/base";
@@ -9,6 +10,7 @@ import { etapaAdmin } from "./templates/etapa-admin";
 import { etapaLead } from "./templates/etapa-lead";
 import { novoLeadAdmin } from "./templates/novo-lead-admin";
 import { novoLeadLead } from "./templates/novo-lead-lead";
+import { simulacaoLead } from "./templates/simulacao-lead";
 
 /**
  * Orquestra os e-mails de lead (Fase 5) e grava cada tentativa em crm_emails.
@@ -163,6 +165,12 @@ export interface MudancaDeEtapa {
   motivo?: string;
   motivoObs?: string;
   quemMoveu: string;
+  /**
+   * Suprime SÓ o aviso ao lead (`etapa-lead`). O e-mail ao dono e o
+   * cancelamento dos agendados continuam. Usado quando a simulação foi
+   * enviada junto com o movimento: o lead já recebe a simulação.
+   */
+  suprimirAvisoLead?: boolean;
 }
 
 async function textoDoMotivo(deps: DependenciasEmail, m: MudancaDeEtapa): Promise<string | undefined> {
@@ -197,6 +205,8 @@ export async function notificarMudancaEtapa(deps: DependenciasEmail, m: MudancaD
     m.para,
   );
 
+  if (m.suprimirAvisoLead) return;
+
   const { data: etapa } = await deps.admin
     .from("crm_etapas")
     .select("notifica_lead")
@@ -217,6 +227,47 @@ export async function notificarMudancaEtapa(deps: DependenciasEmail, m: MudancaD
   );
 }
 
+export interface ResultadoEmailSimulacao {
+  status: "enviado" | "falhou" | "sem-chave";
+  resendId: string | null;
+  erro: string | null;
+}
+
+/**
+ * Envia a simulação (PDF em anexo) ao lead, na hora. Cancela antes os avisos
+ * `etapa-lead` ainda pendentes, para o lead não receber dois e-mails. Registra a
+ * tentativa em crm_emails (tipo `simulacao`) e devolve o resultado, que a rota
+ * usa para gravar crm_simulacoes. Nunca lança.
+ */
+export async function enviarSimulacaoAoLead(
+  deps: DependenciasEmail,
+  lead: LeadParaEmail,
+  pdf: Uint8Array,
+  nomeArquivo: string,
+): Promise<ResultadoEmailSimulacao> {
+  await cancelarAgendados(deps, lead.id);
+  const email = simulacaoLead({ nome: lead.nome, protocolo: lead.protocolo });
+  const resultado = await deps.emailer.enviar({
+    para: lead.email,
+    assunto: email.assunto,
+    html: email.html,
+    texto: email.texto,
+    // O texto convida a responder; a resposta vai ao contato impresso no documento.
+    replyTo: CONFIG_SIMULACAO.contato.email,
+    anexos: [{ nome: nomeArquivo, conteudo: pdf }],
+  });
+  const s = statusDoEnvio(resultado, false);
+  await registrar(deps, {
+    lead_id: lead.id,
+    destinatario: lead.email,
+    tipo: "simulacao",
+    etapa: null,
+    agendado_para: null,
+    ...s,
+  });
+  return { status: s.status as ResultadoEmailSimulacao["status"], resendId: s.resend_id, erro: s.erro };
+}
+
 // ---------------------------------------------------------------------------
 // Pontos de entrada para as server actions: montam as dependências reais e
 // nunca lançam.
@@ -229,6 +280,11 @@ function dependenciasDoAmbiente(): DependenciasEmail {
     emailAdmin: process.env.EMAIL_ADMIN,
     agora: () => new Date(),
   };
+}
+
+/** Dependências reais (service role, Resend, EMAIL_ADMIN) para a rota da simulação. */
+export function dependenciasEmailDoAmbiente(): DependenciasEmail {
+  return dependenciasDoAmbiente();
 }
 
 export async function dispararAvisosNovoLead(lead: LeadParaEmail, campos: CampoEmail[]): Promise<void> {

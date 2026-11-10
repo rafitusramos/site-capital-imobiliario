@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1131 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 1275 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **033**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
@@ -158,6 +158,43 @@ documentadas em `.env.local.example`: `RESEND_API_KEY`, `EMAIL_REMETENTE`,
   pedido da própria pessoa. A regra de só mudá-lo com a CAPI continua valendo.
 - `enviado_whatsapp` em `leads` ficou sem uso (a coluna foi mantida; o stub de
   WhatsApp foi removido).
+
+### Simulação de financiamento por e-mail
+Só financiamento. **Anexar e enviar são coisas separadas.** O botão **"Anexar simulação"**
+do modal (bloco Simulações) lê o PDF da Creditas **no navegador** (`pdfjs-dist`), mostra a
+prévia e, ao confirmar ("Anexar"), grava o PDF no bucket e a linha em `crm_simulacoes`
+(`email_status = 'anexado'`). **Nenhum e-mail sai ao anexar, em nenhuma etapa.** O e-mail
+só sai no movimento `criado` → `simulacao` (arrastar ou botão), que abre `DialogoSimulacao`:
+se há simulação anexada e não enviada, abre direto na prévia dela (com "Trocar por outro PDF");
+senão pede o PDF. Ações: **Mover e enviar**, **Mover sem enviar** e **Cancelar**.
+Especificação em `docs/crm-spec.md` §3.7.
+
+- Gatilho puro `exigeSimulacao` (`lib/simulacao/gatilho.ts`). Home equity **não muda**.
+- Rota `POST /api/admin/crm/simulacao/`, ações `previa`, `anexar`, `obter` (devolve o PDF
+  gravado) e `enviar` (recebe só `simulacaoId`, lê o PDF **do bucket**, nunca regera;
+  confere que a simulação é do `leadId`, que o lead é visível pela RLS e que ainda não foi
+  enviada; trava de clique duplo por `enviado_em`). Atualiza `email_status`/`resend_id`/`enviado_em`.
+  Não há envio fora do movimento. Falha no envio mantém o lead movido e o diálogo oferece
+  "Tentar enviar de novo" com a mesma `simulacaoId`.
+- **Regra no servidor, em `moverLead`:** lead de financiamento indo para `simulacao` com
+  qualquer linha em `crm_simulacoes` (anexada ou enviada) **não recebe** o aviso `etapa-lead`,
+  venha o movimento de onde vier ("Mover sem enviar" incluso); o e-mail ao dono segue.
+  Leitura falhando = `console.error` e segue como sem simulação. Foi o bug do teste manual:
+  o lead recebeu a simulação e o aviso "avançou: simulação". Sem simulação, o aviso é normal.
+- Migration 032: `email_status` aceita `anexado` e há `enviado_em`. Antes dela rodar, anexar
+  falha com mensagem clara (e `console.error`); o histórico cai para a leitura sem `enviado_em`.
+- A rota **não** usa `exigirAdmin` (corretor também opera o CRM): lê o lead com o
+  cliente de cookies e a RLS decide (404 para quem não vê). Nome e e-mail do cliente
+  vêm do banco, nunca do corpo; a referência do documento e do arquivo é `leads.protocolo`.
+- PDF gerado no servidor com `puppeteer-core` + `@sparticuz/chromium` (`serverExternalPackages`
+  e `outputFileTracingIncludes` em `next.config.ts`); fora da Vercel use
+  `SIMULACAO_CHROME_PATH`. Fontes embutidas em base64 (`lib/simulacao/fontes-asset.ts`,
+  gerado por `scripts/gerar-fontes-simulacao.mjs`) porque `public/` não existe na função.
+- E-mail com anexo **nunca é agendado** (`EmailParaEnviar.anexos`). Histórico em
+  `crm_simulacoes` + bucket privado `crm-simulacoes` (migration 030); `excluirLead`
+  apaga os PDFs do bucket. Prévia não exige a chave de serviço; envio exige.
+- Blocos novos no modal só existem para financiamento; sem a tabela, o bloco fica vazio
+  (`getSimulacoes` nunca lança).
 
 ### Imagens de imóveis
 Toda imagem enviada em `/admin` para as 3 galerias e para as plantas da aba
@@ -498,6 +535,19 @@ Financiamento, Home Equity, Consórcio, Imóveis.
      importada dali. A regra `@next/next/no-html-link-for-pages` está
      desligada no `eslint.config.mjs` por causa disso; para religar, primeiro
      dispare `page_view` a cada mudança de rota em `lib/analytics/eventos.ts`.
+- **Policy sem `to authenticated` vale para o anônimo.** `create policy` sem
+  `to <papel>` vale para `public`, que inclui `anon` — a chave pública que vai
+  no navegador de todo visitante. Somado ao grant padrão do Supabase para
+  `anon` nas tabelas do schema public, a `leads_visiveis` (que libera
+  `corretor_id is null`) deixava qualquer visitante ler, alterar e apagar leads
+  sem responsável, com CPF e dados financeiros. Corrigido na 031: o `anon` não
+  tem privilégio em tabela nem view do CRM e toda policy do CRM é `to
+  authenticated` (travado em `tests/unidade/crm-sem-acesso-anonimo.test.ts`).
+  Tabela nova de CRM: policy com `to authenticated` **e** `revoke all ... from
+  anon`. O formulário do site grava pela service role e não precisa do anon.
+  Em **função**, `revoke ... from anon` não basta: o execute padrão é de
+  `PUBLIC` (acl `=X/postgres`) e o anon o herda — revogue `from public` (a 032
+  fez isso em `mover_lead_crm`, `registrar_interacao_crm`, `definir_tags_lead`).
 - **Escrita de conteúdo é só para admin, nas duas camadas.** Policy de escrita
   usa `public.eh_admin()` (migration 020), **nunca** `auth.role() =
   'authenticated'`: esta última deixa qualquer corretor logado apagar posts,

@@ -9,6 +9,8 @@ import { useToast } from "@/lib/admin/toast";
 import { IconeFechar } from "@/components/admin/crm/icones";
 import { CorpoModalLead } from "@/components/admin/crm/CorpoModalLead";
 import { DialogoMotivo, type MotivoOpcao } from "@/components/admin/crm/DialogoMotivo";
+import { DialogoSimulacao, type ResultadoDialogoSimulacao } from "@/components/admin/crm/DialogoSimulacao";
+import { exigeSimulacao, toastDoDesfecho } from "@/lib/simulacao/gatilho";
 import type { DominiosCRM } from "@/lib/queries/admin-crm";
 import type { LeadEtapaSlug } from "@/types/database";
 
@@ -25,6 +27,13 @@ export type ModalLeadProps = {
   dominios: DominiosCRM;
   /** QuadroCRM.tsx faz `router.push` limpando `?lead=` da URL (docs/crm-spec.md §1.4). */
   onFechar: () => void;
+};
+
+type EstadoDialogoSimulacao = {
+  modo: "mover" | "anexar";
+  etapa?: LeadEtapaSlug;
+  etapaLabel: string;
+  resolver: (r: ResultadoDialogoSimulacao) => void;
 };
 
 type EstadoDialogoMotivo = { etapaLabel: string; resolver: (dados: { motivo: string; motivoObs?: string } | null) => void };
@@ -49,6 +58,9 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
   const [carregando, setCarregando] = useState(true);
   const [erroCarregar, setErroCarregar] = useState<string | null>(null);
   const [dialogoMotivo, setDialogoMotivo] = useState<EstadoDialogoMotivo | null>(null);
+  const [dialogoSimulacao, setDialogoSimulacao] = useState<EstadoDialogoSimulacao | null>(null);
+  const simulacaoAbertaRef = useRef(false);
+  simulacaoAbertaRef.current = dialogoSimulacao !== null;
   const [movendoEtapa, setMovendoEtapa] = useState(false);
   const [nome, setNome] = useState("");
 
@@ -116,6 +128,8 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
 
     function aoTeclar(e: KeyboardEvent) {
       if (e.key === "Escape") {
+        // Com o diálogo de simulação aberto, o Esc é dele (fecha só ele).
+        if (simulacaoAbertaRef.current) return;
         // Escape no campo de nome desfaz a edição em vez de fechar o modal
         // (aoTeclarNome, abaixo). Tem de ser decidido AQUI: este listener é
         // nativo e está no `document`, o mesmo nó onde o Next monta a raiz do
@@ -166,6 +180,18 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
     const etapaAlvo = etapaPorSlug(detalhe.lead.tipo, novaEtapa);
     if (!etapaAlvo) return;
 
+    // Financiamento: criado -> simulação passa pela tela de simulação (o diálogo move).
+    if (exigeSimulacao(detalhe.lead.tipo, detalhe.lead.status, novaEtapa)) {
+      const resultado = await new Promise<ResultadoDialogoSimulacao>((resolve) =>
+        setDialogoSimulacao({ modo: "mover", etapa: novaEtapa, etapaLabel: etapaAlvo.label, resolver: resolve }),
+      );
+      setDialogoSimulacao(null);
+      const aviso = toastDoDesfecho(resultado.tipo, etapaAlvo.label);
+      if (aviso) mostrarToast(aviso.tipo, aviso.texto);
+      if (resultado.tipo !== "cancelado") await recarregar();
+      return;
+    }
+
     let dadosMotivo: { motivo: string; motivoObs?: string } | null = null;
     if (etapaAlvo.exigeMotivo) {
       dadosMotivo = await new Promise((resolve) => setDialogoMotivo({ etapaLabel: etapaAlvo.label, resolver: resolve }));
@@ -189,6 +215,17 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
     }
     mostrarToast("sucesso", `Etapa alterada para ${etapaAlvo.label}.`);
     await recarregar();
+  }
+
+  /** "Anexar simulação" do bloco Simulações: mesmo diálogo, só anexa (sem mover, sem e-mail). */
+  async function anexarSimulacao() {
+    const resultado = await new Promise<ResultadoDialogoSimulacao>((resolve) =>
+      setDialogoSimulacao({ modo: "anexar", etapaLabel: "", resolver: resolve }),
+    );
+    setDialogoSimulacao(null);
+    const aviso = toastDoDesfecho(resultado.tipo, "");
+    if (aviso) mostrarToast(aviso.tipo, aviso.texto);
+    if (resultado.tipo !== "cancelado") await recarregar();
   }
 
   const motivos: MotivoOpcao[] = dominios.motivosPerda.map((m) => ({ slug: m.slug, label: m.label }));
@@ -284,10 +321,36 @@ export function ModalLead({ leadId, dominios, onFechar }: ModalLeadProps) {
               executarAcao={executarAcao}
               onMudarEtapa={mudarEtapa}
               etapaPendente={movendoEtapa}
+              onAnexarSimulacao={anexarSimulacao}
             />
           ) : null}
         </div>
       </div>
+
+      <DialogoSimulacao
+        estado={
+          dialogoSimulacao && detalhe
+            ? {
+                leadId,
+                destinatario: detalhe.lead.email,
+                modo: dialogoSimulacao.modo,
+                etapaLabel: dialogoSimulacao.etapaLabel,
+              }
+            : null
+        }
+        executarMovimento={
+          dialogoSimulacao?.etapa && detalhe
+            ? (o) =>
+                moverLead({
+                  leadId,
+                  etapa: dialogoSimulacao.etapa as LeadEtapaSlug,
+                  updatedAt: detalhe.lead.updated_at,
+                  suprimirAvisoLead: o.suprimirAvisoLead,
+                })
+            : undefined
+        }
+        onFinalizar={(r) => dialogoSimulacao?.resolver(r)}
+      />
 
       <DialogoMotivo
         estado={dialogoMotivo ? { etapaLabel: dialogoMotivo.etapaLabel } : null}
