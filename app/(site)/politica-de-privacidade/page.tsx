@@ -6,7 +6,7 @@ import {
   ENCARREGADO,
   EMAIL_LGPD,
   RETENCAO_ANOS,
-  ATUALIZADO_EM,
+  POLITICA_ATUALIZADA_EM,
   TEXTO_CONSENTIMENTO,
 } from "@/lib/legal";
 
@@ -59,7 +59,7 @@ export default function PoliticaDePrivacidadePage() {
         <div className="wrap">
           <div className="eyebrow">Documentos legais</div>
           <h1>Política de Privacidade</h1>
-          <p className="legal-atualizado">Atualizado em {ATUALIZADO_EM}</p>
+          <p className="legal-atualizado">Atualizado em {POLITICA_ATUALIZADA_EM}</p>
         </div>
       </header>
 
@@ -116,8 +116,10 @@ export default function PoliticaDePrivacidadePage() {
               <p>Coletamos três grupos de dados, sempre a partir do que você mesmo informa ou gera ao usar o site:</p>
               <p>
                 <strong>a) Dados que você informa no formulário:</strong> nome, e-mail,
-                telefone, CPF (opcional), renda mensal, tipo de remuneração, valor e tipo do
-                imóvel, cidade e estado, e o momento da compra. No formulário de home equity,
+                telefone, CPF (opcional), data de nascimento, renda mensal, tipo de
+                remuneração, valor e tipo do imóvel, cidade e estado, e o momento da compra.
+                A data de nascimento é pedida porque a idade entra no cálculo do seguro
+                habitacional obrigatório e, com ele, da parcela. No formulário de home equity,
                 coletamos ainda CEP, número, área do imóvel, se ele está quitado e, quando não
                 estiver, o saldo devedor.
               </p>
