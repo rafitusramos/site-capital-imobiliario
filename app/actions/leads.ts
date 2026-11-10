@@ -127,33 +127,6 @@ function parametrosImovel(
   };
 }
 
-/**
- * TRANSITÓRIO — remover quando a migration 033 estiver aplicada em produção.
- *
- * O deploy da branch (e o de Preview) usa o MESMO banco de produção e sobe
- * ANTES da 033 rodar. Chamar o RPC com `p_data_nascimento` enquanto a função
- * nova não existe devolve PGRST202 (função não encontrada) e o lead real se
- * perderia. Então, só nesse caso, repete sem o parâmetro: o lead entra sem a
- * data (que fica só no log) e o erro é registrado. Qualquer outro erro continua
- * subindo. Depois da 033, apague este helper e chame `admin.rpc` direto.
- */
-async function chamarRpcLead(
-  admin: ReturnType<typeof createAdminClient>,
-  nome: "criar_lead_financiamento" | "criar_lead_home_equity",
-  params: Record<string, unknown> & { p_data_nascimento?: unknown },
-) {
-  const primeira = await admin.rpc(nome, params as never);
-  const codigo = (primeira.error as { code?: string } | null)?.code;
-  if (codigo !== "PGRST202") return primeira;
-
-  console.error(
-    `[criarLead] ${nome} sem p_data_nascimento no banco (migration 033 pendente); repetindo sem o parâmetro:`,
-    primeira.error,
-  );
-  const { p_data_nascimento: _descartado, ...semData } = params;
-  return admin.rpc(nome, semData as never);
-}
-
 const ORIGEM_POR_TIPO: Record<LeadTipo, string> = {
   financiamento: "lp-financiamento-sbpe",
   "home-equity": "lp-home-equity",
@@ -198,15 +171,13 @@ export async function criarLead(input: CriarLeadInput): Promise<CriarLeadResulta
   let resultado: { data: Database["public"]["Tables"]["leads"]["Row"] | null; error: unknown };
   switch (input.tipo) {
     case "financiamento":
-      resultado = await chamarRpcLead(
-        admin,
+      resultado = await admin.rpc(
         "criar_lead_financiamento",
         parametrosFinanciamento(parsed.data as LeadFinanciamentoInput, origem, input.paginaUrl, utm),
       );
       break;
     case "home-equity":
-      resultado = await chamarRpcLead(
-        admin,
+      resultado = await admin.rpc(
         "criar_lead_home_equity",
         parametrosHomeEquity(parsed.data as LeadHomeEquityInput, origem, input.paginaUrl, utm),
       );

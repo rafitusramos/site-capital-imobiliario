@@ -37,7 +37,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1275 passando + 1 *expected fail*, que é intencional
+Suíte em Vitest: `npm test` — 1273 passando + 1 *expected fail*, que é intencional
 e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **033**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
@@ -118,12 +118,10 @@ null` e o banco rejeita data futura. CRM: campo editável (`bloco: "lead"`, tipo
 só exige data real não futura (`isoDataNaoFutura`). O e-mail ao dono mostra data e idade.
 Fora do CSV do quadro (a view `leads_quadro` não tem a coluna).
 
-- **Fallback transitório em `app/actions/leads.ts` (`chamarRpcLead`)**: o deploy da
-  branch sobe antes da 033 e usa o mesmo banco; o RPC antigo não conhece
-  `p_data_nascimento` (PGRST202). Só nesse erro a action repete sem o parâmetro (com
-  `console.error`) para o lead real não se perder. **Remover o helper depois que a 033
-  estiver aplicada.** Salvar lead no CRM antes da 033 falha na coluna nova: só ocorre
-  no deploy de branch, que o dono não usa para o CRM.
+- Os RPCs `criar_lead_*` só executam com a service role (a 033 revoga de `public`,
+  `anon` e `authenticated`). Parâmetro novo em RPC de lead entra como `default null`:
+  o deploy de produção, ainda sem o código novo, continua criando leads depois da
+  migration.
 - Layout: CPF e data lado a lado (`.dupla`, 2 colunas também no celular) para não
   somar altura. Causa-raiz de o botão sair da tela em telas baixas era `.painel form` sem
   `display:flex` (o `<form>` nunca encolhia): hoje o miolo (`.bloco`) rola e o rodapé fica
