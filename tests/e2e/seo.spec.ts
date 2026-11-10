@@ -81,6 +81,29 @@ test.describe("JSON-LD: entidades (#negocio, #rafael, ProfilePage)", () => {
     expect(JSON.stringify(rafael)).toContain('"identifier":"283020-F"');
   });
 
+  test("home: #rafael inclui o LinkedIn no sameAs", async ({ page }) => {
+    await page.goto("/");
+    const rafael = noPorId(await lerJsonLd(page), "/#rafael");
+    expect(rafael, "nó #rafael").toBeTruthy();
+    expect(comoLista(rafael!.sameAs)).toContain(
+      "https://www.linkedin.com/in/rafael-teixeira-capital-imobiliario/",
+    );
+  });
+
+  test("home: #negocio declara atendimento 24h nos 7 dias", async ({ page }) => {
+    await page.goto("/");
+    const negocio = noPorId(await lerJsonLd(page), "/#negocio");
+    expect(negocio, "nó #negocio").toBeTruthy();
+    const horarios = comoLista(negocio!.openingHoursSpecification) as No[];
+    expect(horarios.length).toBeGreaterThan(0);
+    const h = horarios[0];
+    expect(h["@type"]).toBe("OpeningHoursSpecification");
+    expect(comoLista(h.dayOfWeek)).toHaveLength(7);
+    expect(new Set(comoLista(h.dayOfWeek)).size).toBe(7);
+    expect(h.opens).toBe("00:00");
+    expect(h.closes).toBe("23:59");
+  });
+
   test("/sobre/: ProfilePage aponta para #rafael, Person único e BreadcrumbList", async ({ page }) => {
     await page.goto("/sobre/");
     const nos = await lerJsonLd(page);
