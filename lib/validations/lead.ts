@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { cpfValido, telefoneValido } from "@/lib/financeiro";
+import { isoDataNascimentoValida } from "@/lib/data-nascimento";
 
 /**
  * Schemas Zod para os leads capturados hoje pelo site (financiamento,
@@ -35,6 +36,12 @@ const cpfSchema = z
     message: "Informe um CPF válido.",
   });
 
+// ISO "aaaa-mm-dd" (o formulário converte do dd/mm/aaaa). Obrigatória só nos
+// leads de crédito: a idade entra no seguro MIP. Imóveis não pede.
+const dataNascimentoSchema = z
+  .string()
+  .refine((v) => isoDataNascimentoValida(v), { message: "Informe uma data de nascimento válida." });
+
 const camposComuns = {
   nome: nomeSchema,
   email: emailSchema,
@@ -46,6 +53,7 @@ const numeroPositivo = z.number().finite().nonnegative();
 
 export const leadFinanciamentoSchema = z.object({
   ...camposComuns,
+  dataNascimento: dataNascimentoSchema,
   renda: numeroPositivo,
   tipoRemuneracao: z.enum(["Assalariado", "Empresário / Autônomo"]),
   entradaDisponivel: numeroPositivo,
@@ -70,6 +78,7 @@ export const leadFinanciamentoSchema = z.object({
 
 export const leadHomeEquitySchema = z.object({
   ...camposComuns,
+  dataNascimento: dataNascimentoSchema,
   renda: numeroPositivo,
   tipoRemuneracao: z.enum(["Assalariado", "Empresário / Autônomo"]),
   objetivoCredito: z.enum([

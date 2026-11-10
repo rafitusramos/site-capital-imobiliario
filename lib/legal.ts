@@ -24,7 +24,11 @@ export const EMAIL_LGPD = "contato@rtcapitalimobiliario.com.br";
 
 export const RETENCAO_ANOS = 5;
 
+/** Data dos Termos de Uso (e da política até ela ganhar data própria). */
 export const ATUALIZADO_EM = "30 de julho de 2026";
+
+/** Data da Política de Privacidade: mude a cada alteração do texto dela. */
+export const POLITICA_ATUALIZADA_EM = "9 de novembro de 2026";
 
 /**
  * Frase exata do checkbox de consentimento nos formulários de lead. A

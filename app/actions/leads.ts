@@ -66,6 +66,7 @@ function parametrosFinanciamento(
     p_cidade: dados.cidade,
     p_estado: dados.estado,
     p_consentimento_lgpd: true,
+    p_data_nascimento: dados.dataNascimento,
   };
 }
 
@@ -97,6 +98,7 @@ function parametrosHomeEquity(
     p_numero: dados.numero,
     p_area_m2: dados.areaM2,
     p_consentimento_lgpd: true,
+    p_data_nascimento: dados.dataNascimento,
   };
 }
 

@@ -3,6 +3,7 @@ import { criarSupabaseFalso } from "@/tests/apoio/supabase-falso";
 import type { Emailer } from "@/lib/email/enviar";
 import {
   cancelarAgendados,
+  enviarSimulacaoAoLead,
   notificarMudancaEtapa,
   notificarNovoLead,
   type DependenciasEmail,
@@ -187,5 +188,72 @@ describe("cancelarAgendados", () => {
     expect(cancelar).toHaveBeenCalledTimes(1);
     expect(cancelar).toHaveBeenCalledWith("re_novo");
     expect(falso.chamadas.some((c) => c.tabela === "crm_emails" && c.operacao === "update")).toBe(false);
+  });
+});
+
+describe("notificarMudancaEtapa com suprimirAvisoLead", () => {
+  const mudanca = { lead: LEAD, de: "criado" as const, para: "simulacao" as const, quemMoveu: "Rafael" };
+
+  test("não agenda o aviso ao lead, mas avisa o dono e cancela o agendado anterior", async () => {
+    const { falso, enviar, cancelar, deps } = montar();
+    falso.programarResposta("crm_emails", "select", {
+      data: [{ id: "row-1", resend_id: "re_antigo", agendado_para: "2026-03-01T12:05:00.000Z" }],
+      error: null,
+    });
+    falso.programarResposta("crm_etapas", "select", { data: { notifica_lead: true }, error: null });
+
+    await notificarMudancaEtapa(deps, { ...mudanca, suprimirAvisoLead: true });
+
+    expect(cancelar).toHaveBeenCalledWith("re_antigo");
+    expect(enviar.mock.calls.map((c) => c[0].para)).toEqual(["dono@rt.com"]);
+    expect(insercoes(falso)).toEqual([expect.objectContaining({ tipo: "etapa-admin" })]);
+  });
+
+  test("sem a opção, o aviso ao lead segue normal", async () => {
+    const { falso, enviar, deps } = montar();
+    falso.programarResposta("crm_etapas", "select", { data: { notifica_lead: true }, error: null });
+    await notificarMudancaEtapa(deps, mudanca);
+    expect(enviar.mock.calls.map((c) => c[0].para).sort()).toEqual(["dono@rt.com", "maria@example.com"]);
+  });
+});
+
+describe("enviarSimulacaoAoLead", () => {
+  const PDF = Buffer.from("%PDF-ficticio");
+
+  test("cancela os agendados, envia na hora com o anexo e registra tipo simulacao", async () => {
+    const { falso, enviar, cancelar, deps } = montar();
+    falso.programarResposta("crm_emails", "select", {
+      data: [{ id: "row-1", resend_id: "re_antigo", agendado_para: "2026-03-01T12:05:00.000Z" }],
+      error: null,
+    });
+
+    const r = await enviarSimulacaoAoLead(deps, LEAD, PDF, "Simulacao-RT-RT-1.pdf");
+
+    expect(cancelar).toHaveBeenCalledWith("re_antigo");
+    expect(enviar).toHaveBeenCalledTimes(1);
+    const email = enviar.mock.calls[0][0] as { para: string; agendarPara?: Date; anexos?: { nome: string; conteudo: Buffer }[]; assunto: string };
+    expect(email.para).toBe("maria@example.com");
+    expect(email.agendarPara).toBeUndefined();
+    expect(email.anexos).toEqual([{ nome: "Simulacao-RT-RT-1.pdf", conteudo: PDF }]);
+    expect(email.assunto).toContain("RT-1");
+    // O texto convida a responder: a resposta precisa chegar a uma caixa lida.
+    expect((email as { replyTo?: string }).replyTo).toBe("rafael@rtcapitalimobiliario.com.br");
+    expect(r).toEqual({ status: "enviado", resendId: "re_maria@example.com", erro: null });
+    expect(insercoes(falso)).toEqual([
+      expect.objectContaining({ lead_id: LEAD.id, tipo: "simulacao", destinatario: "maria@example.com", status: "enviado" }),
+    ]);
+  });
+
+  test("falha do provedor vira status falhou, sem lançar", async () => {
+    const { falso, enviar, deps } = montar();
+    enviar.mockResolvedValueOnce({ enviado: false, motivo: "falha", erro: "domínio não verificado" } as never);
+    const r = await enviarSimulacaoAoLead(deps, LEAD, PDF, "x.pdf");
+    expect(r).toEqual({ status: "falhou", resendId: null, erro: "domínio não verificado" });
+    expect(insercoes(falso)[0]).toMatchObject({ tipo: "simulacao", status: "falhou", erro: "domínio não verificado" });
+  });
+
+  test("sem chave: status sem-chave", async () => {
+    const { deps } = montar({ semChave: true });
+    expect((await enviarSimulacaoAoLead(deps, LEAD, PDF, "x.pdf")).status).toBe("sem-chave");
   });
 });

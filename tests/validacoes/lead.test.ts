@@ -24,6 +24,7 @@ function baseFinanciamento() {
     valorCredito: 400000,
     prazoMeses: 360,
     parcelaEstimada: 4000,
+    dataNascimento: "1985-05-15",
   };
 }
 
@@ -44,6 +45,7 @@ function baseHomeEquity() {
     valorCreditoEstimado: 300000,
     prazoMeses: 180,
     parcelaEstimada: 3000,
+    dataNascimento: "1985-05-15",
   };
 }
 
@@ -289,5 +291,35 @@ describe("schemaPorTipo", () => {
     expect(schemaPorTipo.financiamento.safeParse(baseFinanciamento()).success).toBe(true);
     expect(schemaPorTipo["home-equity"].safeParse(baseHomeEquity()).success).toBe(true);
     expect(schemaPorTipo.imoveis.safeParse(baseImovel()).success).toBe(true);
+  });
+});
+
+describe("dataNascimento (financiamento e home equity)", () => {
+  const casos = [
+    ["financiamento", leadFinanciamentoSchema, baseFinanciamento],
+    ["home equity", leadHomeEquitySchema, baseHomeEquity],
+  ] as const;
+
+  for (const [nome, schema, base] of casos) {
+    test(`${nome}: é obrigatória`, () => {
+      const { dataNascimento: _d, ...semData } = base();
+      expect(schema.safeParse(semData).success).toBe(false);
+    });
+
+    test(`${nome}: aceita data real de adulto e mantém ISO`, () => {
+      const parsed = schema.safeParse(base());
+      expect(parsed.success).toBe(true);
+      if (parsed.success) expect(parsed.data.dataNascimento).toBe("1985-05-15");
+    });
+
+    test(`${nome}: rejeita futura, menor de 18, maior de 100, inexistente e formato errado`, () => {
+      for (const ruim of ["2999-01-01", "2020-01-01", "1900-01-01", "1990-02-30", "15/05/1985", ""]) {
+        expect(schema.safeParse({ ...base(), dataNascimento: ruim }).success, ruim).toBe(false);
+      }
+    });
+  }
+
+  test("imóveis não pede data de nascimento", () => {
+    expect(leadImovelSchema.safeParse(baseImovel()).success).toBe(true);
   });
 });
