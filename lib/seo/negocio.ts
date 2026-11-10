@@ -14,11 +14,24 @@ import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
 // grafo. Os dois nós são declarados uma única vez (no layout, ver
 // app/(site)/layout.tsx) e todo o resto do site só referencia o "@id".
 
+const INSTAGRAM_URL = "https://www.instagram.com/rafaelteixeiraimovel";
+
+// URL da ficha do Google Business por `cid` (feature id
+// 0x820c5b6b68c2c4e9:0x1bb6fa95f094f1a6, kgmid /g/11nr8xzsff). É estável e
+// canônica, ao contrário do encurtador share.google que ela substituiu.
+const GOOGLE_MAPS_URL = "https://www.google.com/maps?cid=1997059006678757798";
+
 /**
  * FinancialService — o negócio. Conteúdo copiado integralmente do que
  * antes vivia em app/(site)/page.tsx, com o acréscimo do campo `address`
  * (decisão do dono do projeto: só cidade/estado, sem `streetAddress`,
  * `postalCode` ou `geo`).
+ *
+ * `logo` é o PNG quadrado de marca (public/images/logo-rt.png, gerado por
+ * scripts/gerar-logo.mjs): o Google espera um logo quadrado de pelo menos
+ * 112x112 px, e a foto retangular que ocupava o campo não servia. O `image`
+ * segue sendo a foto de fundo. Fica de fora, por falta de dado, o
+ * `openingHoursSpecification` (pendente do dono).
  */
 export const NEGOCIO_NODE = {
   "@type": "FinancialService",
@@ -27,7 +40,7 @@ export const NEGOCIO_NODE = {
   alternateName: "Capital Imobiliário",
   url: `${SITE_URL}/`,
   image: `${SITE_URL}/images/background.jpg`,
-  logo: `${SITE_URL}/images/background.jpg`,
+  logo: `${SITE_URL}/images/logo-rt.png`,
   description:
     "Correspondente bancário especializado em crédito com garantia de imóvel (home equity), financiamento imobiliário SBPE e consórcio. Análise multibanco com recomendação do menor crédito que resolve o objetivo do cliente.",
   telephone: "+55-19-99783-4187",
@@ -44,15 +57,12 @@ export const NEGOCIO_NODE = {
   employee: { "@id": `${SITE_URL}/#rafael` },
   // sameAs liga o site aos perfis externos da mesma entidade — é o que
   // ajuda o Google a associar este domínio à ficha local do negócio.
-  // O link do Google Business é um encurtador share.google: ele resolve
-  // para a ficha, mas não é a URL canônica do lugar (não deu para extrair
-  // o destino, porque o share.google resolve por JavaScript). Se um dia
-  // esse atalho deixar de valer, trocar pela URL do Maps com o /maps/place/
-  // completo, que é estável.
-  sameAs: [
-    "https://www.instagram.com/rafaelteixeiraimovel",
-    "https://share.google/r5Dwdcu8M2LxUP9zp",
-  ],
+  // O link do Google Business é a URL por `cid` da ficha (feature id
+  // 0x820c5b6b68c2c4e9:0x1bb6fa95f094f1a6, kgmid /g/11nr8xzsff), estável e
+  // canônica; o encurtador share.google que estava aqui resolve por
+  // JavaScript e não identifica o lugar. `hasMap` aponta para a mesma ficha.
+  sameAs: [INSTAGRAM_URL, GOOGLE_MAPS_URL],
+  hasMap: GOOGLE_MAPS_URL,
 };
 
 /**
@@ -60,12 +70,27 @@ export const NEGOCIO_NODE = {
  * a mais completa (3 credenciais, incluindo o registro CVM, mais a
  * affiliation com RE/MAX Clarity e XP Investimentos), e não a versão
  * reduzida que antes vivia na home (2 credenciais, sem affiliation).
+ *
+ * `url` aponta para /sobre/ (a página da pessoa) e `image` é a foto dela:
+ * sem os dois o Google não tem o que associar à entidade. `identifier` do
+ * CRECI-SP é o número que já aparece visível em /sobre/. `knowsAbout` lista
+ * as áreas de atuação, as mesmas do restante do site.
  */
 export const RAFAEL_NODE = {
   "@type": "Person",
   "@id": `${SITE_URL}/#rafael`,
   name: "Rafael Teixeira",
+  url: `${SITE_URL}/sobre/`,
+  image: `${SITE_URL}/images/rafael-teixeira.jpg`,
   jobTitle: "Corretor de Imóveis · Correspondente Bancário",
+  // Só o Instagram por enquanto; o LinkedIn entra depois, quando houver URL.
+  sameAs: [INSTAGRAM_URL],
+  knowsAbout: [
+    "Financiamento imobiliário",
+    "Home equity",
+    "Crédito com garantia de imóvel",
+    "Consórcio imobiliário",
+  ],
   worksFor: { "@id": `${SITE_URL}/#negocio` },
   hasCredential: [
     {
@@ -73,6 +98,7 @@ export const RAFAEL_NODE = {
       credentialCategory: "license",
       recognizedBy: { "@type": "Organization", name: "CRECI-SP" },
       name: "Corretor de Imóveis registrado no CRECI-SP",
+      identifier: "283020-F",
     },
     {
       "@type": "EducationalOccupationalCredential",
