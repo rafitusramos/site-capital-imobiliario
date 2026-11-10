@@ -15,6 +15,7 @@ import { SITE_URL, CIDADES_ATENDIDAS } from "@/lib/site";
 // app/(site)/layout.tsx) e todo o resto do site só referencia o "@id".
 
 const INSTAGRAM_URL = "https://www.instagram.com/rafaelteixeiraimovel";
+const LINKEDIN_URL = "https://www.linkedin.com/in/rafael-teixeira-capital-imobiliario/";
 
 // URL da ficha do Google Business por `cid` (feature id
 // 0x820c5b6b68c2c4e9:0x1bb6fa95f094f1a6, kgmid /g/11nr8xzsff). É estável e
@@ -30,8 +31,12 @@ const GOOGLE_MAPS_URL = "https://www.google.com/maps?cid=1997059006678757798";
  * `logo` é o PNG quadrado de marca (public/images/logo-rt.png, gerado por
  * scripts/gerar-logo.mjs): o Google espera um logo quadrado de pelo menos
  * 112x112 px, e a foto retangular que ocupava o campo não servia. O `image`
- * segue sendo a foto de fundo. Fica de fora, por falta de dado, o
- * `openingHoursSpecification` (pendente do dono).
+ * segue sendo a foto de fundo.
+ *
+ * `openingHoursSpecification` declara 24 horas, todos os dias (decisão do
+ * dono: o atendimento começa pelo site, a qualquer hora). É o mesmo horário
+ * da ficha do Google, e os dois têm de continuar iguais: mudou num lugar,
+ * mude no outro.
  */
 export const NEGOCIO_NODE = {
   "@type": "FinancialService",
@@ -53,6 +58,12 @@ export const NEGOCIO_NODE = {
     addressCountry: "BR",
   },
   areaServed: CIDADES_ATENDIDAS.map((cidade) => ({ "@type": "City", name: cidade })),
+  openingHoursSpecification: {
+    "@type": "OpeningHoursSpecification",
+    dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+    opens: "00:00",
+    closes: "23:59",
+  },
   founder: { "@id": `${SITE_URL}/#rafael` },
   employee: { "@id": `${SITE_URL}/#rafael` },
   // sameAs liga o site aos perfis externos da mesma entidade — é o que
@@ -83,8 +94,8 @@ export const RAFAEL_NODE = {
   url: `${SITE_URL}/sobre/`,
   image: `${SITE_URL}/images/rafael-teixeira.jpg`,
   jobTitle: "Corretor de Imóveis · Correspondente Bancário",
-  // Só o Instagram por enquanto; o LinkedIn entra depois, quando houver URL.
-  sameAs: [INSTAGRAM_URL],
+  // O LinkedIn é perfil pessoal (/in/), por isso fica só aqui e não em #negocio.
+  sameAs: [INSTAGRAM_URL, LINKEDIN_URL],
   knowsAbout: [
     "Financiamento imobiliário",
     "Home equity",

@@ -23,12 +23,12 @@ Não cria página nem muda texto visível. Arquivos: `lib/seo/negocio.ts`,
 - Testes travam: logo quadrado e existente em `public/`, nenhum `share.google`, `#rafael`
   com `url`, `image` e `sameAs`.
 
-Pendente de dado do dono (uma linha cada, entra na mesma branch se chegar antes do merge):
+Dados do dono, recebidos em 2026-11-10 e já na branch:
 
-- URL do LinkedIn do Rafael, para o `sameAs` de `#rafael`.
-- Horário real de atendimento, para `openingHoursSpecification`. A ficha do Google diz
-  "24 horas"; o JSON-LD e a ficha têm de dizer a mesma coisa, então corrija a ficha
-  primeiro e o código espelha.
+- LinkedIn do Rafael no `sameAs` de `#rafael`.
+- Horário: 24 horas, todos os dias, em `openingHoursSpecification` (o atendimento começa
+  pelo site, e a resposta à simulação será automatizada). É o mesmo da ficha do Google;
+  os dois têm de continuar iguais.
 
 ## Fase 2 — Robôs de IA e `llms.txt` (`feature/seo-robos-ia`)
 
@@ -71,7 +71,7 @@ Decisão do dono: estrutura de URL e quem escreve o conteúdo local.
 
 ## Fora do código (dono)
 
-1. Ficha do Google: corrigir horário, acrescentar categorias (corretor de imóveis,
+1. Ficha do Google: acrescentar categorias (corretor de imóveis,
    correspondente bancário), fotos, posts, e pedir avaliação a cada cliente fechado.
 2. Bing Webmaster Tools: cadastrar o site e enviar o sitemap.
 3. Nome, telefone e cidade idênticos em Google, Instagram, LinkedIn, RE/MAX Clarity e portais.

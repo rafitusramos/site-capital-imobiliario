@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { canonicalDaPagina, coletarErros, metaContent } from "./apoio/pagina";
+import { canonicalDaPagina, coletarErros, lerJsonLd, metaContent } from "./apoio/pagina";
 
 const PAGINAS_FIXAS = ["/", "/financiamento/", "/home_equity/", "/blog/", "/imoveis/", "/sobre/"];
 
@@ -48,4 +48,65 @@ test.describe("SEO e saúde das páginas públicas", () => {
     expect(resposta.status()).toBe(200);
     expect(await resposta.text()).toContain("<image:image>");
   });
+});
+
+type No = Record<string, unknown>;
+const MAPS_CID = "https://www.google.com/maps?cid=1997059006678757798";
+const noPorId = (nos: No[], sufixo: string) =>
+  nos.find((n) => typeof n["@id"] === "string" && (n["@id"] as string).endsWith(sufixo));
+const comoLista = (v: unknown): unknown[] => (Array.isArray(v) ? v : v === undefined ? [] : [v]);
+
+test.describe("JSON-LD: entidades (#negocio, #rafael, ProfilePage)", () => {
+  test("home: #negocio com logo PNG, sameAs/hasMap do Maps e sem share.google", async ({ page }) => {
+    await page.goto("/");
+    const nos = await lerJsonLd(page);
+    const negocio = noPorId(nos, "/#negocio");
+    expect(negocio, "nó #negocio").toBeTruthy();
+    const logo = negocio!.logo;
+    const logoUrl = typeof logo === "string" ? logo : String((logo as No)?.url ?? "");
+    expect(logoUrl).toMatch(/\/images\/logo-rt\.png$/);
+    expect(comoLista(negocio!.sameAs)).toContain(MAPS_CID);
+    expect(negocio!.hasMap).toBe(MAPS_CID);
+    const brutos = await page.locator('script[type="application/ld+json"]').allTextContents();
+    expect(brutos.join(" ")).not.toContain("share.google");
+  });
+
+  test("home: #rafael com url, image, sameAs e CRECI 283020-F", async ({ page }) => {
+    await page.goto("/");
+    const rafael = noPorId(await lerJsonLd(page), "/#rafael");
+    expect(rafael, "nó #rafael").toBeTruthy();
+    expect(String(rafael!.url)).toMatch(/\/sobre\/$/);
+    expect(JSON.stringify(rafael!.image ?? "")).toMatch(/\S/);
+    expect(comoLista(rafael!.sameAs).length).toBeGreaterThan(0);
+    expect(JSON.stringify(rafael)).toContain('"identifier":"283020-F"');
+  });
+
+  test("/sobre/: ProfilePage aponta para #rafael, Person único e BreadcrumbList", async ({ page }) => {
+    await page.goto("/sobre/");
+    const nos = await lerJsonLd(page);
+    const tipos = (n: No) => comoLista(n["@type"]).map(String);
+    const perfil = nos.find((n) => tipos(n).includes("ProfilePage"));
+    expect(perfil, "nó ProfilePage").toBeTruthy();
+    expect(String((perfil!.mainEntity as No)["@id"])).toMatch(/\/#rafael$/);
+    const pessoas = nos.filter(
+      (n) => tipos(n).includes("Person") && String(n["@id"]).endsWith("/#rafael"),
+    );
+    expect(pessoas, "exatamente um Person #rafael").toHaveLength(1);
+    expect(nos.some((n) => tipos(n).includes("BreadcrumbList")), "BreadcrumbList").toBe(true);
+  });
+
+  test("logo do negócio existe no host do deploy como image/png", async ({ request }) => {
+    const r = await request.get("/images/logo-rt.png");
+    expect(r.status()).toBe(200);
+    expect(r.headers()["content-type"]).toContain("image/png");
+  });
+
+  for (const caminho of PAGINAS_FIXAS) {
+    test(`${caminho}: todo JSON-LD é JSON válido`, async ({ page }) => {
+      await page.goto(caminho);
+      const textos = await page.locator('script[type="application/ld+json"]').allTextContents();
+      expect(textos.length).toBeGreaterThan(0);
+      for (const t of textos) expect(() => JSON.parse(t)).not.toThrow();
+    });
+  }
 });

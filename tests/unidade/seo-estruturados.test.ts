@@ -126,6 +126,12 @@ describe("NEGOCIO_NODE", () => {
     expect(NEGOCIO_NODE.hasMap).toBe(MAPS_CID);
     expect(JSON.stringify([NEGOCIO_NODE, RAFAEL_NODE, WEBSITE_NODE])).not.toContain("share.google");
   });
+  it("horário é 24 horas nos sete dias, igual à ficha do Google", () => {
+    const horario = NEGOCIO_NODE.openingHoursSpecification;
+    expect(horario.dayOfWeek).toHaveLength(7);
+    expect(horario.opens).toBe("00:00");
+    expect(horario.closes).toBe("23:59");
+  });
 });
 
 describe("RAFAEL_NODE", () => {
@@ -134,7 +140,9 @@ describe("RAFAEL_NODE", () => {
     expect(existsSync(emPublic(RAFAEL_NODE.image))).toBe(true);
   });
   it("sameAs só com https e knowsAbout preenchido", () => {
-    expect(RAFAEL_NODE.sameAs.length).toBeGreaterThan(0);
+    expect(RAFAEL_NODE.sameAs).toContain(
+      "https://www.linkedin.com/in/rafael-teixeira-capital-imobiliario/",
+    );
     for (const u of RAFAEL_NODE.sameAs) expect(u.startsWith("https://")).toBe(true);
     expect(RAFAEL_NODE.knowsAbout.length).toBeGreaterThan(0);
   });
