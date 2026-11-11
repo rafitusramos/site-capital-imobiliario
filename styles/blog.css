@@ -104,7 +104,10 @@
 .artigo-meta a{color:inherit;text-decoration:underline;text-decoration-color:rgba(10,36,28,.35);text-underline-offset:3px;}
 .artigo-meta a:hover{text-decoration-color:currentColor;}
 /* Em 360px a linha quebra; "Por Rafael Teixeira" e a data não podem partir ao
-   meio ("Por" sozinho, "26-/08-2026"). O span sem .sep é o da assinatura. */
+   meio ("Por" sozinho, "26-/08-2026"). O span sem .sep é o da assinatura.
+   O flex-wrap dá ponto de quebra entre os itens: no JSX não há espaço entre o
+   separador e o <time>, e sem isso o nowrap empurrava a data para fora da tela. */
+.artigo-meta{display:flex;flex-wrap:wrap;align-items:baseline;}
 .artigo-meta > span:not(.sep),.artigo-meta time{white-space:nowrap;}
 /* "Revisado em": linha própria, discreta, para não competir com o H1. */
 .artigo-revisado{margin:0 0 6px;font-family:var(--sans);font-size:13px;line-height:1.4;color:#5a615c;}
