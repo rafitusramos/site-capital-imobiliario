@@ -79,3 +79,12 @@ Nenhuma na rodada final. Na 1a tentativa do spec novo, o teste de layout falhou 
 ## Veredito
 
 **APROVADO** — tudo o que o PR prometeu confere no deploy (assinatura, caixa de autor, ausência de "Revisado em", `dateModified`/`lastmod` = publicação, `/sobre/` inalterado, campo no admin); suíte completa 198 passou, 0 falhou, 3 pulos condicionais; tsc e eslint limpos. Pendência pós-merge: validar o ramo "Revisado em" e o salvamento depois da migration 034.
+
+## Validação (Opus)
+
+- Revisão visual das capturas: caixa de autor certa em desktop e 360px; campo "Revisado em" do admin com texto de ajuda.
+- Defeito achado na captura de 360px: a data da assinatura partia ao meio ("26-" / "08-2026"). Corrigido em `styles/blog.css`. A primeira correção (`nowrap`) empurrava a data para fora da tela (scrollWidth 375 a 426), porque o JSX não tem espaço entre o separador e o `<time>`; a versão final usa `display:flex; flex-wrap:wrap` em `.artigo-meta`, com `nowrap` só na assinatura e na data.
+- Medição em 360px nos 8 artigos mais recentes, depois da correção: sem estouro fora das tabelas. Os três artigos com tabela larga (`investir-em-imovel-em-2026...`, `tabela-sac-ou-price...`, `os-condominios-de-vinhedo...`) continuam com rolagem horizontal, como já acontece em produção; fica para um hot-fix próprio.
+- `blog-autor.spec.ts` rerodado no deploy final: 18 passaram, 0 falharam, 1 pulou (admin no mobile).
+
+**Veredito: APROVADO.**
