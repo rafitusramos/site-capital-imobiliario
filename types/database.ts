@@ -101,6 +101,7 @@ export interface Database {
           canonical_url: string | null;
           rotulo: string | null;
           cta_pagina: string | null;
+          revisado_em: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -120,6 +121,7 @@ export interface Database {
           canonical_url?: string | null;
           rotulo?: string | null;
           cta_pagina?: string | null;
+          revisado_em?: string | null;
           created_at?: string;
           updated_at?: string;
         };

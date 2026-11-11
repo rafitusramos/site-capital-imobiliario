@@ -100,6 +100,12 @@ describe("sessão expirada", () => {
   });
 });
 
+function falsoUsuario() {
+  const falso = montarSupabase();
+  falso.definirUsuario({ id: "user-1" });
+  return falso;
+}
+
 describe("salvarPost", () => {
   test("sem id, insere com author_id do usuário e devolve o id novo", async () => {
     const falso = montarSupabase();
@@ -125,6 +131,52 @@ describe("salvarPost", () => {
     expect(resultado).toEqual({ sucesso: true, id: UUID_POST_EXISTENTE });
     const chamada = falso.chamadas.find((c) => c.tabela === "posts" && c.operacao === "update");
     expect(chamada).toBeDefined();
+  });
+
+  test("grava revisado_em no update", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("posts", "select", {
+      data: { slug: "como-funciona-o-home-equity", published_at: "2026-01-10T12:00:00+00:00" },
+      error: null,
+    });
+    falso.programarResposta("posts", "update", { data: [{ id: "linha-1" }], error: null });
+
+    const resultado = await salvarPost({
+      ...postValido(),
+      id: UUID_POST_EXISTENTE,
+      revisado_em: "2026-02-01",
+    });
+
+    expect(resultado.sucesso).toBe(true);
+    const chamada = falso.chamadas.find((c) => c.tabela === "posts" && c.operacao === "update");
+    expect((chamada!.payload as Record<string, unknown>).revisado_em).toBe("2026-02-01");
+  });
+
+  test("recusa revisado_em anterior à publicação, sem chegar ao update", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("posts", "select", {
+      data: { slug: "como-funciona-o-home-equity", published_at: "2026-01-10T12:00:00+00:00" },
+      error: null,
+    });
+
+    const resultado = await salvarPost({
+      ...postValido(),
+      id: UUID_POST_EXISTENTE,
+      revisado_em: "2026-01-09",
+    });
+
+    expect(resultado.sucesso).toBe(false);
+    expect(resultado.erro).toMatch(/anterior à data de publicação/);
+    expect(falso.chamadas.some((c) => c.tabela === "posts" && c.operacao === "update")).toBe(false);
+  });
+
+  test("recusa revisado_em futuro", async () => {
+    falsoUsuario();
+    const resultado = await salvarPost({ ...postValido(), revisado_em: "2999-01-01" });
+    expect(resultado.sucesso).toBe(false);
+    expect(resultado.erro).toMatch(/futura/);
   });
 
   test("erro 23505 no insert vira mensagem de slug duplicado", async () => {
@@ -209,6 +261,21 @@ describe("publicarPost", () => {
     expect(payload.status).toBe("published");
     expect(typeof payload.published_at).toBe("string");
     expect(Number.isNaN(Date.parse(payload.published_at as string))).toBe(false);
+  });
+
+  test("primeira publicação com revisado_em anterior a hoje é recusada antes do update", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-1" });
+    falso.programarResposta("posts", "select", {
+      data: { published_at: null, revisado_em: "2020-01-01" },
+      error: null,
+    });
+
+    const resultado = await publicarPost(UUID_POST, "artigo-x");
+
+    expect(resultado.sucesso).toBe(false);
+    expect(resultado.erro).toMatch(/Revisado em/);
+    expect(falso.chamadas.some((c) => c.tabela === "posts" && c.operacao === "update")).toBe(false);
   });
 
   test("post não encontrado devolve erro específico", async () => {
