@@ -14,6 +14,7 @@ import {
   formatarData,
 } from "@/lib/blog/blog";
 import { PostCard } from "@/components/blog/post-card";
+import { componentesMarkdownArtigo } from "@/components/blog/markdown";
 import { montarJsonLdArtigo } from "@/lib/blog/json-ld";
 import { imagemOg, SITE_NOME } from "@/lib/og";
 
@@ -98,7 +99,7 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
           {/* Ordem: H1, primeiro parágrafo, capa e só então o restante. */}
           <div className="artigo-texto">
             {primeiroParagrafo ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={componentesMarkdownArtigo}>
                 {primeiroParagrafo}
               </ReactMarkdown>
             ) : null}
@@ -110,7 +111,7 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
             ) : null}
 
             {restante ? (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={componentesMarkdownArtigo}>
                 {restante}
               </ReactMarkdown>
             ) : null}

@@ -116,7 +116,15 @@
    padding e bordas — chegavam aqui sem estilo algum e encolhidas ao conteúdo.
    Ocupam a largura da coluna de texto, com a primeira e a última célula
    alinhadas às margens do parágrafo para a tabela casar com o texto. */
-.artigo-texto table{width:100%;border-collapse:collapse;margin:24px 0 28px;}
+.artigo-texto table{width:100%;border-collapse:collapse;}
+/* Invólucro de components/blog/markdown.tsx: tabela mais larga que a coluna
+   (celular) rola dentro dele em vez de alargar a página. O margin saiu da
+   tabela para cá. Foco visível porque a região é alcançável por Tab. */
+.tabela-rolagem{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:24px 0 28px;}
+.tabela-rolagem:focus-visible{outline:2px solid var(--jade);outline-offset:4px;}
+@media(max-width:600px){
+  .artigo-texto th,.artigo-texto td{white-space:nowrap;}
+}
 .artigo-texto th{
   font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--jade);text-align:left;
