@@ -17,6 +17,9 @@ import { useGuardaAlteracoes } from "@/components/admin/useGuardaAlteracoes";
 import { houveAlteracao } from "@/lib/admin/alteracoes";
 import { useToast } from "@/lib/admin/toast";
 import { slugify } from "@/lib/blog/slugify";
+import { revisaoDoEditor } from "@/lib/blog/revisao";
+import { formatarDataNascimento } from "@/lib/data-nascimento";
+import { mascaraData } from "@/lib/mascaras";
 import type { PostAdmin } from "@/lib/queries/admin-posts";
 import type { Database } from "@/types/database";
 
@@ -33,6 +36,8 @@ type Valores = {
   cta_pagina: string;
   seo_title: string;
   seo_description: string;
+  /** Texto dd/mm/aaaa; convertido para ISO ao salvar. */
+  revisado_em: string;
 };
 
 type Enviando = "rascunho" | "publicar" | "despublicar" | "excluir" | "capa" | null;
@@ -49,6 +54,7 @@ function valoresIniciais(post: PostAdmin | null): Valores {
     cta_pagina: post?.cta_pagina ?? "",
     seo_title: post?.seo_title ?? "",
     seo_description: post?.seo_description ?? "",
+    revisado_em: formatarDataNascimento(post?.revisado_em),
   };
 }
 
@@ -109,12 +115,24 @@ export function PostEditor({
     return false;
   }
 
+  /** Payload da action: a data do editor (dd/mm/aaaa) vira ISO; inválida bloqueia. */
+  function montarPayload(): Parameters<typeof salvarPost>[0] | null {
+    const revisado = revisaoDoEditor(valores.revisado_em);
+    if (revisado === undefined) {
+      mostrarToast("erro", "Informe a data de revisão como dia/mês/ano (ex.: 10/11/2026) ou deixe em branco.");
+      return null;
+    }
+    return { ...valores, revisado_em: revisado, id: post?.id };
+  }
+
   async function salvarRascunho() {
     setErroSlug(null);
     if (bloqueadoPorSlug()) return;
 
+    const payload = montarPayload();
+    if (!payload) return;
     setEnviando("rascunho");
-    const resultado = await salvarPost({ ...valores, id: post?.id });
+    const resultado = await salvarPost(payload);
     setEnviando(null);
 
     if (!resultado.sucesso) {
@@ -134,8 +152,10 @@ export function PostEditor({
     setErroSlug(null);
     if (bloqueadoPorSlug()) return;
 
+    const payload = montarPayload();
+    if (!payload) return;
     setEnviando("publicar");
-    const resultadoSalvar = await salvarPost({ ...valores, id: post?.id });
+    const resultadoSalvar = await salvarPost(payload);
     if (!resultadoSalvar.sucesso || !resultadoSalvar.id) {
       setEnviando(null);
       mostrarToast("erro", resultadoSalvar.erro ?? "Não foi possível salvar antes de publicar.");
@@ -374,6 +394,25 @@ export function PostEditor({
             onChange={(e) => setValor("cta_pagina", e.target.value)}
             className={CAMPO}
           />
+
+          <label className={LABEL} htmlFor="revisado_em">
+            Revisado em
+          </label>
+          <input
+            id="revisado_em"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="dd/mm/aaaa"
+            maxLength={10}
+            value={valores.revisado_em}
+            onChange={(e) => setValor("revisado_em", mascaraData(e.target.value))}
+            aria-describedby="revisado_em_ajuda"
+            className={`${CAMPO} mb-1 font-mono`}
+          />
+          <p id="revisado_em_ajuda" className="mb-4 text-xs text-neutral-500">
+            Preencha só quando o conteúdo for revisado de verdade. Não muda com salvamentos comuns.
+            Aparece no artigo como &quot;Revisado em&quot; se for posterior à publicação.
+          </p>
 
           {post ? (
             <div className="mb-4 text-xs text-neutral-500">

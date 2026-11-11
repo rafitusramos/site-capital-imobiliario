@@ -16,6 +16,13 @@ import {
 import { PostCard } from "@/components/blog/post-card";
 import { montarJsonLdArtigo } from "@/lib/blog/json-ld";
 import { imagemOg, SITE_NOME } from "@/lib/og";
+import { CaixaAutor } from "@/components/blog/CaixaAutor";
+import { AUTOR } from "@/lib/autor";
+import {
+  dataDeModificacao,
+  dataDeRevisaoVisivel,
+  formatarDataRevisao,
+} from "@/lib/blog/revisao";
 
 export const revalidate = 3600;
 
@@ -53,8 +60,8 @@ export async function generateMetadata({
       images: [imagem],
       locale: "pt_BR",
       publishedTime: post.published_at ?? undefined,
-      modifiedTime: post.updated_at,
-      authors: ["Rafael Teixeira"],
+      modifiedTime: dataDeModificacao(post),
+      authors: [AUTOR.nome],
     },
     twitter: {
       card: "summary_large_image",
@@ -78,6 +85,7 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
     ? await getRelatedPosts(post.id, post.category_id, 3)
     : [];
 
+  const revisadoEm = dataDeRevisaoVisivel(post);
   const blogPostingJsonLd = montarJsonLdArtigo(post);
 
   return (
@@ -89,10 +97,27 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
       <div className="artigo-secao">
         <article className="artigo-corpo" id="topo">
           <div className="artigo-meta">
-            {categoriaNome}
-            <span className="sep">·</span>
-            {formatarData(post.published_at)}
+            <span>
+              Por <a href={AUTOR.url} rel="author">{AUTOR.nome}</a>
+            </span>
+            {categoriaNome ? (
+              <>
+                <span className="sep">·</span>
+                {categoriaNome}
+              </>
+            ) : null}
+            {post.published_at ? (
+              <>
+                <span className="sep">·</span>
+                <time dateTime={post.published_at}>{formatarData(post.published_at)}</time>
+              </>
+            ) : null}
           </div>
+          {revisadoEm ? (
+            <p className="artigo-revisado">
+              Revisado em <time dateTime={revisadoEm}>{formatarDataRevisao(revisadoEm)}</time>
+            </p>
+          ) : null}
           <h1>{post.title}</h1>
 
           {/* Ordem: H1, primeiro parágrafo, capa e só então o restante. */}
@@ -115,6 +140,8 @@ export default async function PaginaArtigo({ params }: PaginaArtigoProps) {
               </ReactMarkdown>
             ) : null}
           </div>
+
+          <CaixaAutor />
 
           <div className="artigo-cta">
             <h3>{cta.titulo}</h3>

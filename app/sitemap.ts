@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import { getPublishedPosts } from "@/lib/queries/posts";
 import { getImoveisParaSitemap } from "@/lib/queries/imoveis";
 import { SITE_URL } from "@/lib/site";
+import { dataDeModificacao } from "@/lib/blog/revisao";
 import { imagensDoImovel, imagensDoPost } from "@/lib/seo/sitemap-imagens";
 
 // lastModified das páginas fixas: mantido À MÃO, não gerado. Cada data é a
@@ -37,7 +38,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const paginasPosts: MetadataRoute.Sitemap = posts.map((post) => ({
     url: `${SITE_URL}/blog/${post.slug}/`,
-    lastModified: post.updated_at,
+    // Mesma regra do dateModified do JSON-LD; updated_at muda a cada salvamento.
+    lastModified: dataDeModificacao(post),
     images: imagensDoPost(post),
   }));
 

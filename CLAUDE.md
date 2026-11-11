@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1280 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **033**.
+Suíte em Vitest: `npm test` — 1324 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **034**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -273,6 +273,28 @@ Tudo derivado do cadastro em `lib/imoveis/seo.ts`, travado em
   em build sem chamar a API do YouTube, e schema incompleto cria erro de rich
   result novo — foi assim que o `Product` sem `offers` apareceu. A thumbnail é
   `img.youtube.com/vi/<id>/hqdefault.jpg`. Vale para as duas modalidades.
+
+### Autor e revisão dos artigos
+Todo artigo mostra a assinatura "Por Rafael Teixeira" (link `rel="author"` para `/sobre/`)
+na linha de meta e, no fim do `<article>`, entre o texto e o CTA, a caixa
+`components/blog/CaixaAutor.tsx` (`<aside aria-label>`, sem `<h2>`, foto com `alt=""`).
+Fora de `.artigo-texto`: o corpo do artigo não é tocado. Os dados e o texto vêm de
+`lib/autor.ts`, o mesmo de `/sobre/` (`DESCRICAO_SOBRE` é a meta description de `/sobre/`,
+travada caractere por caractere em `tests/unidade/autor.test.ts`; a caixa mostra a
+mesma descrição sem o "Rafael Teixeira:" inicial, via `resumoDoAutor`).
+
+- **`posts.revisado_em` (migration 034, `date`) x `updated_at`.** `updated_at` muda com
+  qualquer salvamento; usá-lo como "atualizado em" declararia revisão que não houve (o Google
+  trata data de atualização enganosa como sinal negativo, e crédito é YMYL). `revisado_em` é
+  preenchido à mão no admin ("Revisado em", máscara `dd/mm/aaaa`), não futuro e não anterior
+  ao dia da publicação (zod, action e constraint do banco, mesmo fuso São Paulo).
+- A regra mora em `lib/blog/revisao.ts` (pura): `dataDeRevisaoVisivel` decide o "Revisado em"
+  da página (só se posterior à publicação); `dataDeModificacao` (revisão, senão `published_at`,
+  senão `updated_at`) alimenta `dateModified` do JSON-LD, `lastModified` do sitemap e
+  `article:modified_time`. Trate `undefined` como `null`: as consultas usam `select("*")` e o
+  deploy da branch roda antes da migration. Data `aaaa-mm-dd` nunca passa por `new Date()` sem
+  fuso (`formatarDataRevisao` trabalha por texto). A importação de `.md` não tem o campo
+  (o frontmatter ignora chaves desconhecidas).
 
 ### Modalidade: lançamento x pronto
 `imoveis.modalidade` (migration 026; `lancamento` por padrão, então todo imóvel
