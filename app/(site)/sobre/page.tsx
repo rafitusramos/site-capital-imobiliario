@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@/styles/sobre.css";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
+import { montarProfilePage } from "@/lib/seo/perfil";
 
 const TITULO = "Sobre — Rafael Teixeira · Capital Imobiliário";
 const DESCRICAO =
@@ -30,9 +31,9 @@ export const metadata: Metadata = {
   },
 };
 
-const breadcrumbJsonLd = {
+const sobreJsonLd = {
   "@context": "https://schema.org",
-  ...montarBreadcrumb([{ nome: "Sobre" }]),
+  "@graph": [montarBreadcrumb([{ nome: "Sobre" }]), montarProfilePage()],
 };
 
 export default function SobrePage() {
@@ -40,7 +41,7 @@ export default function SobrePage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(sobreJsonLd) }}
       />
       <header className="hero hero-sobre">
         <div className="wrap">
