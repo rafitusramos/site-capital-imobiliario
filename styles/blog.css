@@ -103,6 +103,8 @@
 .artigo-meta .sep{color:#c9bfac;margin:0 8px;}
 .artigo-meta a{color:inherit;text-decoration:underline;text-decoration-color:rgba(10,36,28,.35);text-underline-offset:3px;}
 .artigo-meta a:hover{text-decoration-color:currentColor;}
+/* Em 360px a linha quebra; a data e o nome não podem partir ao meio ("26-/08-2026"). */
+.artigo-meta time,.artigo-meta a{white-space:nowrap;}
 /* "Revisado em": linha própria, discreta, para não competir com o H1. */
 .artigo-revisado{margin:0 0 6px;font-family:var(--sans);font-size:13px;line-height:1.4;color:#5a615c;}
 .artigo-revisado time{font-variant-numeric:tabular-nums;}
