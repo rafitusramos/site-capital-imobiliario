@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lerEventos } from "@/lib/instagram/eventos";
+import { lerEventoGravado, lerEventos } from "@/lib/instagram/eventos";
 import {
   IG_CONTA,
   IG_PESSOA,
@@ -69,5 +69,18 @@ describe("lerEventos", () => {
     const a = fixtureComentario();
     const b = fixtureMensagem();
     expect(lerEventos({ object: "instagram", entry: [...a.entry, ...b.entry] })).toHaveLength(2);
+  });
+});
+
+describe("lerEventoGravado", () => {
+  it("devolve o evento quando o payload gravado tem a forma certa", () => {
+    const e = { tipo: "botao" as const, chave: "m1", deId: "p1", payload: "ig:b1:x", titulo: "Oi" };
+    expect(lerEventoGravado(e)).toEqual(e);
+  });
+  it("null para forma inválida, tipo desconhecido ou valor não objeto", () => {
+    expect(lerEventoGravado({ tipo: "comentario", chave: "c" })).toBeNull();
+    expect(lerEventoGravado({ tipo: "outro" })).toBeNull();
+    expect(lerEventoGravado(null)).toBeNull();
+    expect(lerEventoGravado("x")).toBeNull();
   });
 });

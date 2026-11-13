@@ -113,3 +113,38 @@ export function lerEventos(corpo: unknown): EventoIg[] {
   }
   return eventos;
 }
+
+const textoOuNulo = z.string().nullable();
+const gravadoSchema = z.discriminatedUnion("tipo", [
+  z.object({
+    tipo: z.literal("comentario"),
+    chave: idSchema,
+    comentarioId: idSchema,
+    midiaId: idSchema,
+    deId: idSchema,
+    deUsername: textoOuNulo,
+    texto: z.string(),
+  }),
+  z.object({
+    tipo: z.literal("botao"),
+    chave: idSchema,
+    deId: idSchema,
+    payload: z.string(),
+    titulo: z.string(),
+  }),
+  z.object({
+    tipo: z.literal("texto"),
+    chave: idSchema,
+    deId: idSchema,
+    paraId: idSchema,
+    texto: textoOuNulo,
+    eco: z.boolean(),
+    mid: idSchema,
+  }),
+]);
+
+/** Volta o payload gravado em ig_eventos (o próprio EventoIg) ao tipo; null se a forma não confere. */
+export function lerEventoGravado(payload: unknown): EventoIg | null {
+  const r = gravadoSchema.safeParse(payload);
+  return r.success ? r.data : null;
+}

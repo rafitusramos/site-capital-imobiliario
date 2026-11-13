@@ -2,7 +2,7 @@
 // decisões puras de fluxo.ts sobre duas dependências injetáveis: o repositório
 // (Supabase) e o cliente da Graph API. Nada aqui conhece Supabase nem fetch.
 
-import type { EventoIg } from "./eventos";
+import { lerEventoGravado, type EventoIg } from "./eventos";
 import { ehTemporario, motivoLegivel, proximaTentativa, type ErroGraph } from "./fila";
 import { decidirAoComentar, decidirAoTocar, decidirLembrete, type Acao } from "./fluxo";
 import type { GraphIg, ResultadoGraph } from "./graph";
@@ -13,6 +13,8 @@ import type { Automacao, MensagemSaida, Participacao, Situacao } from "./tipos";
 
 const HORA_MS = 3600_000;
 const LIMITE_PADRAO = 20;
+const DIA_MS = 24 * HORA_MS;
+const ESPERA_REPROCESSO_MS = 2 * 60_000;
 
 // ---------------------------------------------------------------------------
 // Contrato do repositório (implementado em repositorio.ts)
@@ -115,7 +117,10 @@ export interface RepositorioIg {
   registrarClique(participacaoId: string, ua: string | null): Promise<void>;
   /** Apaga o texto/payload guardado do evento (privacidade); `chave` = chaveDoEvento. */
   descartarConteudo(chave: string): Promise<void>;
+  /** Sem erro: grava `processado_em`. Com erro: grava o erro, soma 1 em `tentativas` e deixa `processado_em` nulo (reprocessável). */
   marcarEvento(chave: string, erro?: string): Promise<void>;
+  /** Eventos ainda não processados (inclui os que falharam), recebidos entre `desde` e `ate`, com payload e `tentativas < 3`. */
+  eventosPendentes(desde: Date, ate: Date, limite: number): Promise<{ chave: string; payload: unknown }[]>;
   /** Grava os eventos do webhook (`on conflict do nothing`) e devolve só as chaves NOVAS. */
   registrarEventos(eventos: { chave: string; payload: unknown }[]): Promise<string[]>;
   /** `ig_conta.ultimo_evento_em = now()`. */
@@ -131,6 +136,8 @@ export interface DependenciasMotor {
 
 export interface Motor {
   processarEvento(e: EventoIg): Promise<void>;
+  /** Reprocessa eventos que ficaram sem processar (queda no meio, erro). Chamado pelo disparador, nunca por dentro de um evento. */
+  reprocessarPendentes(limite?: number): Promise<number>;
   dispararFila(limite?: number): Promise<{ enviados: number; falhas: number }>;
   registrarClique(codigo: string, ua: string | null): Promise<string | null>;
 }
@@ -227,6 +234,17 @@ export function criarMotor(dep: DependenciasMotor): Motor {
     }
   }
 
+  /** Nome e foto do contato novo; best effort: falha ou ausência seguem sem. */
+  async function consultarPerfil(igsid: string) {
+    if (!graph) return null;
+    try {
+      return await graph.perfil(igsid);
+    } catch (e) {
+      console.error("[instagram] consulta de perfil falhou", mensagemDe(e));
+      return null;
+    }
+  }
+
   async function aoComentar(e: Extract<EventoIg, { tipo: "comentario" }>): Promise<void> {
     const conta = await repo.conta();
     // Comentário da própria conta (a resposta pública que demos): não é lead.
@@ -249,9 +267,14 @@ export function criarMotor(dep: DependenciasMotor): Motor {
     const { automacao } = escolha;
     if (escolha.vincular) await repo.vincularProxima(automacao.id, e.midiaId);
 
+    const eraNovo = (await repo.contato(e.deId)) === null;
+    const perfil = eraNovo ? await consultarPerfil(e.deId) : null;
+    const username = perfil?.username ?? e.deUsername;
     const contato = await repo.salvarContato({
       igsid: e.deId,
-      ...(e.deUsername ? { username: e.deUsername } : {}),
+      ...(username ? { username } : {}),
+      ...(perfil?.nome ? { nome: perfil.nome } : {}),
+      ...(perfil?.fotoUrl ? { fotoUrl: perfil.fotoUrl } : {}),
     });
     const { participacao, situacaoAntes } = await repo.contarComentario({
       contatoId: contato.id,
@@ -283,7 +306,8 @@ export function criarMotor(dep: DependenciasMotor): Motor {
       chaveLembrete: `l:${e.chave}`,
     });
 
-    // Por último: se algo acima lançar, a reentrega do evento reprocessa.
+    // Por último: se algo acima lançar, o evento fica sem `processado_em` e o disparador
+    // o reprocessa (reprocessarPendentes); a mensagem já conhecida evita contar duas vezes.
     await repo.registrarMensagem({
       contatoId: contato.id,
       participacaoId: participacao.id,
@@ -450,10 +474,14 @@ export function criarMotor(dep: DependenciasMotor): Motor {
           texto: envio.tipo === "resposta_publica" ? (envio.payload?.texto ?? null) : (mensagem?.texto ?? null),
           metaId: r.id ?? null,
         });
-        if (situacao && envio.participacaoId) {
+        // DM entregue: a etiqueta de falha antiga já não vale. Resposta pública não limpa
+        // (não é DM) nem marca falha (ver abaixo).
+        const ehDm = envio.tipo !== "resposta_publica";
+        if (envio.participacaoId && (situacao || ehDm)) {
           await repo.atualizarParticipacao(envio.participacaoId, {
-            situacao,
+            ...(situacao ? { situacao } : {}),
             ...(situacao === "link_enviado" ? { linkEnviadoEm: agora().toISOString() } : {}),
+            ...(ehDm ? { falhaMotivo: null, falhaEm: null } : {}),
           });
         }
       } catch (ex) {
@@ -478,7 +506,8 @@ export function criarMotor(dep: DependenciasMotor): Motor {
         tentativas: envio.tentativas + 1,
         erro: erro.mensagem,
       });
-      if (envio.participacaoId) {
+      // Resposta pública recusada fica só no envio `falhou`: não marca a pessoa como falha.
+      if (envio.participacaoId && envio.tipo !== "resposta_publica") {
         await repo.atualizarParticipacao(envio.participacaoId, {
           falhaMotivo: motivo,
           falhaEm: agora().toISOString(),
@@ -486,6 +515,28 @@ export function criarMotor(dep: DependenciasMotor): Motor {
       }
     }
     return "falha";
+  }
+
+  async function reprocessarPendentes(limite: number = LIMITE_PADRAO): Promise<number> {
+    let reprocessados = 0;
+    try {
+      const ate = new Date(agora().getTime() - ESPERA_REPROCESSO_MS);
+      const desde = new Date(agora().getTime() - DIA_MS);
+      const pendentes = await repo.eventosPendentes(desde, ate, limite);
+      for (const p of pendentes) {
+        const evento = lerEventoGravado(p.payload);
+        if (!evento) {
+          console.error("[instagram] evento pendente com payload inválido", p.chave);
+          await repo.marcarEvento(p.chave, "payload inválido");
+          continue;
+        }
+        await processarEvento(evento);
+        reprocessados += 1;
+      }
+    } catch (ex) {
+      console.error("[instagram] reprocessarPendentes falhou", ex);
+    }
+    return reprocessados;
   }
 
   async function dispararFila(limite: number = LIMITE_PADRAO): Promise<{ enviados: number; falhas: number }> {
@@ -560,5 +611,5 @@ export function criarMotor(dep: DependenciasMotor): Motor {
     return destino;
   }
 
-  return { processarEvento, dispararFila, registrarClique };
+  return { processarEvento, reprocessarPendentes, dispararFila, registrarClique };
 }

@@ -30,6 +30,7 @@ export async function POST(req: Request): Promise<Response> {
   try {
     const motor = await motorPadrao();
     if (!motor) return json({ enviados: 0, falhas: 0 }, 200);
+    await motor.reprocessarPendentes(LOTE);
     return json(await motor.dispararFila(LOTE), 200);
   } catch (ex) {
     console.error("[instagram] disparar falhou", ex);

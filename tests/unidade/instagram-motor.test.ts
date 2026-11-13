@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   automacaoFalsa,
   CONTA_ID,
@@ -613,5 +613,179 @@ describe("robustez", () => {
     };
     await expect(ruim.motor.processarEvento(comentario())).resolves.toBeUndefined();
     expect(ruim.repo.eventosMarcados).toEqual([{ chave: "comentario:com1", erro: "banco fora" }]);
+  });
+});
+
+describe("falha na participação (revisão final, item 1)", () => {
+  it("falha de lembrete seguida de envio ok limpa a etiqueta de falha", async () => {
+    const { repo, graph, relogio, motor } = montar();
+    const p = await pessoaNaSequencia(repo, {
+      situacao: "link_enviado",
+      janelaAte: new Date(T0.getTime() + 20 * HORA).toISOString(),
+    });
+    await repo.enfileirar({
+      chave: "l:1",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "lembrete",
+      enviarApos: new Date(T0.getTime() - MIN),
+    });
+    graph.falhas.push({ status: 400, codigo: 10, mensagem: "outside of allowed window" });
+    await motor.dispararFila();
+    expect(repo.participacoes[0].falhaMotivo).toBe("Janela de 24 h fechada");
+
+    relogio.agora = new Date(T0.getTime() + MIN);
+    await repo.enfileirar({
+      chave: "l:2",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "lembrete",
+      enviarApos: new Date(T0.getTime()),
+    });
+    await motor.dispararFila();
+    expect(graph.mensagens).toHaveLength(2);
+    expect(repo.participacoes[0].falhaMotivo).toBeNull();
+    expect(repo.participacoes[0].falhaEm).toBeNull();
+  });
+
+  it("DM sem mudança de situação (retomada) também limpa a falha", async () => {
+    const { repo, motor } = montar();
+    const p = await pessoaNaSequencia(repo);
+    repo.participacoes[0].falhaMotivo = "antiga";
+    repo.participacoes[0].falhaEm = "2026-11-12T10:00:00.000Z";
+    await repo.enfileirar({
+      chave: "c:x:privada",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "resposta_privada",
+      comentarioId: "x",
+      payload: { mensagem: { texto: "oi", botao: { tipo: "link", titulo: "Abrir", url: "https://a/" } } },
+      enviarApos: T0,
+    });
+    await motor.dispararFila();
+    expect(repo.participacoes[0].falhaMotivo).toBeNull();
+  });
+
+  it("resposta pública recusada não grava falha na participação (fica só no envio)", async () => {
+    const { repo, graph, motor } = montar();
+    const p = await pessoaNaSequencia(repo);
+    graph.falhas.push({ status: 400, codigo: 100, mensagem: "comentário apagado" });
+    await repo.enfileirar({
+      chave: "c:x:publica",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "resposta_publica",
+      comentarioId: "x",
+      payload: { texto: "oi" },
+      enviarApos: T0,
+    });
+    await motor.dispararFila();
+    expect(repo.envios[0].estado).toBe("falhou");
+    expect(repo.envios[0].erro).toBeTruthy();
+    expect(repo.participacoes[0].falhaMotivo).toBeUndefined();
+  });
+
+  it("resposta pública enviada com sucesso não apaga falha de DM", async () => {
+    const { repo, motor } = montar();
+    const p = await pessoaNaSequencia(repo);
+    repo.participacoes[0].falhaMotivo = "DM falhou";
+    repo.participacoes[0].falhaEm = "2026-11-12T10:00:00.000Z";
+    await repo.enfileirar({
+      chave: "c:y:publica",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "resposta_publica",
+      comentarioId: "y",
+      payload: { texto: "oi" },
+      enviarApos: T0,
+    });
+    await motor.dispararFila();
+    expect(repo.participacoes[0].falhaMotivo).toBe("DM falhou");
+  });
+});
+
+describe("eventos pendentes (revisão final, item 4)", () => {
+  async function gravar(repo: RepositorioFalso, e: EventoIg, recebidoHaMin: number, relogio: { agora: Date }) {
+    const antes = relogio.agora;
+    relogio.agora = new Date(T0.getTime() - recebidoHaMin * MIN);
+    await repo.registrarEventos([{ chave: chaveDoEvento(e), payload: e }]);
+    relogio.agora = antes;
+  }
+
+  it("reprocessa evento antigo sem processado_em e o marca", async () => {
+    const { repo, relogio, motor } = montar();
+    await gravar(repo, comentario(), 5, relogio);
+    expect(await motor.reprocessarPendentes()).toBe(1);
+    expect(repo.participacoes).toHaveLength(1);
+    expect(repo.eventosGravados[0].processado).toBe(true);
+    expect(await motor.reprocessarPendentes()).toBe(0);
+  });
+
+  it("ignora evento recente (< 2 min), com mais de 1 dia, ou com 3 tentativas", async () => {
+    const { repo, relogio, motor } = montar();
+    await gravar(repo, comentario({ chave: "a", comentarioId: "a" }), 1, relogio);
+    await gravar(repo, comentario({ chave: "b", comentarioId: "b" }), 25 * 60, relogio);
+    await gravar(repo, comentario({ chave: "c", comentarioId: "c" }), 10, relogio);
+    repo.eventosGravados.find((e) => e.chave === "comentario:c")!.tentativas = 3;
+    expect(await motor.reprocessarPendentes()).toBe(0);
+    expect(repo.participacoes).toHaveLength(0);
+  });
+
+  it("falha no reprocesso conta tentativa e não marca processado", async () => {
+    const { repo, relogio, motor } = montar();
+    await gravar(repo, comentario(), 5, relogio);
+    repo.salvarContato = async () => {
+      throw new Error("banco fora");
+    };
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    await motor.reprocessarPendentes();
+    expect(repo.eventosGravados[0].processado).toBe(false);
+    expect(repo.eventosGravados[0].tentativas).toBe(1);
+  });
+
+  it("payload com forma inválida não derruba o lote e conta tentativa", async () => {
+    const { repo, relogio, motor } = montar();
+    const antes = relogio.agora;
+    relogio.agora = new Date(T0.getTime() - 5 * MIN);
+    await repo.registrarEventos([{ chave: "comentario:ruim", payload: { tipo: "comentario" } }]);
+    relogio.agora = antes;
+    await gravar(repo, comentario(), 5, relogio);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await motor.reprocessarPendentes()).toBe(1);
+    expect(repo.eventosGravados[0].tentativas).toBe(1);
+    expect(repo.participacoes).toHaveLength(1);
+  });
+});
+
+describe("perfil do contato novo (revisão final, item 5)", () => {
+  it("contato novo: consulta o perfil e salva nome, @ e foto", async () => {
+    const { repo, graph, motor } = montar();
+    graph.perfilValor = { username: "maria_real", nome: "Maria Souza", fotoUrl: "https://f/x.jpg" };
+    await motor.processarEvento(comentario());
+    expect(graph.consultasPerfil).toEqual([PESSOA_ID]);
+    expect(repo.contatos[0]).toMatchObject({ username: "maria_real", nome: "Maria Souza", fotoUrl: "https://f/x.jpg" });
+  });
+
+  it("contato já existente: não consulta de novo", async () => {
+    const { repo, graph, motor } = montar();
+    await repo.salvarContato({ igsid: PESSOA_ID });
+    await motor.processarEvento(comentario());
+    expect(graph.consultasPerfil).toEqual([]);
+  });
+
+  it("perfil nulo ou lançando: segue sem, com o @ do comentário", async () => {
+    const a = montar();
+    await a.motor.processarEvento(comentario());
+    expect(a.repo.participacoes).toHaveLength(1);
+    expect(a.repo.contatos[0].username).toBe("maria");
+    expect(a.repo.contatos[0].nome).toBeUndefined();
+
+    const b = montar();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    b.graph.perfil = async () => {
+      throw new Error("rede");
+    };
+    await b.motor.processarEvento(comentario());
+    expect(b.repo.participacoes).toHaveLength(1);
   });
 });

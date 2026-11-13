@@ -366,12 +366,43 @@ export function criarRepositorio(): RepositorioIg {
     },
 
     async marcarEvento(chave, erro) {
+      if (!erro) {
+        const { error } = await db
+          .from("ig_eventos")
+          .update({ processado_em: new Date().toISOString(), erro: null })
+          .eq("chave", chave)
+          .select("chave");
+        if (error) console.error("[instagram] marcar evento falhou:", error.message);
+        return;
+      }
+      // Com erro, `processado_em` fica nulo para o reprocessamento; conta a tentativa.
+      const { data: atual, error: erroLeitura } = await db
+        .from("ig_eventos")
+        .select("tentativas")
+        .eq("chave", chave)
+        .maybeSingle();
+      if (erroLeitura) console.error("[instagram] ler tentativas do evento falhou:", erroLeitura.message);
       const { error } = await db
         .from("ig_eventos")
-        .update({ processado_em: new Date().toISOString(), erro: erro ?? null })
+        .update({ erro, tentativas: (atual?.tentativas ?? 0) + 1 })
         .eq("chave", chave)
         .select("chave");
       if (error) console.error("[instagram] marcar evento falhou:", error.message);
+    },
+
+    async eventosPendentes(desde, ate, limite) {
+      const { data, error } = await db
+        .from("ig_eventos")
+        .select("chave, payload")
+        .is("processado_em", null)
+        .not("payload", "is", null)
+        .lt("tentativas", 3)
+        .gte("recebido_em", desde.toISOString())
+        .lte("recebido_em", ate.toISOString())
+        .order("recebido_em", { ascending: true })
+        .limit(limite);
+      if (error) falha("ler eventos pendentes", error);
+      return (data ?? []).map((l) => ({ chave: l.chave, payload: l.payload }));
     },
 
     async registrarEventos(eventos) {

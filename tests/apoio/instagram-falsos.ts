@@ -52,6 +52,8 @@ export interface ContatoFalso {
   id: string;
   igsid: string;
   username?: string;
+  nome?: string;
+  fotoUrl?: string;
   segue?: boolean | null;
   ultimaInteracaoEm: string;
 }
@@ -82,7 +84,13 @@ export class RepositorioFalso implements RepositorioIg {
   vinculos: Array<{ automacaoId: string; midiaId: string }> = [];
   descartados: string[] = [];
   eventosMarcados: Array<{ chave: string; erro?: string }> = [];
-  eventosGravados: Array<{ chave: string; payload: unknown }> = [];
+  eventosGravados: Array<{
+    chave: string;
+    payload: unknown;
+    recebidoEm: Date;
+    processado: boolean;
+    tentativas: number;
+  }> = [];
   toquesUltimoEvento = 0;
   private seq = 0;
 
@@ -124,6 +132,8 @@ export class RepositorioFalso implements RepositorioIg {
       this.contatos.push(existente);
     }
     if (c.username) existente.username = c.username;
+    if (c.nome) existente.nome = c.nome;
+    if (c.fotoUrl) existente.fotoUrl = c.fotoUrl;
     if (c.segue !== undefined) existente.segue = c.segue;
     existente.ultimaInteracaoEm = this.agora().toISOString();
     return { id: existente.id };
@@ -264,13 +274,26 @@ export class RepositorioFalso implements RepositorioIg {
   }
   async marcarEvento(chave: string, erro?: string) {
     this.eventosMarcados.push({ chave, erro });
+    const e = this.eventosGravados.find((x) => x.chave === chave);
+    if (!e) return;
+    if (erro) e.tentativas += 1;
+    else e.processado = true;
+  }
+  async eventosPendentes(desde: Date, ate: Date, limite: number) {
+    return this.eventosGravados
+      .filter(
+        (e) =>
+          !e.processado && e.payload != null && e.tentativas < 3 && e.recebidoEm >= desde && e.recebidoEm <= ate,
+      )
+      .slice(0, limite)
+      .map((e) => ({ chave: e.chave, payload: e.payload }));
   }
 
   async registrarEventos(eventos: { chave: string; payload: unknown }[]) {
     const novos: string[] = [];
     for (const e of eventos) {
       if (this.eventosGravados.some((x) => x.chave === e.chave)) continue;
-      this.eventosGravados.push(e);
+      this.eventosGravados.push({ ...e, recebidoEm: this.agora(), processado: false, tentativas: 0 });
       novos.push(e.chave);
     }
     return novos;
@@ -343,8 +366,11 @@ export class GraphFalso implements GraphIg {
   async publicacoes() {
     return [];
   }
-  async perfil() {
-    return null;
+  perfilValor: { username: string | null; nome: string | null; fotoUrl: string | null } | null = null;
+  consultasPerfil: string[] = [];
+  async perfil(igsid: string) {
+    this.consultasPerfil.push(igsid);
+    return this.perfilValor;
   }
   totalEnvios() {
     return this.respostasPrivadas.length + this.mensagens.length + this.respostasPublicas.length;

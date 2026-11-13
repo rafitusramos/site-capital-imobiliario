@@ -1197,6 +1197,7 @@ export interface Database {
           payload: Record<string, unknown> | null;
           processado_em: string | null;
           erro: string | null;
+          tentativas: number;
         };
         Insert: {
           chave: string;
@@ -1204,6 +1205,7 @@ export interface Database {
           payload?: Record<string, unknown> | null;
           processado_em?: string | null;
           erro?: string | null;
+          tentativas?: number;
         };
         Update: Partial<Database["public"]["Tables"]["ig_eventos"]["Insert"]>;
         Relationships: [];
@@ -1428,6 +1430,8 @@ export interface Database {
       };
       ig_apagar_inativos: { Args: Record<PropertyKey, never>; Returns: number };
       ig_limpar_eventos: { Args: Record<PropertyKey, never>; Returns: number };
+      // Do admin (confere eh_admin() por dentro): apaga os eventos do webhook de um contato.
+      ig_apagar_eventos_do_contato: { Args: { p_igsid: string }; Returns: number };
       // true só quando o usuário autenticado tem profiles.role = 'admin'.
       // SECURITY DEFINER com search_path fixo (017_crm_funcoes_rls.sql) —
       // usada dentro das policies de RLS, não chamada diretamente pela
