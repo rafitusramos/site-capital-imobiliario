@@ -44,7 +44,10 @@ Dados do dono, recebidos em 2026-11-10 e já na branch:
 
 - Caixa de autor no fim de cada artigo: foto, nome, CRECI, uma frase e link para `/sobre/`.
   Fica fora do corpo do artigo (regra 2: texto de artigo não é reescrito).
-- "Atualizado em" visível no artigo, vindo de `updated_at`, quando diferente da publicação.
+- "Revisado em" visível no artigo, vindo de `posts.revisado_em` (migration 034, preenchido à mão),
+  quando posterior à publicação. Não usa `updated_at`: ele muda a cada salvamento e sinalizaria
+  revisão que não houve. A mesma regra alimenta `dateModified` e o sitemap (`lib/blog/revisao.ts`).
+- **Implementada na branch `feature/seo-autor`** (ainda não mergeada).
 - Exige as skills `frontend-design` e `ui-ux-pro-max`.
 
 ## Fase 4 — Landing de consórcio (`feature/landing-consorcio`)

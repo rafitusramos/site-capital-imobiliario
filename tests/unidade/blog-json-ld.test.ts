@@ -76,4 +76,22 @@ describe("montarJsonLdArtigo", () => {
         .description,
     ).toBeUndefined();
   });
+
+  test("dateModified é revisado_em quando existe e é posterior à publicação", () => {
+    const bp = blogPosting(postBase({ revisado_em: "2026-03-05" }));
+    expect(bp.dateModified).toBe("2026-03-05");
+  });
+
+  test("sem revisado_em (null ou undefined), dateModified é a publicação e não updated_at", () => {
+    expect(blogPosting(postBase({ revisado_em: null })).dateModified).toBe(
+      "2026-01-10T12:00:00+00:00",
+    );
+    expect(blogPosting(postBase()).dateModified).toBe("2026-01-10T12:00:00+00:00");
+  });
+
+  test("rascunho sem published_at usa updated_at e nunca fica vazio", () => {
+    expect(blogPosting(postBase({ published_at: null })).dateModified).toBe(
+      "2026-02-01T12:00:00+00:00",
+    );
+  });
 });

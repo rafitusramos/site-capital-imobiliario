@@ -101,6 +101,17 @@
 .artigo-corpo{max-width:1080px;margin:0 auto;padding:0 24px;}
 .artigo-meta{margin:36px 0 8px;font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--jade);}
 .artigo-meta .sep{color:#c9bfac;margin:0 8px;}
+.artigo-meta a{color:inherit;text-decoration:underline;text-decoration-color:rgba(10,36,28,.35);text-underline-offset:3px;}
+.artigo-meta a:hover{text-decoration-color:currentColor;}
+/* Em 360px a linha quebra; "Por Rafael Teixeira" e a data não podem partir ao
+   meio ("Por" sozinho, "26-/08-2026"). O span sem .sep é o da assinatura.
+   O flex-wrap dá ponto de quebra entre os itens: no JSX não há espaço entre o
+   separador e o <time>, e sem isso o nowrap empurrava a data para fora da tela. */
+.artigo-meta{display:flex;flex-wrap:wrap;align-items:baseline;}
+.artigo-meta > span:not(.sep),.artigo-meta time{white-space:nowrap;}
+/* "Revisado em": linha própria, discreta, para não competir com o H1. */
+.artigo-revisado{margin:0 0 6px;font-family:var(--sans);font-size:13px;line-height:1.4;color:#5a615c;}
+.artigo-revisado time{font-variant-numeric:tabular-nums;}
 /* Tipografia do artigo: Archivo (--sans) em H1, H2, H3 e corpo de texto.
    O serifado --texto ficou só no resto do site. */
 .artigo-corpo h1{font-family:var(--sans);font-weight:600;font-size:clamp(28px,4.5vw,42px);color:var(--abissal);line-height:1.12;margin-bottom:24px;}
@@ -116,7 +127,15 @@
    padding e bordas — chegavam aqui sem estilo algum e encolhidas ao conteúdo.
    Ocupam a largura da coluna de texto, com a primeira e a última célula
    alinhadas às margens do parágrafo para a tabela casar com o texto. */
-.artigo-texto table{width:100%;border-collapse:collapse;margin:24px 0 28px;}
+.artigo-texto table{width:100%;border-collapse:collapse;}
+/* Invólucro de components/blog/markdown.tsx: tabela mais larga que a coluna
+   (celular) rola dentro dele em vez de alargar a página. O margin saiu da
+   tabela para cá. Foco visível porque a região é alcançável por Tab. */
+.tabela-rolagem{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:24px 0 28px;}
+.tabela-rolagem:focus-visible{outline:2px solid var(--jade);outline-offset:4px;}
+@media(max-width:600px){
+  .artigo-texto th,.artigo-texto td{white-space:nowrap;}
+}
 .artigo-texto th{
   font-family:var(--sans);font-weight:600;font-size:12px;letter-spacing:.1em;
   text-transform:uppercase;color:var(--jade);text-align:left;
@@ -128,6 +147,28 @@
 .artigo-texto tbody tr:last-child td{border-bottom:none;}
 .artigo-texto em{color:#5b615d;font-size:14.5px;}
 
+.caixa-autor{
+  display:flex;align-items:flex-start;gap:20px;margin:44px 0 0;padding:24px 0;
+  border-top:1px solid rgba(10,36,28,.15);border-bottom:1px solid rgba(10,36,28,.15);
+}
+.caixa-autor-foto{
+  flex:none;width:88px;height:88px;border-radius:50%;object-fit:cover;object-position:50% 18%;
+  background:var(--areia);
+}
+.caixa-autor-corpo{min-width:0;}
+.caixa-autor-nome{font-family:var(--display);font-weight:400;font-size:22px;line-height:1.2;color:var(--abissal);margin:0;}
+.caixa-autor-funcao{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--jade);margin:6px 0 10px;line-height:1.5;}
+.caixa-autor-texto{font-family:var(--sans);font-size:15px;line-height:1.65;color:#2a2f2c;margin:0 0 10px;}
+.caixa-autor-link{
+  display:inline-flex;align-items:center;min-height:44px;
+  font-family:var(--sans);font-weight:600;font-size:14px;letter-spacing:.04em;
+  color:var(--jade);text-decoration:underline;text-underline-offset:3px;
+}
+.caixa-autor-link:hover{color:var(--abissal);}
+@media (max-width:480px){
+  .caixa-autor{flex-direction:column;gap:14px;}
+  .caixa-autor-foto{width:72px;height:72px;}
+}
 .artigo-cta{background:var(--abissal);border-radius:8px;padding:36px 32px;text-align:center;margin:44px 0;}
 .artigo-cta h3{font-family:var(--display);font-weight:400;font-size:24px;color:var(--branco);margin-bottom:16px;line-height:1.2;}
 .artigo-cta .cta{background:var(--branco);color:var(--abissal);}

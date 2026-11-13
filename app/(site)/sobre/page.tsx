@@ -3,10 +3,10 @@ import "@/styles/sobre.css";
 import { IMAGEM_OG_PADRAO, OG_IMAGEM_PADRAO } from "@/lib/og";
 import { montarBreadcrumb } from "@/lib/seo/breadcrumb";
 import { montarProfilePage } from "@/lib/seo/perfil";
+import { DESCRICAO_SOBRE } from "@/lib/autor";
 
 const TITULO = "Sobre — Rafael Teixeira · Capital Imobiliário";
-const DESCRICAO =
-  "Rafael Teixeira: corretor de imóveis (CRECI-SP) e correspondente bancário especializado em crédito com garantia de imóvel, financiamento SBPE e consórcio. Certificação FEBRABAN CA-600.";
+const DESCRICAO = DESCRICAO_SOBRE;
 
 export const metadata: Metadata = {
   title: TITULO,

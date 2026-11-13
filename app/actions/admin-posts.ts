@@ -7,9 +7,12 @@ import type { createClient } from "@/lib/supabase/server";
 import { postFormSchema, type PostFormInput } from "@/lib/validations/post";
 import { parseFrontmatter } from "@/lib/blog/frontmatter";
 import { slugify } from "@/lib/blog/slugify";
+import { diaDePublicacao, revisaoCoerente } from "@/lib/blog/revisao";
 
-export interface SalvarPostInput extends PostFormInput {
+export interface SalvarPostInput extends Omit<PostFormInput, "revisado_em"> {
   id?: string;
+  /** ISO `aaaa-mm-dd` ou vazio; ausente conta como vazio. */
+  revisado_em?: string | null;
 }
 
 export interface AcaoResultado {
@@ -31,6 +34,8 @@ const EXTENSAO_POR_MIME: Record<string, string> = {
 const TIPOS_CAPA_PERMITIDOS = new Set(Object.keys(EXTENSAO_POR_MIME));
 
 const ERRO_ID_INVALIDO = "Artigo inválido.";
+const ERRO_REVISAO_ANTES_DA_PUBLICACAO =
+  "A data de revisão não pode ser anterior à data de publicação.";
 const ERRO_NAO_ENCONTRADO = "Artigo não encontrado ou sem permissão para alterá-lo.";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
@@ -86,7 +91,7 @@ export async function salvarPost(input: SalvarPostInput): Promise<AcaoResultado>
     // ficaria em cache apontando para um artigo que não responde mais.
     const { data: anterior, error: erroAnterior } = await supabase
       .from("posts")
-      .select("slug")
+      .select("slug, published_at")
       .eq("id", id)
       .maybeSingle();
     if (erroAnterior) {
@@ -94,6 +99,9 @@ export async function salvarPost(input: SalvarPostInput): Promise<AcaoResultado>
       return { sucesso: false, erro: "Não foi possível salvar o artigo." };
     }
     if (!anterior) return { sucesso: false, erro: ERRO_NAO_ENCONTRADO };
+    if (!revisaoCoerente(parsed.data.revisado_em, anterior.published_at ?? null)) {
+      return { sucesso: false, erro: ERRO_REVISAO_ANTES_DA_PUBLICACAO };
+    }
 
     const { data: atualizados, error } = await supabase
       .from("posts")
@@ -139,7 +147,7 @@ export async function publicarPost(id: string, slug: string): Promise<AcaoResult
 
   const { data: atual, error: erroAtual } = await supabase
     .from("posts")
-    .select("published_at")
+    .select("*")
     .eq("id", id)
     .single();
   if (erroAtual) {
@@ -147,9 +155,19 @@ export async function publicarPost(id: string, slug: string): Promise<AcaoResult
     return { sucesso: false, erro: "Artigo não encontrado." };
   }
 
+  // Primeira publicação: published_at nasce agora. Uma revisão datada antes de
+  // hoje violaria a constraint da migration 034 (e seria incoerente).
+  const publicadoEm = atual.published_at ?? new Date().toISOString();
+  if (!atual.published_at && !revisaoCoerente(atual.revisado_em ?? null, publicadoEm)) {
+    return {
+      sucesso: false,
+      erro: `${ERRO_REVISAO_ANTES_DA_PUBLICACAO} Limpe o campo "Revisado em" (publicação em ${diaDePublicacao(publicadoEm)}).`,
+    };
+  }
+
   const { data: atualizados, error } = await supabase
     .from("posts")
-    .update({ status: "published", published_at: atual.published_at ?? new Date().toISOString() })
+    .update({ status: "published", published_at: publicadoEm })
     .eq("id", id)
     .select("id");
   if (error) {

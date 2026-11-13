@@ -1,5 +1,6 @@
 import { SITE_URL } from "@/lib/site";
 import { urlAbsoluta } from "@/lib/og";
+import { dataDeModificacao } from "@/lib/blog/revisao";
 
 /** Campos do post que entram no JSON-LD do artigo. */
 export type PostParaJsonLd = {
@@ -9,6 +10,8 @@ export type PostParaJsonLd = {
   excerpt: string | null;
   published_at: string | null;
   updated_at: string;
+  /** Opcional: a coluna só existe depois da migration 034. */
+  revisado_em?: string | null;
   cover_image: string | null;
 };
 
@@ -33,7 +36,8 @@ export function montarJsonLdArtigo(post: PostParaJsonLd) {
         headline: post.title,
         description: post.seo_description ?? post.excerpt ?? undefined,
         datePublished: post.published_at ?? undefined,
-        dateModified: post.updated_at,
+        // Revisão real, não updated_at (ver lib/blog/revisao.ts).
+        dateModified: dataDeModificacao(post),
         image: post.cover_image ? urlAbsoluta(post.cover_image) : undefined,
         url: urlPost,
         mainEntityOfPage: urlPost,
