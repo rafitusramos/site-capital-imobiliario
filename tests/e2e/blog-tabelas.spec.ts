@@ -41,4 +41,43 @@ test.describe("tabelas dos artigos em 360px", () => {
     }
     expect(comTabela, "nenhum artigo com tabela foi exercitado").toBeGreaterThan(0);
   });
+
+  test("tabela mais larga que a coluna mostra o esmaecido da direita e, rolada, o da esquerda", async ({ page }) => {
+    await page.goto("/blog/");
+    const slugs = await page.$$eval('a[href^="/blog/"]', (as) =>
+      [...new Set(as.map((a) => a.getAttribute("href") ?? ""))].filter((h) => /^\/blog\/[^/]+\/$/.test(h)),
+    );
+
+    const rolagem = page.locator(".artigo-texto .tabela-rolagem");
+    let achou = false;
+    for (const slug of slugs) {
+      await page.goto(slug);
+      const n = await rolagem.count();
+      for (let i = 0; i < n; i++) {
+        const largaDemais = await rolagem
+          .nth(i)
+          .evaluate((el) => el.scrollWidth > el.clientWidth + 1);
+        if (!largaDemais) continue;
+        achou = true;
+        const alvo = rolagem.nth(i);
+        const moldura = page.locator(".artigo-texto .tabela-moldura").nth(i);
+        await alvo.scrollIntoViewIfNeeded();
+
+        // Inicial: conteúdo escondido à direita, nada à esquerda.
+        await expect(moldura).toHaveAttribute("data-dir", "true");
+        await expect(moldura).not.toHaveAttribute("data-esq", /.*/);
+        const opacidade = await moldura.evaluate((el) => getComputedStyle(el, "::after").opacity);
+        expect(opacidade, `${slug}: opacidade do esmaecido direito`).toBe("1");
+
+        // Rolada até o fim: some o da direita, aparece o da esquerda.
+        await alvo.evaluate((el) => {
+          el.scrollLeft = el.scrollWidth;
+        });
+        await expect(moldura).toHaveAttribute("data-esq", "true");
+        await expect(moldura).not.toHaveAttribute("data-dir", /.*/);
+        return;
+      }
+    }
+    test.skip(!achou, "nenhum artigo com tabela mais larga que a coluna");
+  });
 });

@@ -1,4 +1,5 @@
 import type { Components } from "react-markdown";
+import { TabelaRolavel } from "./TabelaRolavel";
 
 /**
  * Componentes do ReactMarkdown no corpo do artigo.
@@ -13,9 +14,6 @@ import type { Components } from "react-markdown";
  */
 export const componentesMarkdownArtigo: Components = {
   // `node` é o nó mdast: separado para não ir ao DOM como atributo.
-  table: ({ node, ...props }) => (
-    <div className="tabela-rolagem" role="region" aria-label="Tabela" tabIndex={0}>
-      <table {...props} />
-    </div>
-  ),
+  // TabelaRolavel monta o invólucro e liga o esmaecido quando há colunas escondidas.
+  table: ({ node, ...props }) => <TabelaRolavel {...props} />,
 };
