@@ -109,7 +109,8 @@ export function CampoPalavras({ id, valor, onChange, sugestoes, desabilitado = f
             erro ? "border-[var(--erro)]" : "border-neutral-300"
           } ${desabilitado ? "cursor-not-allowed opacity-60" : "cursor-text"}`}
         >
-          <ul className="contents" aria-label="Palavras-chave adicionadas">
+          {/* role explícito: o Safari tira a semântica de lista de um ul com display: contents */}
+          <ul role="list" className="contents" aria-label="Palavras-chave adicionadas">
             {valor.map((p, i) => (
               <li
                 key={`${p}-${i}`}
@@ -153,13 +154,14 @@ export function CampoPalavras({ id, valor, onChange, sugestoes, desabilitado = f
             className="min-w-[8rem] flex-1 border-0 bg-transparent px-1 py-1 text-sm text-[var(--tinta)] outline-none"
           />
         </div>
-        {aberta && (
-          <ul
-            id={listaId}
-            role="listbox"
-            aria-label="Palavras já usadas"
-            className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border border-neutral-300 bg-white py-1 shadow-sm"
-          >
+        {/* Sempre no DOM (oculta quando fechada) para o aria-controls do campo apontar para algo que existe. */}
+        <ul
+          id={listaId}
+          role="listbox"
+          aria-label="Palavras já usadas"
+          hidden={!aberta}
+          className="absolute left-0 right-0 z-10 mt-1 max-h-60 overflow-auto rounded-md border border-neutral-300 bg-white py-1 shadow-sm"
+        >
             {opcoes.map((o, i) => (
               <li
                 key={o}
@@ -178,8 +180,7 @@ export function CampoPalavras({ id, valor, onChange, sugestoes, desabilitado = f
                 {o}
               </li>
             ))}
-          </ul>
-        )}
+        </ul>
       </div>
       <div id={ajudaId} className="mt-1 text-xs">
         <span className={erro ? "text-[var(--erro)]" : "text-neutral-600"}>{erro ?? AJUDA}</span>
