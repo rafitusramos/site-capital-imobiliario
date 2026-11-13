@@ -136,7 +136,7 @@ export function ListaAutomacoes({ automacoes }: { automacoes: AutomacaoPainel[] 
       <ConfirmarAcao
         aberto={excluindo !== null}
         titulo="Excluir automação?"
-        descricao={`"${excluindo?.nome ?? ""}" deixa de responder comentários. Não dá para desfazer.`}
+        descricao={`"${excluindo?.nome ?? ""}" deixa de responder comentários. As conversas de quem já participou continuam na caixa de entrada, marcadas como "Automação excluída". Lembretes pendentes não serão enviados e os links já enviados passam a levar para a página inicial do site. Não dá para desfazer.`}
         rotuloConfirmar="Excluir"
         variante="perigo"
         pendente={pendente}

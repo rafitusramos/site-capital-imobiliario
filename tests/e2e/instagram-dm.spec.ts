@@ -272,3 +272,54 @@ test.describe("Instagram DM: palavras-chave em chips (nova automação, sem salv
   });
   }
 });
+
+/*
+ * PR #94 (hot-fix/historico-automacao-excluida). SOMENTE LEITURA: o diálogo de
+ * exclusão é aberto e CANCELADO, nunca confirmado.
+ */
+test.describe("PR #94: páginas públicas seguem de pé", () => {
+  test("home responde 200", async ({ request }) => {
+    expect((await request.get("/")).status()).toBe(200);
+  });
+
+  test("/politica-de-privacidade/ responde 200", async ({ request }) => {
+    expect((await request.get("/politica-de-privacidade/")).status()).toBe(200);
+  });
+});
+
+test.describe("PR #94: caixa de entrada e exclusão de automação (somente leitura)", () => {
+  test.use({ storageState: ESTADO_ADMIN });
+
+  test("caixa de entrada mostra resumo do dia e filtros, sem erro", async ({ page, acoesServidor }) => {
+    await abrirAdmin(page, "/admin/instagram/");
+    await expect(page.getByRole("heading", { name: "Hoje" })).toBeVisible();
+    await expect(page.getByLabel("Filtrar por automação")).toBeVisible();
+    await expect(page.getByLabel("Filtrar por situação")).toBeVisible();
+    await expect(page.getByText(/Application error|Internal Server Error|Algo deu errado/i)).toHaveCount(0);
+    expect(acoesServidor).toEqual([]);
+  });
+
+  test("/admin/instagram/automacoes/ carrega sem erro", async ({ page, acoesServidor }) => {
+    await abrirAdmin(page, "/admin/instagram/automacoes/");
+    await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.getByText(/Application error|Internal Server Error|Algo deu errado/i)).toHaveCount(0);
+    expect(acoesServidor).toEqual([]);
+  });
+
+  test("diálogo de exclusão explica o histórico e é CANCELADO", async ({ page, acoesServidor }) => {
+    await abrirAdmin(page, "/admin/instagram/automacoes/");
+    const botoes = page.getByRole("button", { name: "Excluir", exact: true });
+    test.skip((await botoes.count()) === 0, "nenhuma automação cadastrada: não há botão Excluir para abrir");
+    const dialogo = page.getByRole("alertdialog");
+    // Antes da hidratação o clique se perde: repete só enquanto o diálogo não abre.
+    await expect(async () => {
+      if (!(await dialogo.isVisible())) await botoes.first().click();
+      await expect(dialogo).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+    await expect(dialogo).toContainText("continuam na caixa de entrada");
+    await expect(dialogo).toContainText("Automação excluída");
+    await dialogo.getByRole("button", { name: "Cancelar" }).click();
+    await expect(dialogo).toBeHidden();
+    expect(acoesServidor, "nenhuma Server Action (exclusão não confirmada)").toEqual([]);
+  });
+});

@@ -27,8 +27,9 @@ const INPUT =
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
     <fieldset className="rounded-md border border-neutral-200 bg-white p-5">
-      <legend className="px-1 text-sm font-semibold text-[var(--abissal)]">{titulo}</legend>
-      <div className="mt-2 flex flex-col gap-4">{children}</div>
+      {/* float tira a legend da borda do fieldset (posição nativa) e a põe dentro do cartão */}
+      <legend className="float-left mb-2 w-full p-0 text-sm font-semibold text-[var(--abissal)]">{titulo}</legend>
+      <div className="clear-both flex flex-col gap-4">{children}</div>
     </fieldset>
   );
 }

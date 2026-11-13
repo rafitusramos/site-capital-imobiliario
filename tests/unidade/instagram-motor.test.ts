@@ -871,3 +871,42 @@ describe("perfil do contato novo (revisão final, item 5)", () => {
     expect(b.repo.participacoes).toHaveLength(1);
   });
 });
+
+describe("participação de automação excluída (automacaoId nulo, migration 037)", () => {
+  it("toque no botão é ignorado: nada enviado, situação intacta", async () => {
+    const { repo, graph, motor } = montar();
+    const p = await pessoaNaSequencia(repo, { automacaoId: null });
+    await motor.processarEvento(toque(p.id, "midx"));
+
+    expect(graph.totalEnvios()).toBe(0);
+    expect(repo.participacoes[0].situacao).toBe("aguardando_botao");
+  });
+
+  it("lembrete pendente é cancelado no disparo, sem chamar a Graph", async () => {
+    const { repo, graph, motor } = montar();
+    const p = await pessoaNaSequencia(repo, {
+      automacaoId: null,
+      situacao: "link_enviado",
+      janelaAte: new Date(T0.getTime() + HORA).toISOString(),
+    });
+    await repo.enfileirar({
+      chave: "l:orfao",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "lembrete",
+      enviarApos: new Date(T0.getTime() - MIN),
+    });
+    await motor.dispararFila();
+
+    expect(repo.envios[0].estado).toBe("cancelado");
+    expect(graph.totalEnvios()).toBe(0);
+  });
+
+  it("clique no link antigo devolve null (o /ir/ cai no site) e não registra clique", async () => {
+    const { repo, motor } = montar();
+    await pessoaNaSequencia(repo, { automacaoId: null, situacao: "link_enviado", codigo: "orfao12345" });
+
+    expect(await motor.registrarClique("orfao12345", "Instagram 300.0.0.0")).toBeNull();
+    expect(repo.cliques).toHaveLength(0);
+  });
+});
