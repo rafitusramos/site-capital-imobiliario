@@ -162,8 +162,35 @@ describe("alternar / excluir", () => {
   test("excluirAutomacao e excluirContato confirmam linha apagada", async () => {
     falso.programarResposta("ig_automacoes", "delete", { data: [], error: null });
     expect((await excluirAutomacao(ID)).sucesso).toBe(false);
+    falso.programarResposta("ig_contatos", "select", { data: { igsid: "igsid-1" }, error: null });
     falso.programarResposta("ig_contatos", "delete", { data: [{ id: ID }], error: null });
     expect(await excluirContato(ID)).toEqual({ sucesso: true });
+  });
+
+  test("excluirContato apaga os eventos do webhook (por igsid) antes de apagar o contato", async () => {
+    falso.programarResposta("ig_contatos", "select", { data: { igsid: "igsid-1" }, error: null });
+    falso.programarResposta("ig_contatos", "delete", { data: [{ id: ID }], error: null });
+    expect(await excluirContato(ID)).toEqual({ sucesso: true });
+    expect(falso.chamadasRpc).toEqual([{ nome: "ig_apagar_eventos_do_contato", params: { p_igsid: "igsid-1" } }]);
+    const ordem = [
+      ...falso.chamadas.map((c, i) => ({ k: `${c.tabela}:${c.operacao}`, i })),
+    ];
+    expect(ordem.some((o) => o.k === "ig_contatos:delete")).toBe(true);
+  });
+
+  test("excluirContato: falha ao apagar eventos não apaga o contato", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    falso.programarResposta("ig_contatos", "select", { data: { igsid: "igsid-1" }, error: null });
+    falso.programarRpc("ig_apagar_eventos_do_contato", { data: null, error: { message: "boom" } });
+    const r = await excluirContato(ID);
+    expect(r.sucesso).toBe(false);
+    expect(falso.chamadas.some((c) => c.tabela === "ig_contatos" && c.operacao === "delete")).toBe(false);
+  });
+
+  test("excluirContato: contato inexistente", async () => {
+    falso.programarResposta("ig_contatos", "select", { data: null, error: null });
+    expect(await excluirContato(ID)).toEqual({ sucesso: false, erro: "Contato não encontrado." });
+    expect(falso.chamadasRpc).toHaveLength(0);
   });
 
   test("id que não é uuid é recusado", async () => {

@@ -1,4 +1,5 @@
-import { motorPadrao } from "@/lib/instagram/motor-padrao";
+import { destinoComUtm } from "@/lib/instagram/link";
+import { motorPadrao, repositorioPadrao } from "@/lib/instagram/motor-padrao";
 import { SITE_URL } from "@/lib/site";
 
 // Link curto /ir/<codigo>/: registra o clique e redireciona ao destino da
@@ -21,7 +22,14 @@ export async function GET(
   try {
     const { codigo } = await ctx.params;
     const motor = await motorPadrao();
-    if (!motor) return redirecionar(SITE_URL);
+    if (!motor) {
+      // Sem motor (falta config ou a conta caiu) a pessoa ainda precisa chegar ao destino
+      // do link que recebeu: resolve pelo repositório, sem registrar clique.
+      const repo = repositorioPadrao();
+      const p = await repo.participacaoPorCodigo(codigo);
+      const a = p ? await repo.automacao(p.automacaoId) : null;
+      return redirecionar(a ? destinoComUtm(a.linkUrl, a.slug) : SITE_URL);
+    }
     const destino = await motor.registrarClique(codigo, req.headers.get("user-agent"));
     return redirecionar(destino ?? SITE_URL);
   } catch (ex) {

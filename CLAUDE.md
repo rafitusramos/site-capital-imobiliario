@@ -127,8 +127,8 @@ Substitui o ManyChat: comentário numa publicação com palavra-chave dispara re
   `ig-disparar` (todo minuto), `ig-apagar-inativos` (diário) e `ig-limpar-eventos` (brutos > 30 dias).
   `CRON_SECRET` na Vercel tem de ser igual a `ig_cron_secret`.
 - **Trava 503:** faltando qualquer uma das 5 variáveis (`META_APP_ID`, `META_APP_SECRET`,
-  `META_LOGIN_CONFIG_ID`, `META_WEBHOOK_VERIFY_TOKEN`, `CRON_SECRET`; `lib/instagram/config.ts`), todo
-  `/api/meta/*` responde 503 e não envia nada. É o que impede preview e produção (mesmo banco) de
+  `META_LOGIN_CONFIG_ID`, `META_WEBHOOK_VERIFY_TOKEN`, `CRON_SECRET`; `lib/instagram/config.ts`), `webhook` e `disparar`
+  respondem 503 e não enviam nada (o `retorno/` é só de admin e não usa a trava). É o que impede preview e produção (mesmo banco) de
   processarem o mesmo evento: as variáveis existem **só** no ambiente Production da Vercel.
 - **Eco:** a Meta devolve ao webhook as DMs que nós mesmos mandamos. Identificamos pelo `meta_id`
   (`ig_mensagens`/`ig_envios`) **e** pela janela de 60 s de `envioRecente` (o eco pode chegar antes de
@@ -146,7 +146,7 @@ Substitui o ManyChat: comentário numa publicação com palavra-chave dispara re
   apagado por `ig_apagar_inativos`; "Excluir dados deste contato" na caixa de entrada.
 - **`// CONFERIR:` em `lib/instagram/graph.ts`** (versão/endereço da Graph, formato do template de
   botão, campo "segue a conta") não foram validados com a conta real: confirmar no primeiro teste
-  de produção (Etapa 6 do roteiro) antes de desligar o ManyChat.
+  com a conta real antes de desligar o ManyChat.
 - **Política de privacidade** ganhou seção própria sobre as conversas do Instagram; `lib/legal.ts` e
   `TEXTO_CONSENTIMENTO` não mudam.
 - **Vitest só roda a partir de `C:\` maiúsculo** (PowerShell). Com `c:` minúsculo todo arquivo

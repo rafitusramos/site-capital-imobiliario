@@ -176,6 +176,24 @@ export async function excluirContato(id: string): Promise<AcaoResultado> {
   if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
   if (!idSchema.safeParse(id).success) return { sucesso: false, erro: "Contato inválido." };
 
+  // Os eventos do webhook não têm FK para o contato (só guardam o igsid no payload): saem antes,
+  // por função do banco (authenticated não lê ig_eventos). Se falhar, o contato fica para nova tentativa.
+  const { data: contato, error: erroLeitura } = await supabase
+    .from("ig_contatos")
+    .select("igsid")
+    .eq("id", id)
+    .maybeSingle();
+  if (erroLeitura) {
+    console.error("[excluirContato] ler contato", erroLeitura);
+    return { sucesso: false, erro: "Não foi possível excluir o contato." };
+  }
+  if (!contato) return { sucesso: false, erro: "Contato não encontrado." };
+  const { error: erroEventos } = await supabase.rpc("ig_apagar_eventos_do_contato", { p_igsid: contato.igsid });
+  if (erroEventos) {
+    console.error("[excluirContato] apagar eventos", erroEventos);
+    return { sucesso: false, erro: "Não foi possível excluir o contato." };
+  }
+
   const { data, error } = await supabase.from("ig_contatos").delete().eq("id", id).select("id");
   if (error) {
     console.error("[excluirContato]", error);

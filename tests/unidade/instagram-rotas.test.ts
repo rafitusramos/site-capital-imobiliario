@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import { RepositorioFalso } from "../apoio/instagram-falsos";
+import { automacaoFalsa, PESSOA_ID, RepositorioFalso } from "../apoio/instagram-falsos";
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/server", () => ({
@@ -14,6 +14,7 @@ const configMeta = vi.fn();
 const motor = {
   processarEvento: vi.fn(async () => {}),
   dispararFila: vi.fn(async () => ({ enviados: 2, falhas: 1 })),
+  reprocessarPendentes: vi.fn(async () => 0),
   registrarClique: vi.fn<(c: string, ua: string | null) => Promise<string | null>>(async () => null),
 };
 let repo: RepositorioFalso;
@@ -162,6 +163,13 @@ describe("disparar", () => {
     expect(await r.json()).toEqual({ enviados: 2, falhas: 1 });
     expect(motor.dispararFila).toHaveBeenCalledWith(20);
   });
+  test("reprocessa eventos pendentes antes de disparar a fila", async () => {
+    await chamar("Bearer cron");
+    expect(motor.reprocessarPendentes).toHaveBeenCalledWith(20);
+    expect(motor.reprocessarPendentes.mock.invocationCallOrder[0]).toBeLessThan(
+      motor.dispararFila.mock.invocationCallOrder[0],
+    );
+  });
   test("motor indisponível devolve zeros", async () => {
     motorDisponivel = false;
     const r = await chamar("Bearer cron");
@@ -192,6 +200,19 @@ describe("/ir/[codigo]", () => {
     const r = await chamar("abc");
     expect(r.status).toBe(302);
     expect(r.headers.get("location")).toBe(SITE_URL);
+  });
+  test("sem motor, ainda resolve o destino pelo repositório, sem registrar clique", async () => {
+    motorDisponivel = false;
+    repo.automacoes.push(automacaoFalsa({ linkUrl: `${SITE_URL}/imoveis/`, slug: "camp" }));
+    const c = await repo.salvarContato({ igsid: PESSOA_ID });
+    repo.semear({ contatoId: c.id, codigo: "abc" });
+    const r = await chamar("abc");
+    expect(r.status).toBe(302);
+    const loc = new URL(r.headers.get("location")!);
+    expect(loc.origin + loc.pathname).toBe(`${SITE_URL}/imoveis/`);
+    expect(loc.searchParams.get("utm_campaign")).toBe("camp");
+    expect(repo.cliques).toHaveLength(0);
+    expect(motor.registrarClique).not.toHaveBeenCalled();
   });
   test("motor lançando ainda redireciona para o site", async () => {
     motor.registrarClique.mockRejectedValueOnce(new Error("boom"));
