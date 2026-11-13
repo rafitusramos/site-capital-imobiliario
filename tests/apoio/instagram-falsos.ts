@@ -155,6 +155,7 @@ export class RepositorioFalso implements RepositorioIg {
     return this.participacoes.filter((p) => p.contatoId === contatoId);
   }
   async contarComentario(p: {
+    comentarioId: string;
     contatoId: string;
     automacaoId: string;
     midiaId: string;
@@ -162,8 +163,14 @@ export class RepositorioFalso implements RepositorioIg {
   }) {
     const existente = await this.participacao(p.contatoId, p.automacaoId, p.midiaId);
     if (existente) {
+      // Espelha o repositório real: o mesmo comentário não é contado duas vezes.
+      if (existente.ultimoComentarioId === p.comentarioId) {
+        return { participacao: existente, situacaoAntes: existente.situacaoAntesUltimo };
+      }
       const antes: Situacao = existente.situacao;
       existente.comentarios += 1;
+      existente.ultimoComentarioId = p.comentarioId;
+      existente.situacaoAntesUltimo = antes;
       return { participacao: existente, situacaoAntes: antes };
     }
     const nova = {
@@ -173,6 +180,8 @@ export class RepositorioFalso implements RepositorioIg {
       midiaId: p.midiaId,
       situacao: "aguardando_botao" as Situacao,
       comentarios: 1,
+      ultimoComentarioId: p.comentarioId as string | null,
+      situacaoAntesUltimo: null as Situacao | null,
       codigo: p.codigo,
       janelaAte: null,
     };
@@ -310,6 +319,8 @@ export class RepositorioFalso implements RepositorioIg {
       midiaId: "m1",
       situacao: "link_enviado",
       comentarios: 1,
+      ultimoComentarioId: null,
+      situacaoAntesUltimo: null,
       codigo: `cod${this.seq}`,
       janelaAte: null,
       ...p,

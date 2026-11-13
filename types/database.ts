@@ -1100,6 +1100,8 @@ export interface Database {
           midia_id: string;
           situacao: IgSituacao;
           comentarios: number;
+          ultimo_comentario_id: string | null;
+          situacao_antes_ultimo: IgSituacao | null;
           codigo: string;
           janela_ate: string | null;
           link_enviado_em: string | null;
@@ -1116,6 +1118,8 @@ export interface Database {
           midia_id: string;
           situacao: IgSituacao;
           comentarios?: number;
+          ultimo_comentario_id?: string | null;
+          situacao_antes_ultimo?: IgSituacao | null;
           codigo: string;
           janela_ate?: string | null;
           link_enviado_em?: string | null;

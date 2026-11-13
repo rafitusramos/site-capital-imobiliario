@@ -67,6 +67,8 @@ function paraParticipacao(r: LinhaParticipacao): Participacao {
     midiaId: r.midia_id,
     situacao: r.situacao,
     comentarios: r.comentarios,
+    ultimoComentarioId: r.ultimo_comentario_id ?? null,
+    situacaoAntesUltimo: r.situacao_antes_ultimo ?? null,
     codigo: r.codigo,
     janelaAte: r.janela_ate,
   };
@@ -85,15 +87,26 @@ export function criarRepositorio(): RepositorioIg {
   }
   const base = () => db.from("ig_participacoes").select("*");
 
-  async function incrementar(atual: Participacao): Promise<Participacao> {
+  /** Conta o comentário uma única vez: o mesmo `comentarioId` de novo devolve o estado gravado. */
+  async function contarNaExistente(
+    atual: Participacao,
+    comentarioId: string,
+  ): Promise<{ participacao: Participacao; situacaoAntes: Participacao["situacao"] | null }> {
+    if (atual.ultimoComentarioId === comentarioId) {
+      return { participacao: atual, situacaoAntes: atual.situacaoAntesUltimo };
+    }
     const { data, error } = await db
       .from("ig_participacoes")
-      .update({ comentarios: atual.comentarios + 1 })
+      .update({
+        comentarios: atual.comentarios + 1,
+        ultimo_comentario_id: comentarioId,
+        situacao_antes_ultimo: atual.situacao,
+      })
       .eq("id", atual.id)
       .select("*")
       .single();
     if (error) falha("incrementar comentários", error);
-    return paraParticipacao(data);
+    return { participacao: paraParticipacao(data), situacaoAntes: atual.situacao };
   }
 
   return {
@@ -182,9 +195,7 @@ export function criarRepositorio(): RepositorioIg {
 
     async contarComentario(p) {
       const existente = await this.participacao(p.contatoId, p.automacaoId, p.midiaId);
-      if (existente) {
-        return { participacao: await incrementar(existente), situacaoAntes: existente.situacao };
-      }
+      if (existente) return contarNaExistente(existente, p.comentarioId);
       const { data, error } = await db
         .from("ig_participacoes")
         .insert({
@@ -193,6 +204,8 @@ export function criarRepositorio(): RepositorioIg {
           midia_id: p.midiaId,
           situacao: "aguardando_botao",
           comentarios: 1,
+          ultimo_comentario_id: p.comentarioId,
+          situacao_antes_ultimo: null,
           codigo: p.codigo,
         })
         .select("*")
@@ -202,7 +215,7 @@ export function criarRepositorio(): RepositorioIg {
         // Corrida: outro evento criou a linha entre a leitura e a escrita.
         const outra = await this.participacao(p.contatoId, p.automacaoId, p.midiaId);
         if (!outra) falha("criar participação", error);
-        return { participacao: await incrementar(outra), situacaoAntes: outra.situacao };
+        return contarNaExistente(outra, p.comentarioId);
       }
       return { participacao: paraParticipacao(data), situacaoAntes: null };
     },

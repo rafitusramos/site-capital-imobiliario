@@ -757,6 +757,88 @@ describe("eventos pendentes (revisão final, item 4)", () => {
   });
 });
 
+describe("contagem idempotente por comentário (correção residual)", () => {
+  type Mensagem = { texto: string };
+  const textoPrivada = (repo: RepositorioFalso, comentarioId: string) =>
+    (repo.envios.find((e) => e.chave === `c:${comentarioId}:privada`)?.payload as { mensagem: Mensagem } | null)
+      ?.mensagem.texto;
+
+  it("1º comentário: enfileirar falha, reprocessa o mesmo evento => comentarios 1 e DM1 (não retomada)", async () => {
+    const { repo, motor } = montar();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const original = repo.enfileirar.bind(repo);
+    let falhou = false;
+    repo.enfileirar = async (e) => {
+      if (!falhou) {
+        falhou = true;
+        throw new Error("banco fora");
+      }
+      return original(e);
+    };
+    await motor.processarEvento(comentario());
+    expect(repo.participacoes[0].comentarios).toBe(1);
+    expect(repo.envios).toHaveLength(0);
+
+    await motor.processarEvento(comentario());
+    expect(repo.participacoes).toHaveLength(1);
+    expect(repo.participacoes[0].comentarios).toBe(1);
+    expect(textoPrivada(repo, "com1")).toBe("DM1");
+  });
+
+  it("registrarMensagem falha no 1º comentário, reprocessa => comentarios 1", async () => {
+    const { repo, motor } = montar();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const original = repo.registrarMensagem.bind(repo);
+    let falhou = false;
+    repo.registrarMensagem = async (m) => {
+      if (!falhou) {
+        falhou = true;
+        throw new Error("banco fora");
+      }
+      return original(m);
+    };
+    await motor.processarEvento(comentario());
+    await motor.processarEvento(comentario());
+    expect(repo.participacoes[0].comentarios).toBe(1);
+    expect(textoPrivada(repo, "com1")).toBe("DM1");
+  });
+
+  it("2º comentário com falha e reprocesso => comentarios 2 e decisão usa a situação anterior", async () => {
+    const { repo, motor } = montar();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const c = await repo.salvarContato({ igsid: PESSOA_ID });
+    repo.semear({ contatoId: c.id, situacao: "aguardando_botao", comentarios: 1, ultimoComentarioId: "com0" });
+    const original = repo.enfileirar.bind(repo);
+    let falhou = false;
+    repo.enfileirar = async (e) => {
+      if (!falhou) {
+        falhou = true;
+        throw new Error("banco fora");
+      }
+      return original(e);
+    };
+    await motor.processarEvento(comentario({ chave: "com2", comentarioId: "com2" }));
+    expect(repo.participacoes[0].comentarios).toBe(2);
+    expect(repo.participacoes[0].situacaoAntesUltimo).toBe("aguardando_botao");
+
+    // Entre a falha e o reprocesso a situação mudou (ex.: outro fluxo); a decisão segue a original.
+    repo.participacoes[0].situacao = "link_enviado";
+    await motor.processarEvento(comentario({ chave: "com2", comentarioId: "com2" }));
+    expect(repo.participacoes[0].comentarios).toBe(2);
+    const privada = repo.envios.find((e) => e.chave === "c:com2:privada");
+    expect(privada).toBeDefined();
+    // Retomada de aguardando_botao (a situação original), não a de link_enviado.
+    expect(textoPrivada(repo, "com2")).toBe(automacaoFalsa().retomadaBotaoTexto);
+  });
+
+  it("comentário diferente continua contando", async () => {
+    const { repo, motor } = montar();
+    await motor.processarEvento(comentario());
+    await motor.processarEvento(comentario({ chave: "com2", comentarioId: "com2" }));
+    expect(repo.participacoes[0].comentarios).toBe(2);
+  });
+});
+
 describe("perfil do contato novo (revisão final, item 5)", () => {
   it("contato novo: consulta o perfil e salva nome, @ e foto", async () => {
     const { repo, graph, motor } = montar();

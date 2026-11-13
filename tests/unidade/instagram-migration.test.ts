@@ -38,6 +38,10 @@ describe("035: Instagram DM", () => {
     ["ig_mensagens", "participacao_id"],
   ])("índice em %s(%s)", (t, c) =>
     expect(sql).toMatch(new RegExp(`create index \\w+\\s+on public\\.${t} \\(${c}\\)`, "i")));
+  it("ig_participacoes guarda o último comentário contado e a situação de antes dele", () => {
+    expect(sql).toMatch(/ultimo_comentario_id\s+text\b/i);
+    expect(sql).toMatch(/situacao_antes_ultimo\s+text check \(situacao_antes_ultimo is null or situacao_antes_ultimo in \('aguardando_botao', 'aguardando_seguir', 'link_enviado', 'link_aberto'\)\)/i);
+  });
   it("ig_eventos conta tentativas", () => expect(sql).toMatch(/tentativas\s+int not null default 0/i));
   it("ig_apagar_eventos_do_contato: definer, search_path, eh_admin, grants", () => {
     const f = sql.match(/function public\.ig_apagar_eventos_do_contato[\s\S]*?\$\$;/i)![0];

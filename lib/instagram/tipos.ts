@@ -47,6 +47,9 @@ export interface Participacao {
   midiaId: string;
   situacao: Situacao;
   comentarios: number;
+  /** Último comentário contado e a situação de antes dele (nulo = participação nova). */
+  ultimoComentarioId: string | null;
+  situacaoAntesUltimo: Situacao | null;
   codigo: string;
   janelaAte: string | null;
 }

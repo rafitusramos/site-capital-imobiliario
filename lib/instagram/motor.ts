@@ -95,8 +95,13 @@ export interface RepositorioIg {
   participacaoPorId(id: string): Promise<Participacao | null>;
   participacaoPorCodigo(codigo: string): Promise<Participacao | null>;
   participacoesDoContato(contatoId: string): Promise<Participacao[]>;
-  /** Cria em `aguardando_botao` com 1 comentário, ou incrementa. */
+  /**
+   * Cria em `aguardando_botao` com 1 comentário, ou incrementa. Idempotente por `comentarioId`:
+   * se a participação já contou esse comentário, não incrementa e devolve a situação de antes
+   * gravada na primeira vez (`null` = era nova).
+   */
   contarComentario(p: {
+    comentarioId: string;
     contatoId: string;
     automacaoId: string;
     midiaId: string;
@@ -277,6 +282,7 @@ export function criarMotor(dep: DependenciasMotor): Motor {
       ...(perfil?.fotoUrl ? { fotoUrl: perfil.fotoUrl } : {}),
     });
     const { participacao, situacaoAntes } = await repo.contarComentario({
+      comentarioId: e.comentarioId,
       contatoId: contato.id,
       automacaoId: automacao.id,
       midiaId: e.midiaId,
@@ -307,7 +313,9 @@ export function criarMotor(dep: DependenciasMotor): Motor {
     });
 
     // Por último: se algo acima lançar, o evento fica sem `processado_em` e o disparador
-    // o reprocessa (reprocessarPendentes); a mensagem já conhecida evita contar duas vezes.
+    // o reprocessa (reprocessarPendentes). A contagem é travada por `ultimo_comentario_id`
+    // (contarComentario): o reprocesso não incrementa de novo e reaproveita a situação
+    // de antes; os envios têm chave própria. `mensagemConhecida` só cobre o evento já concluído.
     await repo.registrarMensagem({
       contatoId: contato.id,
       participacaoId: participacao.id,

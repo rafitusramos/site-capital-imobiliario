@@ -133,6 +133,11 @@ create table public.ig_participacoes (
   midia_id         text not null,
   situacao         text not null check (situacao in ('aguardando_botao', 'aguardando_seguir', 'link_enviado', 'link_aberto')),
   comentarios      int not null default 0,
+  -- Idempotência da contagem: último comentário contado e a situação que a participação
+  -- tinha ANTES dele (nulo = participação nova). O reprocesso do mesmo comentário não
+  -- incrementa de novo e repete a decisão original.
+  ultimo_comentario_id   text,
+  situacao_antes_ultimo  text check (situacao_antes_ultimo is null or situacao_antes_ultimo in ('aguardando_botao', 'aguardando_seguir', 'link_enviado', 'link_aberto')),
   codigo           text not null unique,
   janela_ate       timestamptz,
   link_enviado_em  timestamptz,
