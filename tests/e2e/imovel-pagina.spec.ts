@@ -15,6 +15,10 @@ async function primeiroImovel(page: Page): Promise<string> {
 }
 
 test.describe("/imoveis/<slug>/ — página do primeiro imóvel da listagem", () => {
+  // Deploy de preview com cache frio do otimizador de imagem; em produção o teste já
+  // roda em ~23 s, perto do limite de 30 s.
+  test.describe.configure({ timeout: 60_000 });
+
   test("metadados e dados estruturados", async ({ page }) => {
     const caminho = await primeiroImovel(page);
     await new ImovelPage(page).goto(caminho);
