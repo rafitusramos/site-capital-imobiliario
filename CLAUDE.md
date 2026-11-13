@@ -147,8 +147,8 @@ Substitui o ManyChat: comentário numa publicação com palavra-chave dispara re
 - **`// CONFERIR:` em `lib/instagram/graph.ts`** (versão/endereço da Graph, formato do template de
   botão, campo "segue a conta") não foram validados com a conta real: confirmar no primeiro teste
   com a conta real antes de desligar o ManyChat.
-- **Política de privacidade** ganhou seção própria sobre as conversas do Instagram; `lib/legal.ts` e
-  `TEXTO_CONSENTIMENTO` não mudam.
+- **Política de privacidade** ganhou seção própria sobre as conversas do Instagram (data "atualizado em" 13/11/2026);
+  `TEXTO_CONSENTIMENTO` não muda.
 - **Vitest só roda a partir de `C:\` maiúsculo** (PowerShell). Com `c:` minúsculo todo arquivo
   falha com "Cannot read properties of undefined (reading 'config')": não é bug do código.
 
