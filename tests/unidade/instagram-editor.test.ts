@@ -26,18 +26,18 @@ describe("automacaoNova", () => {
 });
 
 describe("formularioParaPayload", () => {
-  it("separa palavras por vírgula, apara espaços e descarta vazias", () => {
-    const p = formularioParaPayload({ ...automacaoNova(), palavrasTexto: "Avaliar, simular , ", qualquerPalavra: false });
+  it("leva as palavras do array ao payload", () => {
+    const p = formularioParaPayload({ ...automacaoNova(), palavras: ["Avaliar", "simular"], qualquerPalavra: false });
     expect(p.palavras).toEqual(["Avaliar", "simular"]);
   });
 
   it("qualquer palavra vira null", () => {
-    const p = formularioParaPayload({ ...automacaoNova(), palavrasTexto: "Avaliar", qualquerPalavra: true });
+    const p = formularioParaPayload({ ...automacaoNova(), palavras: ["Avaliar"], qualquerPalavra: true });
     expect(p.palavras).toBeNull();
   });
 
-  it("palavras em branco sem 'qualquer palavra' viram lista vazia (o schema recusa)", () => {
-    const p = formularioParaPayload({ ...automacaoNova(), palavrasTexto: " , ", qualquerPalavra: false });
+  it("sem palavras e sem 'qualquer palavra' vira lista vazia (o schema recusa)", () => {
+    const p = formularioParaPayload({ ...automacaoNova(), palavras: [], qualquerPalavra: false });
     expect(p.palavras).toEqual([]);
   });
 
@@ -57,7 +57,7 @@ describe("formularioParaPayload", () => {
 });
 
 describe("automacaoParaFormulario", () => {
-  it("volta palavras para texto e null para 'qualquer palavra'", () => {
+  it("volta palavras para array e null para 'qualquer palavra'", () => {
     const base = formularioParaPayload(automacaoNova());
     const a = {
       ...base,
@@ -66,10 +66,10 @@ describe("automacaoParaFormulario", () => {
     } as unknown as AutomacaoPainel;
     const f = automacaoParaFormulario(a);
     expect(f.id).toBe("i1");
-    expect(f.palavrasTexto).toBe("a, b");
+    expect(f.palavras).toEqual(["a", "b"]);
     expect(f.qualquerPalavra).toBe(false);
     const g = automacaoParaFormulario({ ...a, palavras: null });
     expect(g.qualquerPalavra).toBe(true);
-    expect(g.palavrasTexto).toBe("");
+    expect(g.palavras).toEqual([]);
   });
 });

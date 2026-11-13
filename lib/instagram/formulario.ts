@@ -38,8 +38,8 @@ export type FormularioAutomacao = {
   midiaId: string | null;
   midiaPermalink: string | null;
   midiaThumb: string | null;
-  /** Texto cru do campo ("Avaliar, simular"); só vale com qualquerPalavra = false. */
-  palavrasTexto: string;
+  /** Chips do campo; só valem com qualquerPalavra = false. */
+  palavras: string[];
   qualquerPalavra: boolean;
   responderPublico: boolean;
   frasesPublicas: string[];
@@ -67,7 +67,7 @@ export function automacaoNova(): FormularioAutomacao {
     midiaId: null,
     midiaPermalink: null,
     midiaThumb: null,
-    palavrasTexto: "",
+    palavras: [],
     qualquerPalavra: false,
     responderPublico: true,
     frasesPublicas: ["Obrigado! Por favor, veja as DMs.", "Te enviei uma mensagem! Dá uma olhada."],
@@ -97,7 +97,7 @@ export function automacaoParaFormulario(a: AutomacaoParaEditar): FormularioAutom
     midiaId: a.midiaId,
     midiaPermalink: a.midiaPermalink,
     midiaThumb: a.midiaThumb,
-    palavrasTexto: a.palavras ? a.palavras.join(", ") : "",
+    palavras: a.palavras ?? [],
     qualquerPalavra: a.palavras === null,
     responderPublico: a.responderPublico,
     frasesPublicas: a.frasesPublicas,
@@ -119,14 +119,6 @@ export function automacaoParaFormulario(a: AutomacaoParaEditar): FormularioAutom
   };
 }
 
-/** "Avaliar, simular , " -> ["Avaliar", "simular"]. */
-export function palavrasDoTexto(texto: string): string[] {
-  return texto
-    .split(",")
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-}
-
 export function formularioParaPayload(f: FormularioAutomacao): AutomacaoInput {
   const especifica = f.alvo === "especifica";
   return {
@@ -136,7 +128,7 @@ export function formularioParaPayload(f: FormularioAutomacao): AutomacaoInput {
     midiaId: especifica ? f.midiaId : null,
     midiaPermalink: especifica ? f.midiaPermalink : null,
     midiaThumb: especifica ? f.midiaThumb : null,
-    palavras: f.qualquerPalavra ? null : palavrasDoTexto(f.palavrasTexto),
+    palavras: f.qualquerPalavra ? null : f.palavras,
     responderPublico: f.responderPublico,
     frasesPublicas: f.frasesPublicas.map((s) => s.trim()).filter((s) => s.length > 0),
     dm1Texto: f.dm1Texto,

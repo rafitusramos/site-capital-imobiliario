@@ -15,13 +15,14 @@ import {
   LIMITE_TITULO_BOTAO,
   automacaoSchema,
 } from "@/lib/validations/instagram";
+import { CampoPalavras } from "./CampoPalavras";
 import { PreviaCelular } from "./PreviaCelular";
 import { SeletorPublicacao } from "./SeletorPublicacao";
 
 type Erros = Partial<Record<string, string>>;
 
 const INPUT =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-[var(--tinta)] focus:border-[var(--jade)]";
+  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-[var(--tinta)] focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
@@ -95,8 +96,15 @@ function Interruptor({
   );
 }
 
-export function EditorAutomacao({ inicial }: { inicial: FormularioAutomacao }) {
+export function EditorAutomacao({
+  inicial,
+  palavrasSugeridas = [],
+}: {
+  inicial: FormularioAutomacao;
+  palavrasSugeridas?: string[];
+}) {
   const router = useRouter();
+  const idPalavras = useId();
   const { mostrarToast } = useToast();
   const [form, setForm] = useState<FormularioAutomacao>(inicial);
   const [erros, setErros] = useState<Erros>({});
@@ -197,12 +205,13 @@ export function EditorAutomacao({ inicial }: { inicial: FormularioAutomacao }) {
             onChange={(v) => set("qualquerPalavra", v)}
           />
           {!form.qualquerPalavra && (
-            <Campo
-              rotulo="Palavras-chave"
-              valor={form.palavrasTexto}
-              onChange={(v) => set("palavrasTexto", v)}
+            <CampoPalavras
+              id={idPalavras}
+              valor={form.palavras}
+              onChange={(v) => set("palavras", v)}
+              sugestoes={palavrasSugeridas}
+              desabilitado={form.qualquerPalavra}
               erro={erros.palavras}
-              ajuda="Separe por vírgula. Maiúsculas e acentos são ignorados."
             />
           )}
         </Secao>
