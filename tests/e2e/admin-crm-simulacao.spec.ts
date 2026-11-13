@@ -1,5 +1,5 @@
 import type { Page, Request } from "@playwright/test";
-import { abrirAdmin, ESTADO_ADMIN, expect, test } from "./apoio/admin";
+import { abrirAdmin, abrirModalDoLead, ESTADO_ADMIN, expect, test } from "./apoio/admin";
 
 /*
  * Simulação de financiamento no CRM (anexar no modal, enviar só no movimento) — SOMENTE LEITURA.
@@ -67,8 +67,7 @@ async function abrirModalLead(
   await abrirAdmin(page, `/admin/crm/${origem}/`);
   const editar = page.getByRole("button", { name: "Editar lead" });
   test.skip((await editar.count()) === 0, semLead);
-  await editar.first().click();
-  const modal = page.getByRole("dialog", { name: /^Lead / });
+  const modal = await abrirModalDoLead(page, editar.first());
   await expect(modal).toBeVisible();
   await expect(modal.locator('[aria-current="step"]')).toBeVisible();
   await page.waitForLoadState("networkidle");

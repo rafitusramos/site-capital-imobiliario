@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from "@playwright/test";
+import { test as base, expect, type Locator, type Page } from "@playwright/test";
 
 /**
  * POLÍTICA DE SEGURANÇA (ver tests/functional-tests/README.md): todo deploy usa
@@ -44,6 +44,19 @@ export const test = base.extend<{ acoesServidor: AcaoServidor[] }>({
 });
 
 export { expect };
+
+/**
+ * Clica em "Editar lead" até o modal abrir: antes da hidratação o clique se perde.
+ * Só clica de novo se o modal NÃO está aberto (com ele aberto o overlay interceptaria).
+ */
+export async function abrirModalDoLead(page: Page, editar: Locator): Promise<Locator> {
+  const modal = page.getByRole("dialog", { name: /^Lead / });
+  await expect(async () => {
+    if (!(await modal.isVisible())) await editar.click();
+    await expect(modal).toBeVisible({ timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+  return modal;
+}
 
 /**
  * Abre uma rota de admin. Pula o teste (com motivo) se a sessão não vale ou se
