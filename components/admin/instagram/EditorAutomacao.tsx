@@ -15,6 +15,7 @@ import {
   LIMITE_TITULO_BOTAO,
   automacaoSchema,
 } from "@/lib/validations/instagram";
+import { CampoPalavras } from "./CampoPalavras";
 import { PreviaCelular } from "./PreviaCelular";
 import { SeletorPublicacao } from "./SeletorPublicacao";
 
@@ -94,8 +95,15 @@ function Interruptor({
   );
 }
 
-export function EditorAutomacao({ inicial }: { inicial: FormularioAutomacao }) {
+export function EditorAutomacao({
+  inicial,
+  palavrasSugeridas = [],
+}: {
+  inicial: FormularioAutomacao;
+  palavrasSugeridas?: string[];
+}) {
   const router = useRouter();
+  const idPalavras = useId();
   const { mostrarToast } = useToast();
   const [form, setForm] = useState<FormularioAutomacao>(inicial);
   const [erros, setErros] = useState<Erros>({});
@@ -196,12 +204,13 @@ export function EditorAutomacao({ inicial }: { inicial: FormularioAutomacao }) {
             onChange={(v) => set("qualquerPalavra", v)}
           />
           {!form.qualquerPalavra && (
-            <Campo
-              rotulo="Palavras-chave"
-              valor={form.palavrasTexto}
-              onChange={(v) => set("palavrasTexto", v)}
+            <CampoPalavras
+              id={idPalavras}
+              valor={form.palavras}
+              onChange={(v) => set("palavras", v)}
+              sugestoes={palavrasSugeridas}
+              desabilitado={form.qualquerPalavra}
               erro={erros.palavras}
-              ajuda="Separe por vírgula. Maiúsculas e acentos são ignorados."
             />
           )}
         </Secao>

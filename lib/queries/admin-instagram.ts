@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { rankingDePalavras } from "@/lib/instagram/campo-palavras";
 import type { Automacao, Alvo, Situacao } from "@/lib/instagram/tipos";
 
 // Leituras do painel /admin/instagram. Cliente de cookies: a RLS (só admin)
@@ -102,6 +103,17 @@ export async function automacaoPorId(id: string): Promise<AutomacaoPainel | null
     return null;
   }
   return data ? mapearAutomacao(data as unknown as LinhaAutomacao) : null;
+}
+
+/** Palavras-chave já usadas em qualquer automação, da mais usada à menos (sugestões do editor). */
+export async function palavrasUsadas(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("ig_automacoes").select("palavras");
+  if (error) {
+    console.error("[palavrasUsadas]", error);
+    return [];
+  }
+  return rankingDePalavras(((data ?? []) as { palavras: string[] | null }[]).map((l) => l.palavras));
 }
 
 // ---------------------------------------------------------------------------
