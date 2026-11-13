@@ -29,6 +29,10 @@ describe("robots.txt", () => {
     for (const g of todos) expect(lista(g.disallow)).toContain("/admin");
   });
 
+  test("todo grupo bloqueia o link curto /ir/", () => {
+    for (const g of grupos()) expect(lista(g.disallow)).toContain("/ir/");
+  });
+
   test("nenhum grupo bloqueia o site inteiro", () => {
     for (const g of grupos()) expect(lista(g.disallow)).not.toContain("/");
   });

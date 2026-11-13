@@ -22,7 +22,7 @@ const LAST_MODIFIED_FIXAS: Record<string, string> = {
   "/sobre/": "2026-07-28",
   "/blog/": "2026-07-28",
   "/imoveis/": "2026-07-28",
-  "/politica-de-privacidade/": "2026-11-09",
+  "/politica-de-privacidade/": "2026-11-13",
   "/termos-de-uso/": "2026-07-29",
 };
 

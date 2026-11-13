@@ -36,6 +36,16 @@ export type LeadInteracaoTipo =
   | "contrato"
   | "sistema";
 
+// Módulo Instagram (migration 035).
+export type IgAlvo = "especifica" | "qualquer" | "proxima";
+export type IgSituacao = "aguardando_botao" | "aguardando_seguir" | "link_enviado" | "link_aberto";
+export type IgDirecao = "entrada" | "saida" | "dono" | "sistema";
+export type IgMensagemTipo = "comentario" | "texto" | "botao" | "link_aberto" | "resposta_publica" | "aviso";
+export type IgEnvioTipo = "resposta_privada" | "resposta_publica" | "mensagem" | "lembrete";
+export type IgEnvioEstado = "pendente" | "processando" | "enviado" | "falhou" | "cancelado";
+/** ig_conta sem o token: é o que o grant por coluna deixa o admin ler. */
+export type IgContaPublica = Omit<Database["public"]["Tables"]["ig_conta"]["Row"], "token">;
+
 export interface Database {
   public: {
     Tables: {
@@ -956,6 +966,270 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["lead_interacoes"]["Insert"]>;
         Relationships: [];
       };
+      // Módulo Instagram (migration 035). Só admin lê; `token` nunca chega ao
+      // cliente (sem grant a authenticated) — use IgContaPublica.
+      ig_conta: {
+        Row: {
+          id: number;
+          ig_user_id: string;
+          username: string | null;
+          nome: string | null;
+          foto_url: string | null;
+          token: string;
+          webhooks_assinados: boolean;
+          conectado_em: string;
+          conectado_por: string | null;
+          ultimo_evento_em: string | null;
+        };
+        Insert: {
+          id?: number;
+          ig_user_id: string;
+          username?: string | null;
+          nome?: string | null;
+          foto_url?: string | null;
+          token: string;
+          webhooks_assinados?: boolean;
+          conectado_em?: string;
+          conectado_por?: string | null;
+          ultimo_evento_em?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_conta"]["Insert"]>;
+        Relationships: [];
+      };
+      ig_automacoes: {
+        Row: {
+          id: string;
+          nome: string;
+          slug: string;
+          ativa: boolean;
+          alvo: IgAlvo;
+          midia_id: string | null;
+          midia_permalink: string | null;
+          midia_thumb: string | null;
+          proxima_desde: string | null;
+          palavras: string[] | null;
+          responder_publico: boolean;
+          frases_publicas: string[];
+          dm1_texto: string;
+          dm1_botao: string;
+          exigir_seguir: boolean;
+          seguir_texto: string;
+          seguir_botao: string;
+          seguir_insiste_texto: string;
+          link_texto: string;
+          link_botao: string;
+          link_url: string;
+          lembrete_ativo: boolean;
+          lembrete_horas: number;
+          lembrete_texto: string;
+          retomada_botao_texto: string;
+          retomada_seguir_texto: string;
+          retomada_link_texto: string;
+          criado_por: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          id?: string;
+          nome: string;
+          slug: string;
+          ativa?: boolean;
+          alvo: IgAlvo;
+          midia_id?: string | null;
+          midia_permalink?: string | null;
+          midia_thumb?: string | null;
+          proxima_desde?: string | null;
+          palavras?: string[] | null;
+          responder_publico?: boolean;
+          frases_publicas?: string[];
+          dm1_texto: string;
+          dm1_botao: string;
+          exigir_seguir?: boolean;
+          seguir_texto: string;
+          seguir_botao: string;
+          seguir_insiste_texto: string;
+          link_texto: string;
+          link_botao: string;
+          link_url: string;
+          lembrete_ativo?: boolean;
+          lembrete_horas?: number;
+          lembrete_texto: string;
+          retomada_botao_texto: string;
+          retomada_seguir_texto: string;
+          retomada_link_texto: string;
+          criado_por?: string | null;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_automacoes"]["Insert"]>;
+        Relationships: [];
+      };
+      ig_contatos: {
+        Row: {
+          id: string;
+          canal: string;
+          igsid: string;
+          username: string | null;
+          nome: string | null;
+          foto_url: string | null;
+          segue: boolean | null;
+          segue_conferido_em: string | null;
+          ultima_interacao_em: string;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          canal?: string;
+          igsid: string;
+          username?: string | null;
+          nome?: string | null;
+          foto_url?: string | null;
+          segue?: boolean | null;
+          segue_conferido_em?: string | null;
+          ultima_interacao_em?: string;
+          criado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_contatos"]["Insert"]>;
+        Relationships: [];
+      };
+      ig_participacoes: {
+        Row: {
+          id: string;
+          contato_id: string;
+          automacao_id: string;
+          midia_id: string;
+          situacao: IgSituacao;
+          comentarios: number;
+          ultimo_comentario_id: string | null;
+          situacao_antes_ultimo: IgSituacao | null;
+          codigo: string;
+          janela_ate: string | null;
+          link_enviado_em: string | null;
+          link_aberto_em: string | null;
+          falha_motivo: string | null;
+          falha_em: string | null;
+          criado_em: string;
+          atualizado_em: string;
+        };
+        Insert: {
+          id?: string;
+          contato_id: string;
+          automacao_id: string;
+          midia_id: string;
+          situacao: IgSituacao;
+          comentarios?: number;
+          ultimo_comentario_id?: string | null;
+          situacao_antes_ultimo?: IgSituacao | null;
+          codigo: string;
+          janela_ate?: string | null;
+          link_enviado_em?: string | null;
+          link_aberto_em?: string | null;
+          falha_motivo?: string | null;
+          falha_em?: string | null;
+          criado_em?: string;
+          atualizado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_participacoes"]["Insert"]>;
+        Relationships: [];
+      };
+      ig_mensagens: {
+        Row: {
+          id: string;
+          contato_id: string;
+          participacao_id: string | null;
+          direcao: IgDirecao;
+          tipo: IgMensagemTipo;
+          texto: string | null;
+          meta_id: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          contato_id: string;
+          participacao_id?: string | null;
+          direcao: IgDirecao;
+          tipo: IgMensagemTipo;
+          texto?: string | null;
+          meta_id?: string | null;
+          criado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_mensagens"]["Insert"]>;
+        Relationships: [];
+      };
+      ig_envios: {
+        Row: {
+          id: string;
+          chave: string;
+          contato_id: string;
+          participacao_id: string | null;
+          tipo: IgEnvioTipo;
+          comentario_id: string | null;
+          payload: Record<string, unknown> | null;
+          enviar_apos: string;
+          estado: IgEnvioEstado;
+          tentativas: number;
+          erro: string | null;
+          meta_id: string | null;
+          reservado_em: string | null;
+          enviado_em: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          chave: string;
+          contato_id: string;
+          participacao_id?: string | null;
+          tipo: IgEnvioTipo;
+          comentario_id?: string | null;
+          payload?: Record<string, unknown> | null;
+          enviar_apos?: string;
+          estado?: IgEnvioEstado;
+          tentativas?: number;
+          erro?: string | null;
+          meta_id?: string | null;
+          reservado_em?: string | null;
+          enviado_em?: string | null;
+          criado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_envios"]["Insert"]>;
+        Relationships: [];
+      };
+      ig_eventos: {
+        Row: {
+          chave: string;
+          recebido_em: string;
+          payload: Record<string, unknown> | null;
+          processado_em: string | null;
+          erro: string | null;
+          tentativas: number;
+        };
+        Insert: {
+          chave: string;
+          recebido_em?: string;
+          payload?: Record<string, unknown> | null;
+          processado_em?: string | null;
+          erro?: string | null;
+          tentativas?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_eventos"]["Insert"]>;
+        Relationships: [];
+      };
+      ig_cliques: {
+        Row: {
+          id: string;
+          participacao_id: string;
+          user_agent: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          participacao_id: string;
+          user_agent?: string | null;
+          criado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["ig_cliques"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       // Consulta consolidada do quadro do CRM (recriada em
@@ -1148,6 +1422,20 @@ export interface Database {
       // Só o pg_cron chama (023_crm_arquivamento_automatico.sql); devolve quantos arquivou.
       arquivar_leads_finais_antigos: { Args: Record<PropertyKey, never>; Returns: number };
       definir_tags_lead: { Args: { p_lead_id: string; p_tags: string[] }; Returns: undefined };
+      // Módulo Instagram (035_instagram_dm.sql). ig_reservar_envios e as duas de
+      // retenção só a service role / pg_cron chamam; ig_resumo_do_dia é do admin (RLS).
+      ig_reservar_envios: {
+        Args: { p_limite: number };
+        Returns: Database["public"]["Tables"]["ig_envios"]["Row"][];
+      };
+      ig_resumo_do_dia: {
+        Args: { p_automacao?: string | null };
+        Returns: { comentarios: number; links_enviados: number; links_abertos: number; falhas: number }[];
+      };
+      ig_apagar_inativos: { Args: Record<PropertyKey, never>; Returns: number };
+      ig_limpar_eventos: { Args: Record<PropertyKey, never>; Returns: number };
+      // Do admin (confere eh_admin() por dentro): apaga os eventos do webhook de um contato.
+      ig_apagar_eventos_do_contato: { Args: { p_igsid: string }; Returns: number };
       // true só quando o usuário autenticado tem profiles.role = 'admin'.
       // SECURITY DEFINER com search_path fixo (017_crm_funcoes_rls.sql) —
       // usada dentro das policies de RLS, não chamada diretamente pela

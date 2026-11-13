@@ -48,6 +48,7 @@ const SECOES = [
   { id: "seguranca", titulo: "Segurança" },
   { id: "cookies-e-rastreamento", titulo: "Cookies e rastreamento" },
   { id: "criancas-e-adolescentes", titulo: "Crianças e adolescentes" },
+  { id: "conversas-no-instagram", titulo: "Conversas no Instagram" },
   { id: "alteracoes-nesta-politica", titulo: "Alterações nesta política" },
   { id: "fale-com-a-gente", titulo: "Fale com a gente" },
 ];
@@ -338,9 +339,25 @@ export default function PoliticaDePrivacidadePage() {
               </p>
             </section>
 
+            <section id="conversas-no-instagram">
+              <h2>
+                <span className="num">13.</span>Conversas no Instagram
+              </h2>
+              <p>
+                Quando você comenta em uma publicação do nosso perfil no Instagram e recebe uma
+                mensagem direta nossa, guardamos o seu perfil público (nome, @ e foto), o
+                comentário que iniciou o atendimento, as mensagens trocadas a partir dali e os
+                cliques nos links que enviamos. Usamos esses dados para entregar o material que
+                você pediu e acompanhar o atendimento. Eles são apagados automaticamente depois de
+                12 meses sem nenhuma interação sua. Para pedir a exclusão antes disso, envie uma
+                mensagem direta para o nosso perfil ou escreva para{" "}
+                <a href={`mailto:${EMAIL_LGPD}`}>{EMAIL_LGPD}</a>.
+              </p>
+            </section>
+
             <section id="alteracoes-nesta-politica">
               <h2>
-                <span className="num">13.</span>Alterações nesta política
+                <span className="num">14.</span>Alterações nesta política
               </h2>
               <p>
                 A versão vigente desta política é sempre a publicada nesta página, com a data de
@@ -351,7 +368,7 @@ export default function PoliticaDePrivacidadePage() {
 
             <section id="fale-com-a-gente">
               <h2>
-                <span className="num">14.</span>Fale com a gente
+                <span className="num">15.</span>Fale com a gente
               </h2>
               <p>
                 Dúvidas sobre esta política ou sobre o tratamento dos seus dados podem ser
