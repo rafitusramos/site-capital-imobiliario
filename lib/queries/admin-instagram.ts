@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import type { Automacao, Alvo, Situacao } from "@/lib/instagram/tipos";
+import { nomeDaAutomacao } from "@/lib/instagram/rotulos";
 
 // Leituras do painel /admin/instagram. Cliente de cookies: a RLS (só admin)
 // vale. Nunca lançam: falha vira console.error e resultado vazio/nulo.
@@ -116,7 +117,8 @@ export type FiltroCaixa = {
 export type ItemCaixa = {
   participacaoId: string;
   contato: { id: string; username: string | null; nome: string | null; fotoUrl: string | null };
-  automacaoId: string;
+  /** Nulo = a automação foi excluída (migration 037); o histórico fica. */
+  automacaoId: string | null;
   automacaoNome: string;
   situacao: Situacao;
   comentarios: number;
@@ -130,7 +132,7 @@ export type ItemCaixa = {
 type LinhaCaixa = {
   id: string;
   contato_id: string;
-  automacao_id: string;
+  automacao_id: string | null;
   situacao: string;
   comentarios: number;
   falha_motivo: string | null;
@@ -201,7 +203,7 @@ export async function caixaDeEntrada(filtro: FiltroCaixa = {}): Promise<ItemCaix
       fotoUrl: l.ig_contatos?.foto_url ?? null,
     },
     automacaoId: l.automacao_id,
-    automacaoNome: l.ig_automacoes?.nome ?? "",
+    automacaoNome: nomeDaAutomacao(l.automacao_id, l.ig_automacoes?.nome),
     situacao: l.situacao as Situacao,
     comentarios: l.comentarios,
     falhaMotivo: l.falha_motivo,

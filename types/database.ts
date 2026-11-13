@@ -1096,7 +1096,7 @@ export interface Database {
         Row: {
           id: string;
           contato_id: string;
-          automacao_id: string;
+          automacao_id: string | null;
           midia_id: string;
           situacao: IgSituacao;
           comentarios: number;
@@ -1114,7 +1114,7 @@ export interface Database {
         Insert: {
           id?: string;
           contato_id: string;
-          automacao_id: string;
+          automacao_id?: string | null;
           midia_id: string;
           situacao: IgSituacao;
           comentarios?: number;

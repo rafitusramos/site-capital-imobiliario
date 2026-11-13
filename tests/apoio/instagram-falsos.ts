@@ -107,7 +107,7 @@ export class RepositorioFalso implements RepositorioIg {
   async automacoesAtivas() {
     return this.automacoes.filter((a) => a.ativa);
   }
-  async automacao(id: string) {
+  async automacao(id: string | null) {
     return this.automacoes.find((a) => a.id === id) ?? null;
   }
   async vincularProxima(automacaoId: string, midiaId: string) {
@@ -315,7 +315,7 @@ export class RepositorioFalso implements RepositorioIg {
   semear(p: Partial<Participacao> & { contatoId: string }): Participacao {
     const nova: Participacao = {
       id: UUID_PARTICIPACAO(this.id("pt")),
-      automacaoId: UUID_A,
+      automacaoId: UUID_A as string | null,
       midiaId: "m1",
       situacao: "link_enviado",
       comentarios: 1,
