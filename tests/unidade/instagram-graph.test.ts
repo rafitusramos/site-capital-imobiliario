@@ -171,6 +171,41 @@ describe("graph: demais chamadas", () => {
   });
 });
 
+describe("graph: corpos JSON que não são objeto", () => {
+  const mk = (r: Response) => criarGraph(TOKEN, IG, fakeFetch(r) as unknown as typeof fetch);
+
+  it("200 com corpo null/array/primitivo não lança", async () => {
+    for (const corpo of [null, [], 5, "x"]) {
+      expect(await mk(resp(200, corpo)).mensagem("1", msg)).toEqual({ ok: true });
+      expect(await mk(resp(200, corpo)).segue("1")).toBeNull();
+      expect(await mk(resp(200, corpo)).midiaCriadaEm("1")).toBeNull();
+      expect(await mk(resp(200, corpo)).perfil("1")).toEqual({
+        username: null,
+        nome: null,
+        fotoUrl: null,
+      });
+      expect(await mk(resp(200, corpo)).publicacoes(3)).toEqual([]);
+    }
+  });
+
+  it("500 com corpo null mantém o status 500", async () => {
+    const r = await mk(resp(500, null)).mensagem("1", msg);
+    expect(r).toMatchObject({ ok: false, status: 500 });
+  });
+
+  it("data com null e itens sem id: filtra", async () => {
+    const r = await mk(
+      resp(200, { data: [null, 3, { caption: "sem id" }, { id: "7", permalink: "p" }] }),
+    ).publicacoes(5);
+    expect(r.map((p) => p.id)).toEqual(["7"]);
+  });
+
+  it("contaAtribuida com data [null] devolve null", async () => {
+    vi.stubGlobal("fetch", fakeFetch(resp(200, { data: [null] })));
+    expect(await contaAtribuida(TOKEN)).toBeNull();
+  });
+});
+
 describe("config e login", () => {
   const VARS = ["META_APP_ID", "META_APP_SECRET", "META_LOGIN_CONFIG_ID", "META_WEBHOOK_VERIFY_TOKEN", "CRON_SECRET"];
 
@@ -218,6 +253,9 @@ describe("config e login", () => {
     const f = fakeFetch(resp(200, { access_token: "NOVO" }));
     vi.stubGlobal("fetch", f);
     expect(await trocarCodigo("c", "https://a/")).toEqual({ token: "NOVO" });
+    const [u, i] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(u).not.toContain("sec");
+    expect(String(i.body)).toContain("client_secret=sec");
     vi.stubGlobal("fetch", fakeFetch(new Error("rede")));
     expect(await trocarCodigo("c", "https://a/")).toBeNull();
   });

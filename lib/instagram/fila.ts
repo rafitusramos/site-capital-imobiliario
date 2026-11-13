@@ -5,7 +5,7 @@ export type ErroGraph = { status: number; codigo?: number; subcodigo?: number; m
 const CODIGOS_TEMPORARIOS = new Set([1, 2, 4, 17, 32, 613]);
 
 export function ehTemporario(e: ErroGraph): boolean {
-  if (e.status === 429 || e.status >= 500) return true;
+  if (e.status === 0 || e.status === 429 || e.status >= 500) return true;
   return e.codigo !== undefined && CODIGOS_TEMPORARIOS.has(e.codigo);
 }
 

@@ -91,12 +91,12 @@ async function chamar(
     const r = await f(endereco, init);
     let json: Json = {};
     try {
-      json = (await r.json()) as Json;
+      json = objeto(await r.json());
     } catch {
       // corpo vazio ou não JSON: segue só com o status
     }
     if (!r.ok) {
-      const err = (json.error ?? {}) as {
+      const err = objeto(json.error) as {
         code?: number;
         error_subcode?: number;
         message?: string;
@@ -122,6 +122,11 @@ function paraResultado(c: Chamada): ResultadoGraph {
   if (!c.ok) return c;
   const id = c.corpo.message_id ?? c.corpo.id;
   return typeof id === "string" ? { ok: true, id } : { ok: true };
+}
+
+/** JSON válido que não é objeto (null, array, primitivo) vira {}. */
+function objeto(v: unknown): Json {
+  return typeof v === "object" && v !== null && !Array.isArray(v) ? (v as Json) : {};
 }
 
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
@@ -167,14 +172,17 @@ export function criarGraph(token: string, igUserId: string, f: typeof fetch = fe
         url(`${igUserId}/media`, { fields: CAMPOS_PUBLICACAO, limit: String(limite) }),
       );
       if (!c.ok || !Array.isArray(c.corpo.data)) return [];
-      return (c.corpo.data as Json[]).map((p) => ({
-        id: String(p.id),
+      return (c.corpo.data as unknown[])
+        .map(objeto)
+        .filter((p) => str(p.id) !== null)
+        .map((p) => ({
+        id: p.id as string,
         legenda: str(p.caption),
         tipo: str(p.media_type) ?? "",
         miniatura: str(p.thumbnail_url) ?? str(p.media_url),
         permalink: str(p.permalink) ?? "",
         criadaEm: str(p.timestamp) ?? "",
-      }));
+        }));
     },
     async perfil(igsid) {
       const c = await chamar(f, token, "GET", url(igsid, { fields: CAMPOS_PERFIL }));
@@ -228,7 +236,7 @@ export async function trocarCodigo(
         code,
       }).toString(),
     });
-    const json = (await r.json()) as Json;
+    const json = objeto(await r.json());
     const t = str(json.access_token);
     if (!r.ok || !t) {
       console.error("[instagram] troca de código recusada", r.status);
@@ -246,7 +254,7 @@ export async function contaAtribuida(
 ): Promise<{ igUserId: string; username: string; nome: string; fotoUrl: string } | null> {
   const c = await chamar(fetch, token, "GET", url(CAMINHO_CONTAS, { fields: CAMPOS_CONTA }));
   if (!c.ok || !Array.isArray(c.corpo.data) || c.corpo.data.length === 0) return null;
-  const p = c.corpo.data[0] as Json;
+  const p = objeto(c.corpo.data[0]);
   const id = str(p.id);
   if (!id) return null;
   return {

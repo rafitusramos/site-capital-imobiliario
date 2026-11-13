@@ -15,6 +15,7 @@ describe("proximaTentativa", () => {
 describe("ehTemporario", () => {
   it("classifica", () => {
     expect(ehTemporario({ status: 400, codigo: 10, mensagem: "" })).toBe(false);
+    expect(ehTemporario({ status: 0, mensagem: "" })).toBe(true);
     expect(ehTemporario({ status: 429, mensagem: "" })).toBe(true);
     expect(ehTemporario({ status: 503, mensagem: "" })).toBe(true);
     expect(ehTemporario({ status: 400, codigo: 4, mensagem: "" })).toBe(true);
