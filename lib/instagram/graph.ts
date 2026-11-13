@@ -57,6 +57,9 @@ export interface GraphIg {
   ): Promise<{ username: string | null; nome: string | null; fotoUrl: string | null } | null>;
 }
 
+/** Nenhuma chamada à Graph pode prender a função (webhook, disparador, admin) por mais que isso. */
+const TIMEOUT_MS = 15_000;
+
 type Json = Record<string, unknown>;
 type Chamada = { ok: true; corpo: Json } | ({ ok: false } & ErroGraph);
 
@@ -83,7 +86,7 @@ async function chamar(
 ): Promise<Chamada> {
   try {
     const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
-    const init: RequestInit = { method: metodo, headers };
+    const init: RequestInit = { method: metodo, headers, signal: AbortSignal.timeout(TIMEOUT_MS) };
     if (corpo) {
       headers["Content-Type"] = "application/json";
       init.body = JSON.stringify(corpo);
@@ -228,6 +231,7 @@ export async function trocarCodigo(
   try {
     const r = await fetch(url("oauth/access_token"), {
       method: "POST",
+      signal: AbortSignal.timeout(TIMEOUT_MS),
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         client_id: cfg.appId,

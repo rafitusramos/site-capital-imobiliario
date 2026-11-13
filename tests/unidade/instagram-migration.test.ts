@@ -29,6 +29,26 @@ describe("035: Instagram DM", () => {
   it.each(FUNCOES)("%s revoga execute de public", (f) =>
     expect(sql).toMatch(new RegExp(`revoke (all|execute)[^;]*function public\\.${f}[^;]*from public`, "i")));
   it("sem begin/commit", () => expect(sql).not.toMatch(/^\s*(begin|commit);/im));
+  it("ig_set_atualizado_em fixa o search_path", () =>
+    expect(sql).toMatch(/function public\.ig_set_atualizado_em\(\)\s+returns trigger\s+language plpgsql\s+set search_path = public/i));
+  it.each([
+    ["ig_envios", "contato_id"],
+    ["ig_envios", "participacao_id"],
+    ["ig_envios", "meta_id"],
+    ["ig_mensagens", "participacao_id"],
+  ])("índice em %s(%s)", (t, c) =>
+    expect(sql).toMatch(new RegExp(`create index \\w+\\s+on public\\.${t} \\(${c}\\)`, "i")));
+  it("ig_eventos conta tentativas", () => expect(sql).toMatch(/tentativas\s+int not null default 0/i));
+  it("ig_apagar_eventos_do_contato: definer, search_path, eh_admin, grants", () => {
+    const f = sql.match(/function public\.ig_apagar_eventos_do_contato[\s\S]*?\$\$;/i)![0];
+    expect(f).toMatch(/security definer/i);
+    expect(f).toMatch(/set search_path = public/i);
+    expect(f).toMatch(/if not public\.eh_admin\(\)[\s\S]*?raise exception/i);
+    expect(f).toMatch(/payload->>'deId' = p_igsid/);
+    expect(f).toMatch(/payload->>'paraId' = p_igsid/);
+    expect(sql).toMatch(/revoke execute on function public\.ig_apagar_eventos_do_contato\(text\) from public, anon;/i);
+    expect(sql).toMatch(/grant execute on function public\.ig_apagar_eventos_do_contato\(text\) to authenticated;/i);
+  });
   it("lembrete entre 1 e 23 horas", () => expect(sql).toMatch(/lembrete_horas between 1 and 23/i));
 });
 
@@ -59,5 +79,6 @@ describe("036: Instagram DM, disparador por minuto e limpezas", () => {
   });
   it("ig_chamar_disparador revoga execute de todos", () =>
     expect(sqlCron).toMatch(/revoke execute on function public\.ig_chamar_disparador\(\)\s+from public, anon, authenticated/i));
+  it("http_post com timeout de 30 s", () => expect(sqlCron).toMatch(/timeout_milliseconds := 30000/));
   it("sem begin/commit", () => expect(sqlCron).not.toMatch(/^\s*(begin|commit);/im));
 });

@@ -291,3 +291,27 @@ describe("config e login", () => {
     expect(JSON.stringify(erros)).not.toContain(TOKEN);
   });
 });
+
+describe("timeout", () => {
+  it("toda chamada leva um signal de 15 s", async () => {
+    const f = fakeFetch(resp(200, { message_id: "m1" }));
+    await criarGraph(TOKEN, IG, f as unknown as typeof fetch).mensagem("p1", msg);
+    const init = (f.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+  });
+  it("timeout vira falha temporária (status 0)", async () => {
+    const f = fakeFetch(new DOMException("The operation was aborted due to timeout", "TimeoutError") as unknown as Error);
+    const r = await criarGraph(TOKEN, IG, f as unknown as typeof fetch).mensagem("p1", msg);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.status).toBe(0);
+  });
+  it("troca de código também tem signal", async () => {
+    for (const v of ["META_APP_ID", "META_APP_SECRET", "META_LOGIN_CONFIG_ID", "META_WEBHOOK_VERIFY_TOKEN", "CRON_SECRET"]) vi.stubEnv(v, "x");
+    const f = vi.fn(async () => resp(200, { access_token: "t" }));
+    vi.stubGlobal("fetch", f);
+    await trocarCodigo("c", "https://x.test/");
+    const init = (f.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(init.signal).toBeInstanceOf(AbortSignal);
+    vi.unstubAllGlobals();
+  });
+});

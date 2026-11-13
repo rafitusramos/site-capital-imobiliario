@@ -64,7 +64,8 @@ begin
                  'Authorization', 'Bearer ' || v_segredo,
                  'Content-Type',  'application/json'
                ),
-    body    := '{}'::jsonb
+    body    := '{}'::jsonb,
+    timeout_milliseconds := 30000
   );
 end;
 $$;

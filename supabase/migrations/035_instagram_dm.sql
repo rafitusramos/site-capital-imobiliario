@@ -40,6 +40,7 @@
 create or replace function public.ig_set_atualizado_em()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.atualizado_em = now();
@@ -190,7 +191,8 @@ create table public.ig_eventos (
   recebido_em    timestamptz not null default now(),
   payload        jsonb,
   processado_em  timestamptz,
-  erro           text
+  erro           text,
+  tentativas     int not null default 0
 );
 
 -- ---------------------------------------------------------------------
@@ -210,6 +212,10 @@ create index ig_participacoes_auto_idx on public.ig_participacoes (automacao_id)
 create index ig_cliques_particip_idx   on public.ig_cliques (participacao_id);
 create index ig_contatos_interacao_idx on public.ig_contatos (ultima_interacao_em);
 create index ig_eventos_recebido_idx   on public.ig_eventos (recebido_em);
+create index ig_envios_contato_idx     on public.ig_envios (contato_id);
+create index ig_envios_particip_idx    on public.ig_envios (participacao_id);
+create index ig_envios_meta_idx        on public.ig_envios (meta_id);
+create index ig_mensagens_particip_idx on public.ig_mensagens (participacao_id);
 
 -- ---------------------------------------------------------------------
 -- RLS e privilégios (padrão da 031: anon sem nada, policy `to authenticated`).
@@ -389,6 +395,32 @@ $$;
 
 revoke execute on function public.ig_limpar_eventos() from public, anon, authenticated;
 
+-- Exclusão de dados a pedido do titular: apaga os eventos do webhook do
+-- contato (o payload guarda o igsid em deId/paraId). `authenticated` não lê
+-- ig_eventos, por isso a função é security definer e confere eh_admin().
+create or replace function public.ig_apagar_eventos_do_contato(p_igsid text)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_total int;
+begin
+  if not public.eh_admin() then
+    raise exception 'apenas administrador';
+  end if;
+  delete from public.ig_eventos
+   where payload->>'deId' = p_igsid
+      or payload->>'paraId' = p_igsid;
+  get diagnostics v_total = row_count;
+  return v_total;
+end;
+$$;
+
+revoke execute on function public.ig_apagar_eventos_do_contato(text) from public, anon;
+grant execute on function public.ig_apagar_eventos_do_contato(text) to authenticated;
+
 
 -- =====================================================================
 -- COMO VERIFICAR (rodar à mão no SQL Editor, depois de aplicada)
@@ -412,4 +444,5 @@ revoke execute on function public.ig_limpar_eventos() from public, anon, authent
 --    drop function public.ig_resumo_do_dia(uuid);
 --    drop function public.ig_apagar_inativos();
 --    drop function public.ig_limpar_eventos();
+--    drop function public.ig_apagar_eventos_do_contato(text);
 --    drop function public.ig_set_atualizado_em();
