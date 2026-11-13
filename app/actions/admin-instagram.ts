@@ -80,7 +80,32 @@ export async function salvarAutomacao(input: AutomacaoInput): Promise<AcaoResult
     if (id) {
       // slug, criado_por e proxima_desde ficam como estão: o slug é de URL (/ir/),
       // e mexer em proxima_desde mudaria quais posts a automação já cobre.
-      const { data, error } = await supabase.from("ig_automacoes").update(colunas).eq("id", id).select("id");
+      const { data: atual, error: erroLeitura } = await supabase
+        .from("ig_automacoes")
+        .select("alvo")
+        .eq("id", id)
+        .maybeSingle();
+      if (erroLeitura) {
+        console.error("[salvarAutomacao] leitura:", erroLeitura);
+        return { sucesso: false, erro: "Não foi possível salvar a automação." };
+      }
+      if (!atual) return { sucesso: false, erro: "Automação não encontrada." };
+
+      const atualizacao: Partial<typeof colunas> & { proxima_desde?: string } = { ...colunas };
+      if (d.alvo === "proxima") {
+        if ((atual as { alvo: string }).alvo !== "proxima") {
+          // Virou "próxima publicação": novo vínculo a partir de agora (o check do
+          // banco exige proxima_desde) e sem mídia fixa.
+          atualizacao.proxima_desde = new Date().toISOString();
+          atualizacao.midia_id = null;
+        } else {
+          // Segue "próxima": vínculo já existente, não se mexe.
+          delete atualizacao.midia_id;
+          delete atualizacao.midia_permalink;
+          delete atualizacao.midia_thumb;
+        }
+      }
+      const { data, error } = await supabase.from("ig_automacoes").update(atualizacao).eq("id", id).select("id");
       if (error) {
         console.error("[salvarAutomacao] update:", error);
         return { sucesso: false, erro: "Não foi possível salvar a automação." };

@@ -105,7 +105,8 @@ describe("salvarAutomacao", () => {
     expect((ins?.payload as Record<string, unknown>).slug).toBe("lancamento-jabo-3");
   });
 
-  test("atualização não toca slug, criado_por nem proxima_desde", async () => {
+  test("proxima -> proxima não toca slug, criado_por, proxima_desde nem midia_id", async () => {
+    falso.programarResposta("ig_automacoes", "select", { data: { alvo: "proxima" }, error: null });
     falso.programarResposta("ig_automacoes", "update", { data: [{ id: ID }], error: null });
     const r = await salvarAutomacao({ ...(entrada({ alvo: "proxima" }) as object), id: ID } as never);
     expect(r).toEqual({ sucesso: true, id: ID });
@@ -114,9 +115,23 @@ describe("salvarAutomacao", () => {
     expect(p).not.toHaveProperty("slug");
     expect(p).not.toHaveProperty("criado_por");
     expect(p).not.toHaveProperty("proxima_desde");
+    expect(p).not.toHaveProperty("midia_id");
+  });
+
+  test("qualquer -> proxima grava proxima_desde e midia_id null", async () => {
+    falso.programarResposta("ig_automacoes", "select", { data: { alvo: "qualquer" }, error: null });
+    falso.programarResposta("ig_automacoes", "update", { data: [{ id: ID }], error: null });
+    const r = await salvarAutomacao({ ...(entrada({ alvo: "proxima" }) as object), id: ID } as never);
+    expect(r).toEqual({ sucesso: true, id: ID });
+    const p = falso.chamadas.find((c) => c.operacao === "update")?.payload as Record<string, unknown>;
+    expect(typeof p.proxima_desde).toBe("string");
+    expect(p.midia_id).toBeNull();
+    expect(p).not.toHaveProperty("slug");
+    expect(p).not.toHaveProperty("criado_por");
   });
 
   test("update que não casa linha devolve erro", async () => {
+    falso.programarResposta("ig_automacoes", "select", { data: { alvo: "qualquer" }, error: null });
     falso.programarResposta("ig_automacoes", "update", { data: [], error: null });
     const r = await salvarAutomacao({ ...(entrada() as object), id: ID } as never);
     expect(r.sucesso).toBe(false);
