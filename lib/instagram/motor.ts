@@ -80,7 +80,8 @@ export interface CamposParticipacao {
 export interface RepositorioIg {
   conta(): Promise<{ igUserId: string; token: string } | null>;
   automacoesAtivas(): Promise<Automacao[]>;
-  automacao(id: string): Promise<Automacao | null>;
+  /** `null` = participação de automação excluída (migration 037): trata como não encontrada. */
+  automacao(id: string | null): Promise<Automacao | null>;
   vincularProxima(automacaoId: string, midiaId: string): Promise<void>;
   contato(igsid: string): Promise<{ id: string } | null>;
   /** Upsert por igsid; renova `ultima_interacao_em`. */

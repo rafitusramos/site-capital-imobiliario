@@ -122,6 +122,10 @@ Espelha a tela do ManyChat (prints na conversa). Campos, na ordem:
 - Números do dia, filtros por automação e por situação, lista de pessoas com etiqueta da
   situação, conversa completa à direita (comentário de origem, DMs, toques em botão, se segue,
   quando abriu o link, texto livre da pessoa e respostas do dono pelo app).
+- **Excluir uma automação mantém o histórico** (decisão do dono, migration 037): as participações,
+  mensagens e cliques continuam na caixa de entrada, rotuladas "Automação excluída", e os números do
+  dia não mudam. Lembrete pendente é cancelado no disparo e links já enviados levam ao site. Apagar de
+  verdade só por "Excluir dados deste contato".
 
 ## 7. Escolhas do desenho
 

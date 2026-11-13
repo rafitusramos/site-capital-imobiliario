@@ -43,7 +43,7 @@ export interface Automacao {
 export interface Participacao {
   id: string;
   contatoId: string;
-  automacaoId: string;
+  automacaoId: string | null;
   midiaId: string;
   situacao: Situacao;
   comentarios: number;

@@ -127,6 +127,7 @@ export function criarRepositorio(): RepositorioIg {
     },
 
     async automacao(id) {
+      if (!id) return null;
       const { data, error } = await db.from("ig_automacoes").select("*").eq("id", id).maybeSingle();
       if (error) falha("ler automação", error);
       return data ? paraAutomacao(data) : null;

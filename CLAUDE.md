@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1595 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **036**.
+Suíte em Vitest: `npm test` — 1605 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **037**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -144,6 +144,12 @@ Substitui o ManyChat: comentário numa publicação com palavra-chave dispara re
 - **Caixa de entrada** guarda só conversa de quem entrou numa automação; DM de outras pessoas
   guarda só o identificador (conteúdo descartado). Retenção: contato sem interação há 12 meses é
   apagado por `ig_apagar_inativos`; "Excluir dados deste contato" na caixa de entrada.
+- **Excluir automação mantém o histórico** (migration 037): `ig_participacoes.automacao_id` ficou
+  nulável com FK `on delete set null`; participações, mensagens e cliques ficam, a caixa mostra
+  "Automação excluída" (`nomeDaAutomacao`, `lib/instagram/rotulos.ts`) e os números do dia seguem
+  corretos. `repo.automacao(null)` devolve nulo = "automação não encontrada": toque em botão é
+  ignorado, lembrete pendente é cancelado no disparo e o link antigo cai no fallback do `/ir/`
+  (site). Apagar de verdade é só por "Excluir dados deste contato".
 - **`// CONFERIR:` em `lib/instagram/graph.ts`** (versão/endereço da Graph, formato do template de
   botão, campo "segue a conta") não foram validados com a conta real: confirmar no primeiro teste
   com a conta real antes de desligar o ManyChat.
