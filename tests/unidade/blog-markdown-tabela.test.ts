@@ -17,10 +17,16 @@ describe("tabela do markdown do artigo", () => {
   it("sai dentro do invólucro rolável, alcançável pelo teclado", () => {
     const html = renderizar(md);
     expect(html).toMatch(
-      /^<div class="tabela-rolagem" role="region" aria-label="Tabela" tabindex="0"><table>/,
+      /^<div class="tabela-moldura"><div class="tabela-rolagem" role="region" aria-label="Tabela" tabindex="0"><table>/,
     );
     expect(html).toContain("<td>1</td>");
-    expect(html.endsWith("</table></div>")).toBe(true);
+    expect(html.endsWith("</table></div></div>")).toBe(true);
+  });
+
+  it("o HTML do servidor sai sem esmaecido (liga só no cliente, após medir)", () => {
+    const html = renderizar(md);
+    expect(html).not.toMatch(/data-dir/);
+    expect(html).not.toMatch(/data-esq/);
   });
 
   it("não vaza o nó mdast como atributo", () => {

@@ -19,6 +19,18 @@ function dia(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
 }
 
+/** Dia de "Revisado em" exibido no artigo (aaaa-mm-dd) ou null quando não há revisão visível. */
+async function diaRevisado(page: Page): Promise<string | null> {
+  const t = page.locator(".artigo-revisado time");
+  if ((await t.count()) === 0) return null;
+  return (await t.first().getAttribute("datetime"))?.slice(0, 10) ?? null;
+}
+
+/** Dia esperado de modificação: a revisão visível, senão a publicação (lib/blog/revisao.ts). */
+async function diaEsperadoDeModificacao(page: Page, no: Record<string, unknown>): Promise<string> {
+  return (await diaRevisado(page)) ?? dia(String(no.datePublished));
+}
+
 async function jsonLdArtigo(page: Page) {
   const nos = await lerJsonLd(page);
   const no = nos.find((n) => n["@type"] === "BlogPosting");
@@ -91,19 +103,17 @@ test.describe("autor visível no artigo", () => {
     await caixa.screenshot({ path: `${PASTA}/caixa-autor-${info.project.name}.png` });
   });
 
-  test("não mostra 'Revisado em' (migration 034 ainda não aplicada)", async ({ page }) => {
-    for (const s of slugs.slice(0, 3)) {
+  // Com dado real (o dono preencheu "Revisado em" em 2026-11-13) a premissa
+  // "nenhum artigo revisado" caiu: confere a regra, não a ausência.
+  test("'Revisado em', quando aparece, é posterior à publicação e vira o dateModified", async ({ page }) => {
+    for (const s of slugs.slice(0, 6)) {
       await page.goto(`/blog/${s}/`);
-      await expect(page.locator(".artigo-revisado"), s).toHaveCount(0);
+      const no = await jsonLdArtigo(page);
+      const publicado = dia(String(no.datePublished));
+      const revisado = await diaRevisado(page);
+      if (revisado) expect(revisado > publicado, `${s}: revisão ${revisado} após publicação ${publicado}`).toBe(true);
+      expect(dia(String(no.dateModified)), `${s}: dateModified`).toBe(await diaEsperadoDeModificacao(page, no));
     }
-  });
-
-  test("JSON-LD BlogPosting: dateModified = datePublished", async ({ page }) => {
-    await page.goto(`/blog/${slug}/`);
-    const no = await jsonLdArtigo(page);
-    expect(no.datePublished, "datePublished").toBeTruthy();
-    expect(no.dateModified, "dateModified").toBeTruthy();
-    expect(dia(String(no.dateModified))).toBe(dia(String(no.datePublished)));
   });
 
   test("meta article:modified_time presente", async ({ page }) => {
@@ -113,7 +123,7 @@ test.describe("autor visível no artigo", () => {
     expect(Number.isNaN(new Date(v!).getTime())).toBe(false);
   });
 
-  test("sitemap: lastmod de cada /blog/<slug>/ = dia de publicação", async ({ page, request }) => {
+  test("sitemap: lastmod de cada /blog/<slug>/ = revisão visível, senão publicação", async ({ page, request }) => {
     const xml = await (await request.get("/sitemap.xml")).text();
     const blocos = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map((m) => m[1]);
     const lastmod = new Map<string, string>();
@@ -128,7 +138,7 @@ test.describe("autor visível no artigo", () => {
       if (!lastmod.has(s)) continue;
       await page.goto(`/blog/${s}/`);
       const no = await jsonLdArtigo(page);
-      expect(dia(lastmod.get(s)!), `lastmod de ${s}`).toBe(dia(String(no.datePublished)));
+      expect(dia(lastmod.get(s)!), `lastmod de ${s}`).toBe(await diaEsperadoDeModificacao(page, no));
       conferidos++;
       if (conferidos >= 6) break;
     }

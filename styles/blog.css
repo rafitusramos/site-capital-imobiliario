@@ -131,8 +131,23 @@
 /* Invólucro de components/blog/markdown.tsx: tabela mais larga que a coluna
    (celular) rola dentro dele em vez de alargar a página. O margin saiu da
    tabela para cá. Foco visível porque a região é alcançável por Tab. */
-.tabela-rolagem{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;margin:24px 0 28px;}
+.tabela-rolagem{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
 .tabela-rolagem:focus-visible{outline:2px solid var(--jade);outline-offset:4px;}
+/* Moldura de components/blog/TabelaRolavel.tsx: carrega o margin e os
+   esmaecidos que avisam de coluna escondida (data-dir / data-esq, ligados por
+   JS conforme a rolagem). Sem overflow:hidden, senão corta o foco do invólucro. */
+.tabela-moldura{position:relative;margin:24px 0 28px;}
+.tabela-moldura::before,.tabela-moldura::after{
+  content:"";position:absolute;top:0;bottom:0;width:40px;pointer-events:none;
+  opacity:0;transition:opacity .15s ease-out;z-index:1;
+}
+.tabela-moldura::before{left:0;background:linear-gradient(to left,transparent,var(--branco));}
+.tabela-moldura::after{right:0;background:linear-gradient(to right,transparent,var(--branco));}
+.tabela-moldura[data-esq]::before{opacity:1;}
+.tabela-moldura[data-dir]::after{opacity:1;}
+@media(prefers-reduced-motion:reduce){
+  .tabela-moldura::before,.tabela-moldura::after{transition:none;}
+}
 @media(max-width:600px){
   .artigo-texto th,.artigo-texto td{white-space:nowrap;}
 }
