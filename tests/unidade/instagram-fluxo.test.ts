@@ -228,6 +228,15 @@ describe("decidirAoTocar", () => {
   });
 });
 
+describe("toque depois de link_aberto", () => {
+  it("reenvia o link sem mudar situação nem mexer em lembretes", () => {
+    const r = decidirAoTocar(auto(), { id: "p1", situacao: "link_aberto" }, "b1", ctxT(null));
+    expect(r).toEqual([
+      { tipo: "mensagem", mensagem: { texto: "LINK", botao: { tipo: "link", titulo: "Abrir", url: URL } } },
+    ]);
+  });
+});
+
 describe("momentoDoLembrete", () => {
   it("usa agora + horas quando cabe na janela", () => {
     expect(momentoDoLembrete(agora, 23, new Date(agora.getTime() + 24 * HORA))).toEqual(
@@ -245,6 +254,11 @@ describe("decidirLembrete", () => {
   const janela = new Date(agora.getTime() + HORA).toISOString();
   it("link_aberto: nada", () => {
     expect(decidirLembrete(auto(), { situacao: "link_aberto", janelaAte: janela }, { urlCurta: URL, agora })).toEqual([]);
+  });
+  it("lembrete desativado: nada", () => {
+    expect(
+      decidirLembrete(auto({ lembreteAtivo: false }), { situacao: "link_enviado", janelaAte: janela }, { urlCurta: URL, agora }),
+    ).toEqual([]);
   });
   it("janela vencida: nada", () => {
     const vencida = new Date(agora.getTime() - 1000).toISOString();

@@ -118,6 +118,11 @@ export function decidirAoTocar(
     ];
   }
 
+  if (p.situacao === "link_aberto") {
+    // Já abriu o link: reenvia sem voltar a "link_enviado" nem agendar lembrete.
+    return [{ tipo: "mensagem", mensagem: msgLink(a, a.linkTexto, ctx.urlCurta) }];
+  }
+
   return [
     { tipo: "mensagem", mensagem: msgLink(a, a.linkTexto, ctx.urlCurta), situacao: "link_enviado" },
     ...lembreteApos(a, ctx.agora, ctx.janelaAte),
@@ -129,6 +134,7 @@ export function decidirLembrete(
   p: { situacao: Situacao; janelaAte: string | null },
   ctx: { urlCurta: string; agora: Date },
 ): Acao[] {
+  if (!a.lembreteAtivo) return [];
   if (p.situacao !== "link_enviado" && p.situacao !== "aguardando_seguir") return [];
   if (!p.janelaAte || new Date(p.janelaAte).getTime() <= ctx.agora.getTime()) return [];
   return [
