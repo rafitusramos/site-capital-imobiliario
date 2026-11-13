@@ -373,5 +373,27 @@ export function criarRepositorio(): RepositorioIg {
         .select("chave");
       if (error) console.error("[instagram] marcar evento falhou:", error.message);
     },
+
+    async registrarEventos(eventos) {
+      if (eventos.length === 0) return [];
+      const { data, error } = await db
+        .from("ig_eventos")
+        .upsert(
+          eventos.map((e) => ({ chave: e.chave, payload: e.payload as Record<string, unknown> })),
+          { onConflict: "chave", ignoreDuplicates: true },
+        )
+        .select("chave");
+      if (error) falha("registrar eventos", error);
+      return (data ?? []).map((l) => l.chave);
+    },
+
+    async tocarUltimoEvento() {
+      const { error } = await db
+        .from("ig_conta")
+        .update({ ultimo_evento_em: new Date().toISOString() })
+        .eq("id", 1)
+        .select("id");
+      if (error) falha("registrar último evento", error);
+    },
   };
 }

@@ -116,6 +116,10 @@ export interface RepositorioIg {
   /** Apaga o texto/payload guardado do evento (privacidade); `chave` = chaveDoEvento. */
   descartarConteudo(chave: string): Promise<void>;
   marcarEvento(chave: string, erro?: string): Promise<void>;
+  /** Grava os eventos do webhook (`on conflict do nothing`) e devolve só as chaves NOVAS. */
+  registrarEventos(eventos: { chave: string; payload: unknown }[]): Promise<string[]>;
+  /** `ig_conta.ultimo_evento_em = now()`. */
+  tocarUltimoEvento(): Promise<void>;
 }
 
 export interface DependenciasMotor {

@@ -82,6 +82,8 @@ export class RepositorioFalso implements RepositorioIg {
   vinculos: Array<{ automacaoId: string; midiaId: string }> = [];
   descartados: string[] = [];
   eventosMarcados: Array<{ chave: string; erro?: string }> = [];
+  eventosGravados: Array<{ chave: string; payload: unknown }> = [];
+  toquesUltimoEvento = 0;
   private seq = 0;
 
   constructor(private readonly agora: () => Date) {}
@@ -262,6 +264,19 @@ export class RepositorioFalso implements RepositorioIg {
   }
   async marcarEvento(chave: string, erro?: string) {
     this.eventosMarcados.push({ chave, erro });
+  }
+
+  async registrarEventos(eventos: { chave: string; payload: unknown }[]) {
+    const novos: string[] = [];
+    for (const e of eventos) {
+      if (this.eventosGravados.some((x) => x.chave === e.chave)) continue;
+      this.eventosGravados.push(e);
+      novos.push(e.chave);
+    }
+    return novos;
+  }
+  async tocarUltimoEvento() {
+    this.toquesUltimoEvento += 1;
   }
 
   // Apoio dos testes.

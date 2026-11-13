@@ -9,9 +9,10 @@ import { ROBOS_IA } from "@/lib/seo/robos-ia";
 //
 // Armadilha: um grupo com user-agent específico SUBSTITUI o `*` para aquele
 // robô (não soma). Por isso o `disallow: "/admin"` se repete no grupo de IA;
-// sem ele, o /admin ficaria liberado para esses robôs.
+// sem ele, o /admin ficaria liberado para esses robôs. O /ir/ (link curto do
+// módulo Instagram) é só redirecionamento: nada a indexar.
 const ALLOW = "/";
-const DISALLOW = "/admin";
+const DISALLOW = ["/admin", "/ir/"];
 
 export default function robots(): MetadataRoute.Robots {
   return {
