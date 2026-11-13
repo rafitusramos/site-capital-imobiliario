@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1328 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **034**.
+Suíte em Vitest: `npm test` — 1595 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **036**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -105,6 +105,52 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 - Tags vivem no catálogo compartilhado `crm_tags`, com FK em `lead_tags`: não
   existe tag solta por lead. Criar tag pela interface exige admin (RLS
   `crm_tags_admin_write`).
+
+### Instagram comentário → DM
+Substitui o ManyChat: comentário numa publicação com palavra-chave dispara resposta pública
++ DM (resposta privada) com botões, link curto rastreado e lembrete. Especificação:
+`docs/superpowers/specs/2026-11-11-instagram-comentario-dm-design.md`. Código em `lib/instagram/*`
+(puros: `palavras`, `selecao`, `fluxo`, `mensagens`, `textos-padrao`, `link`, `fila`, `assinatura`,
+`eventos`, `formulario`; com I/O: `graph`, `repositorio`, `motor`/`motor-padrao`, `config`).
+
+- Rotas: `POST/GET /api/meta/webhook/` (assinatura `X-Hub-Signature-256` com `META_APP_SECRET`,
+  200 imediato, processa em `after()`), `/api/meta/disparar/` (fila; chamada a cada minuto pelo
+  pg_cron com `CRON_SECRET`), `/api/meta/instagram/retorno/` (login unificado, só admin, `state`
+  anti-CSRF), `/ir/<codigo>/` (link curto; `/ir/` está no `disallow` de `app/robots.ts`). Admin em
+  `/admin/instagram/` (resumo/caixa de entrada, `automacoes/`, `conexao/`).
+- Tabelas `ig_*` (migration **035**): `ig_conta` (token: **só a service role lê**, sem grant de
+  coluna para `authenticated`), `ig_automacoes`, `ig_contatos`, `ig_participacoes`, `ig_mensagens`,
+  `ig_envios` (fila), `ig_eventos` (brutos), `ig_cliques`. RLS `eh_admin()`; o motor escreve com a
+  service role. Números do dia vêm de `ig_resumo_do_dia`, nunca somados em JS.
+- **Migration 036 / Vault:** `pg_net` + `ig_chamar_disparador` leem do Vault os segredos
+  `ig_disparar_url` e `ig_cron_secret` (**criar à mão no Vault, nunca no `.sql`**) e os jobs
+  `ig-disparar` (todo minuto), `ig-apagar-inativos` (diário) e `ig-limpar-eventos` (brutos > 30 dias).
+  `CRON_SECRET` na Vercel tem de ser igual a `ig_cron_secret`.
+- **Trava 503:** faltando qualquer uma das 5 variáveis (`META_APP_ID`, `META_APP_SECRET`,
+  `META_LOGIN_CONFIG_ID`, `META_WEBHOOK_VERIFY_TOKEN`, `CRON_SECRET`; `lib/instagram/config.ts`), `webhook` e `disparar`
+  respondem 503 e não enviam nada (o `retorno/` é só de admin e não usa a trava). É o que impede preview e produção (mesmo banco) de
+  processarem o mesmo evento: as variáveis existem **só** no ambiente Production da Vercel.
+- **Eco:** a Meta devolve ao webhook as DMs que nós mesmos mandamos. Identificamos pelo `meta_id`
+  (`ig_mensagens`/`ig_envios`) **e** pela janela de 60 s de `envioRecente` (o eco pode chegar antes de
+  o `meta_id` ser gravado). Sem isso o eco seria lido como mensagem do dono e cancelaria todo
+  lembrete. Comentário da própria conta é ignorado.
+- **Idempotência:** `ig_eventos.chave` = `${tipo}:${chave}` (`chaveDoEvento`); envio por
+  `ig_envios.chave` (`c:<comentario>:privada|publica`, `b:<mid>`, `l:<evento>`). Reentrega
+  do webhook não duplica. A `situacao` da participação só avança com envio bem-sucedido. Depois que a
+  Graph aceita um envio ele **nunca** volta para a fila. Erro 0 (rede), 429 e 5xx são temporários.
+- **Lembrete só nasce de toque em botão**: comentário não abre a janela de 24 h, então não agenda
+  lembrete. Resposta privada = 1 por comentário, até 7 dias; demais mensagens só em até 24 h do último
+  toque. Limites: mensagem com botão 640, título de botão 20, resposta pública 300.
+- **Caixa de entrada** guarda só conversa de quem entrou numa automação; DM de outras pessoas
+  guarda só o identificador (conteúdo descartado). Retenção: contato sem interação há 12 meses é
+  apagado por `ig_apagar_inativos`; "Excluir dados deste contato" na caixa de entrada.
+- **`// CONFERIR:` em `lib/instagram/graph.ts`** (versão/endereço da Graph, formato do template de
+  botão, campo "segue a conta") não foram validados com a conta real: confirmar no primeiro teste
+  com a conta real antes de desligar o ManyChat.
+- **Política de privacidade** ganhou seção própria sobre as conversas do Instagram (data "atualizado em" 13/11/2026);
+  `TEXTO_CONSENTIMENTO` não muda.
+- **Vitest só roda a partir de `C:\` maiúsculo** (PowerShell). Com `c:` minúsculo todo arquivo
+  falha com "Cannot read properties of undefined (reading 'config')": não é bug do código.
 
 ### Data de nascimento do lead (migration 033)
 Obrigatória nos formulários de **financiamento** e **home equity** (a idade entra no

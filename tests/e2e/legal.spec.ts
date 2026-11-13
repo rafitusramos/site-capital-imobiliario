@@ -12,9 +12,9 @@ test.describe("Páginas legais", () => {
     await expect(secao).toContainText("habitacional");
   });
 
-  test("política: topo mostra 'Atualizado em 9 de novembro de 2026'", async ({ page }) => {
+  test("política: topo mostra 'Atualizado em 13 de novembro de 2026'", async ({ page }) => {
     await page.goto("/politica-de-privacidade/");
-    await expect(page.locator(".legal-atualizado")).toHaveText("Atualizado em 9 de novembro de 2026");
+    await expect(page.locator(".legal-atualizado")).toHaveText("Atualizado em 13 de novembro de 2026");
   });
 
   test("política: canonical segue /politica-de-privacidade/", async ({ page }) => {
@@ -27,12 +27,12 @@ test.describe("Páginas legais", () => {
     await expect(page.locator(".legal-atualizado")).toHaveText("Atualizado em 30 de julho de 2026");
   });
 
-  test("sitemap: lastmod da política começa com 2026-11-09", async ({ request }) => {
+  test("sitemap: lastmod da política começa com 2026-11-13", async ({ request }) => {
     const resposta = await request.get("/sitemap.xml");
     expect(resposta.status()).toBe(200);
     const xml = await resposta.text();
     const bloco = xml.split("<url>").find((b) => /<loc>[^<]*\/politica-de-privacidade\/<\/loc>/.test(b));
     expect(bloco, "entrada da política no sitemap").toBeDefined();
-    expect(bloco!).toMatch(/<lastmod>2026-11-09/);
+    expect(bloco!).toMatch(/<lastmod>2026-11-13/);
   });
 });
