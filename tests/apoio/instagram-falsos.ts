@@ -63,6 +63,7 @@ export interface EnvioFalso extends Envio {
   enviarApos: Date;
   metaId: string | null;
   erro: string | null;
+  enviadoEm?: Date;
 }
 
 export class RepositorioFalso implements RepositorioIg {
@@ -218,6 +219,14 @@ export class RepositorioFalso implements RepositorioIg {
       }
     }
   }
+  async envioRecente(contatoId: string, desde: Date) {
+    return this.envios.some(
+      (e) =>
+        e.contatoId === contatoId &&
+        (e.estado === "processando" ||
+          (e.estado === "enviado" && !!e.enviadoEm && e.enviadoEm.getTime() >= desde.getTime())),
+    );
+  }
   async reservarEnvios(limite: number) {
     const agora = this.agora().getTime();
     const devolvidos = this.envios
@@ -231,7 +240,10 @@ export class RepositorioFalso implements RepositorioIg {
     const e = this.envios.find((x) => x.id === id);
     if (!e) throw new Error("envio inexistente");
     e.estado = r.estado;
-    if (r.estado === "enviado") e.metaId = r.metaId;
+    if (r.estado === "enviado") {
+      e.metaId = r.metaId;
+      e.enviadoEm = this.agora();
+    }
     if (r.estado === "pendente") {
       e.enviarApos = r.enviarApos;
       e.tentativas = r.tentativas;

@@ -305,9 +305,10 @@ describe("mensagens de texto e eco", () => {
   });
 
   it("eco com mid desconhecido (o dono escreveu): grava 'dono' e cancela o lembrete", async () => {
-    const { repo, motor } = montar();
+    const { repo, relogio, motor } = montar();
     const p = await pessoaNaSequencia(repo);
     await motor.processarEvento(toque(p.id, "mid1"));
+    relogio.agora = new Date(T0.getTime() + 2 * MIN); // fora da janela de 60 s do nosso envio
 
     await motor.processarEvento(eco("mid-do-dono"));
 
@@ -316,6 +317,31 @@ describe("mensagens de texto e eco", () => {
       metaId: "mid-do-dono",
     });
     expect(repo.envios.find((e) => e.tipo === "lembrete")?.estado).toBe("cancelado");
+  });
+
+  it("Review Focus 1 (corrida): eco que chega com o envio ainda 'processando' é nosso, não do dono", async () => {
+    const { repo, motor } = montar();
+    const p = await pessoaNaSequencia(repo);
+    await repo.enfileirar({
+      chave: "l:x",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "lembrete",
+      enviarApos: new Date(T0.getTime() + 2 * HORA),
+    });
+    await repo.enfileirar({
+      chave: "b:x",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "mensagem",
+      enviarApos: T0,
+    });
+    repo.envios.find((e) => e.chave === "b:x")!.estado = "processando";
+
+    await motor.processarEvento(eco("mid-ainda-nao-gravado"));
+
+    expect(repo.mensagens.some((m) => m.direcao === "dono")).toBe(false);
+    expect(repo.envios.find((e) => e.tipo === "lembrete")?.estado).toBe("pendente");
   });
 
   it("eco para quem não participa de nada: descarta o conteúdo", async () => {
@@ -444,6 +470,37 @@ describe("fila: lembrete e falhas", () => {
     expect(repo.participacoes[0].falhaMotivo).toContain("500");
     expect(repo.participacoes[0].falhaEm).toBeTruthy();
     expect(repo.participacoes[0].situacao).toBe("aguardando_botao");
+  });
+
+  it("depois que a Graph entregou, falha no registro não devolve o envio à fila (sem DM duplicada)", async () => {
+    const { repo, graph, motor } = montar();
+    const p = await pessoaNaSequencia(repo);
+    const original = repo.registrarMensagem.bind(repo);
+    repo.registrarMensagem = async (m) => {
+      if (m.direcao === "saida") throw new Error("banco fora");
+      return original(m);
+    };
+    await motor.processarEvento(toque(p.id, "mid1"));
+    await motor.dispararFila();
+
+    expect(graph.totalEnvios()).toBe(1);
+    expect(repo.envios.find((e) => e.tipo === "mensagem")?.estado).toBe("enviado");
+  });
+
+  it("envio sem conteúdo falha direto, sem repetir", async () => {
+    const { repo, graph, motor } = montar();
+    const p = await pessoaNaSequencia(repo);
+    await repo.enfileirar({
+      chave: "b:vazio",
+      contatoId: p.contatoId,
+      participacaoId: p.id,
+      tipo: "mensagem",
+      enviarApos: T0,
+    });
+    await motor.dispararFila();
+
+    expect(repo.envios[0].estado).toBe("falhou");
+    expect(graph.totalEnvios()).toBe(0);
   });
 
   it("falha de rede (status 0) é temporária", async () => {

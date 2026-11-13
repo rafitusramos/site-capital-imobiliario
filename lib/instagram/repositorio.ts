@@ -282,6 +282,17 @@ export function criarRepositorio(): RepositorioIg {
       if (error) falha("cancelar lembretes", error);
     },
 
+    async envioRecente(contatoId, desde) {
+      const { data, error } = await db
+        .from("ig_envios")
+        .select("id")
+        .eq("contato_id", contatoId)
+        .or(`estado.eq.processando,and(estado.eq.enviado,enviado_em.gte.${desde.toISOString()})`)
+        .limit(1);
+      if (error) falha("procurar envio recente", error);
+      return (data?.length ?? 0) > 0;
+    },
+
     async reservarEnvios(limite): Promise<Envio[]> {
       const { data, error } = await db.rpc("ig_reservar_envios", { p_limite: limite });
       if (error) falha("reservar envios", error);

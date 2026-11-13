@@ -108,6 +108,8 @@ export interface RepositorioIg {
   /** false se a `chave` já existe. */
   enfileirar(e: NovoEnvio): Promise<boolean>;
   cancelarLembretes(participacaoId: string): Promise<void>;
+  /** Há envio do contato `processando`, ou `enviado` desde `desde`? (eco do nosso próprio envio) */
+  envioRecente(contatoId: string, desde: Date): Promise<boolean>;
   reservarEnvios(limite: number): Promise<Envio[]>;
   concluirEnvio(id: string, r: ConclusaoEnvio): Promise<void>;
   registrarClique(participacaoId: string, ua: string | null): Promise<void>;
@@ -348,6 +350,9 @@ export function criarMotor(dep: DependenciasMotor): Motor {
     }
 
     if (e.eco) {
+      // O eco pode chegar antes de o meta_id do nosso envio ser gravado: se há envio em
+      // curso (ou recém-concluído) para esta pessoa, é nosso, não do dono.
+      if (await repo.envioRecente(contato.id, new Date(agora().getTime() - 60_000))) return;
       await repo.registrarMensagem({
         contatoId: contato.id,
         participacaoId: null,
@@ -395,7 +400,7 @@ export function criarMotor(dep: DependenciasMotor): Motor {
   // -------------------------------------------------------------------------
 
   async function enviar(g: GraphIg, envio: Envio, mensagem: MensagemSaida | undefined): Promise<ResultadoGraph> {
-    const semDados: ResultadoGraph = { ok: false, status: 0, mensagem: "envio sem conteúdo" };
+    const semDados: ResultadoGraph = { ok: false, status: 400, mensagem: "envio sem conteúdo" };
     switch (envio.tipo) {
       case "resposta_publica":
         return envio.comentarioId && envio.payload?.texto
@@ -430,20 +435,25 @@ export function criarMotor(dep: DependenciasMotor): Motor {
     const r = await enviar(g, envio, mensagem);
 
     if (r.ok) {
-      await repo.concluirEnvio(envio.id, { estado: "enviado", metaId: r.id ?? null });
-      await repo.registrarMensagem({
-        contatoId: envio.contatoId,
-        participacaoId: envio.participacaoId,
-        direcao: "saida",
-        tipo: envio.tipo === "resposta_publica" ? "resposta_publica" : "texto",
-        texto: envio.tipo === "resposta_publica" ? (envio.payload?.texto ?? null) : (mensagem?.texto ?? null),
-        metaId: r.id ?? null,
-      });
-      if (situacao && envio.participacaoId) {
-        await repo.atualizarParticipacao(envio.participacaoId, {
-          situacao,
-          ...(situacao === "link_enviado" ? { linkEnviadoEm: agora().toISOString() } : {}),
+      // A Graph já entregou: nada daqui pode devolver o envio à fila (reenvio duplicado).
+      try {
+        await repo.concluirEnvio(envio.id, { estado: "enviado", metaId: r.id ?? null });
+        await repo.registrarMensagem({
+          contatoId: envio.contatoId,
+          participacaoId: envio.participacaoId,
+          direcao: "saida",
+          tipo: envio.tipo === "resposta_publica" ? "resposta_publica" : "texto",
+          texto: envio.tipo === "resposta_publica" ? (envio.payload?.texto ?? null) : (mensagem?.texto ?? null),
+          metaId: r.id ?? null,
         });
+        if (situacao && envio.participacaoId) {
+          await repo.atualizarParticipacao(envio.participacaoId, {
+            situacao,
+            ...(situacao === "link_enviado" ? { linkEnviadoEm: agora().toISOString() } : {}),
+          });
+        }
+      } catch (ex) {
+        console.error("[instagram] envio entregue, mas o registro falhou", envio.id, ex);
       }
       return "enviado";
     }
