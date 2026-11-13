@@ -105,7 +105,7 @@ export function CampoPalavras({ id, valor, onChange, sugestoes, desabilitado = f
       <div className="relative" onBlur={aoSair}>
         <div
           onClick={() => entrada.current?.focus()}
-          className={`flex min-h-[42px] w-full flex-wrap items-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-sm text-[var(--tinta)] focus-within:border-[var(--jade)] focus-within:ring-2 focus-within:ring-[var(--jade)]/30 ${
+          className={`flex min-h-[42px] w-full flex-wrap items-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-sm text-[var(--tinta)] focus-within:border-[var(--jade)] focus-within:ring-1 focus-within:ring-[var(--jade)] ${
             erro ? "border-[var(--erro)]" : "border-neutral-300"
           } ${desabilitado ? "cursor-not-allowed opacity-60" : "cursor-text"}`}
         >

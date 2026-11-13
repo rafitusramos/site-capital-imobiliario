@@ -22,7 +22,7 @@ import { SeletorPublicacao } from "./SeletorPublicacao";
 type Erros = Partial<Record<string, string>>;
 
 const INPUT =
-  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-[var(--tinta)] focus:border-[var(--jade)]";
+  "w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm text-[var(--tinta)] focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]";
 
 function Secao({ titulo, children }: { titulo: string; children: React.ReactNode }) {
   return (
