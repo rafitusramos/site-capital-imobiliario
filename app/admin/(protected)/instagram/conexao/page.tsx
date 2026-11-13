@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { garantirAdminOuRedirecionar } from "@/lib/admin/auth";
 import { statusConexao } from "@/lib/queries/admin-instagram";
 import { formatarData } from "@/lib/crm/tempo";
 import { BotaoConectar } from "@/components/admin/instagram/StatusConexao";
@@ -18,7 +17,6 @@ const MENSAGENS_ERRO: Record<string, string> = {
 type Params = { ok?: string; erro?: string };
 
 export default async function ConexaoInstagramPage({ searchParams }: { searchParams: Promise<Params> }) {
-  await garantirAdminOuRedirecionar();
   const { ok, erro } = await searchParams;
   const s = await statusConexao();
 
