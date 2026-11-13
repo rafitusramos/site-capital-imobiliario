@@ -5,30 +5,38 @@ import { canonicalDaPagina, coletarErros } from "./apoio/pagina";
  * SOMENTE LEITURA (PR #91, Instagram comentário -> DM). Todo deploy usa o MESMO
  * banco de produção e as variáveis META_* e CRON_SECRET existem só no ambiente
  * Production da Vercel. Logo, no preview o webhook e o disparador têm de recusar
- * com 503 e não fazer nada. Os POSTs abaixo são recusados pela trava 503.
+ * com 503 e não fazer nada. Na produção as variáveis existem (desde 13/11/2026) e
+ * a recusa vem da credencial inválida: token errado 403, assinatura inválida 401,
+ * senha do disparador errada 401. Nos dois casos nada é processado nem enviado.
  * Nada aqui salva, conecta conta, exclui dado ou envia o formulário de automação.
  */
 
-test.describe("Instagram DM: rotas públicas (trava 503)", () => {
-  test("GET /api/meta/webhook/ com hub.* responde 503 (não eco do challenge)", async ({ request }) => {
+/** A suíte roda contra a produção (variáveis Meta presentes) ou contra um deploy de branch (trava 503). */
+function ehProducao(baseURL: string | undefined): boolean {
+  const host = baseURL ? new URL(baseURL).hostname : "";
+  return host === "rtcapitalimobiliario.com.br" || host === "www.rtcapitalimobiliario.com.br";
+}
+
+test.describe("Instagram DM: rotas públicas recusam chamada sem credencial válida", () => {
+  test("GET /api/meta/webhook/ com token errado: 503 no preview, 403 na produção, sem eco do challenge", async ({ request, baseURL }) => {
     const r = await request.get(
       "/api/meta/webhook/?hub.mode=subscribe&hub.verify_token=qualquer&hub.challenge=abc123",
     );
-    expect(r.status()).toBe(503);
+    expect(r.status()).toBe(ehProducao(baseURL) ? 403 : 503);
     expect(await r.text()).not.toContain("abc123");
   });
 
-  test("POST /api/meta/webhook/ responde 503", async ({ request }) => {
+  test("POST /api/meta/webhook/ com assinatura inválida: 503 no preview, 401 na produção", async ({ request, baseURL }) => {
     const r = await request.post("/api/meta/webhook/", {
       data: { object: "instagram", entry: [] },
       headers: { "x-hub-signature-256": "sha256=00" },
     });
-    expect(r.status()).toBe(503);
+    expect(r.status()).toBe(ehProducao(baseURL) ? 401 : 503);
   });
 
-  test("POST /api/meta/disparar/ responde 503", async ({ request }) => {
+  test("POST /api/meta/disparar/ com senha errada: 503 no preview, 401 na produção", async ({ request, baseURL }) => {
     const r = await request.post("/api/meta/disparar/", { headers: { authorization: "Bearer x" } });
-    expect(r.status()).toBe(503);
+    expect(r.status()).toBe(ehProducao(baseURL) ? 401 : 503);
   });
 });
 
