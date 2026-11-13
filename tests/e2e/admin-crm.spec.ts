@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { abrirAdmin, ESTADO_ADMIN, expect, test } from "./apoio/admin";
+import { abrirAdmin, abrirModalDoLead, ESTADO_ADMIN, expect, test } from "./apoio/admin";
 import { AdminCrmPage } from "./paginas/admin.page";
 
 /*
@@ -67,8 +67,7 @@ test.describe("/admin/crm/financiamento/ — quadro", () => {
     const editar = page.getByRole("button", { name: "Editar lead" });
     test.skip((await editar.count()) === 0, "nenhum lead nesta aba");
 
-    await editar.first().click();
-    const modal = page.getByRole("dialog", { name: /^Lead / });
+    const modal = await abrirModalDoLead(page, editar.first());
     await expect(modal).toBeVisible();
     await expect(page).toHaveURL(/lead=/);
 
@@ -152,8 +151,7 @@ test.describe("/admin/crm/financiamento/ — lote de melhorias", () => {
       await abrirAdmin(page, `/admin/crm/${ORIGEM}/`);
       const editar = page.getByRole("button", { name: "Editar lead" });
       test.skip((await editar.count()) === 0, "nenhum lead nesta aba");
-      await editar.first().click();
-      const modal = page.getByRole("dialog", { name: /^Lead / });
+      const modal = await abrirModalDoLead(page, editar.first());
       await expect(modal).toBeVisible();
       await expect(modal.locator('[aria-current="step"]')).toBeVisible();
       return modal;

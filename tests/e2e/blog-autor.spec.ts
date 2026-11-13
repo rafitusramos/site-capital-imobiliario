@@ -27,6 +27,9 @@ async function jsonLdArtigo(page: Page) {
 }
 
 test.describe("autor visível no artigo", () => {
+  // Percorre vários artigos; com 6 workers no deploy de preview passava dos 30 s.
+  test.describe.configure({ timeout: 60_000 });
+
   let slug = "";
   let slugs: string[] = [];
 

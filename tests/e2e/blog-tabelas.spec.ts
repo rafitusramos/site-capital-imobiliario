@@ -5,6 +5,9 @@ import { test, expect } from "@playwright/test";
 // dentro de `.tabela-rolagem` (components/blog/markdown.tsx).
 
 test.describe("tabelas dos artigos em 360px", () => {
+  // Percorre vários artigos; com 6 workers no deploy de preview passava dos 30 s.
+  test.describe.configure({ timeout: 60_000 });
+
   test.use({ viewport: { width: 360, height: 740 } });
 
   test("nenhum artigo tem rolagem horizontal de página; tabelas rolam no invólucro", async ({ page }) => {
