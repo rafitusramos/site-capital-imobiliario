@@ -56,7 +56,13 @@ export async function POST(req: Request): Promise<Response> {
     if (!(await repo.conta())) return resposta("ok", 200); // sem conta conectada, nada a processar
     const porChave = new Map(eventos.map((e) => [chaveDoEvento(e), e]));
     const novas = await repo.registrarEventos([...porChave].map(([chave, e]) => ({ chave, payload: e })));
-    await repo.tocarUltimoEvento();
+    // Só telemetria: os eventos já estão gravados, então falhar aqui não pode
+    // impedir o processamento (a reentrega da Meta os veria como já existentes).
+    try {
+      await repo.tocarUltimoEvento();
+    } catch (ex) {
+      console.error("[instagram] webhook: falha ao registrar último evento", ex);
+    }
 
     const novos = novas.map((c) => porChave.get(c)).filter((e) => e !== undefined);
     if (novos.length > 0) {

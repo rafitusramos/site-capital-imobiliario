@@ -109,6 +109,17 @@ describe("webhook POST", () => {
     expect(repo.toquesUltimoEvento).toBe(1);
     expect(motor.processarEvento).toHaveBeenCalledTimes(1);
   });
+  test("tocarUltimoEvento falhando não impede 200 nem o processamento", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    repo.tocarUltimoEvento = async () => {
+      throw new Error("db");
+    };
+    const c = corpoComentario("c9");
+    const r = await post(c, assinar(c));
+    expect(r.status).toBe(200);
+    await Promise.all(pendentes);
+    expect(motor.processarEvento).toHaveBeenCalledTimes(1);
+  });
   test("evento repetido não reprocessa", async () => {
     const c = corpoComentario("c1");
     await post(c, assinar(c));
