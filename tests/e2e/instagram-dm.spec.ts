@@ -113,3 +113,213 @@ test.describe("Instagram DM: admin (degradado, sem migrations 035/036)", () => {
     expect(acoesServidor).toEqual([]);
   });
 });
+
+/*
+ * PR #95: campo de palavras-chave em chips. Só digita no formulário de nova
+ * automação e sai sem salvar: nenhuma Server Action pode ser disparada.
+ */
+test.describe("Instagram DM: palavras-chave em chips (nova automação, sem salvar)", () => {
+  test.use({ storageState: ESTADO_ADMIN });
+
+  const NOVA = "/admin/instagram/automacoes/nova/";
+
+  async function abrirCampo(page: import("@playwright/test").Page) {
+    await abrirAdmin(page, NOVA);
+    const entrada = page.getByRole("combobox", { name: "Palavras-chave" });
+    await expect(entrada).toBeVisible();
+    const chips = page.getByRole("list", { name: "Palavras-chave adicionadas" }).getByRole("listitem");
+    return { entrada, chips };
+  }
+
+  async function sairSemSalvar(page: import("@playwright/test").Page) {
+    page.once("dialog", (d) => d.accept());
+    await page.goto("/admin/instagram/automacoes/").catch(() => undefined);
+  }
+
+  test("vírgula cria chip e esvazia o campo; texto de ajuda visível", async ({ page, acoesServidor }) => {
+    const { entrada, chips } = await abrirCampo(page);
+    await expect(page.getByText("Digite e tecle Enter ou vírgula para adicionar. Maiúsculas e acentos são ignorados.")).toBeVisible();
+    await entrada.fill("abc,");
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText("abc");
+    await expect(entrada).toHaveValue("");
+    expect(acoesServidor).toEqual([]);
+    await sairSemSalvar(page);
+  });
+
+  test("Enter cria chip e NÃO envia o formulário nem navega", async ({ page, acoesServidor }) => {
+    const { entrada, chips } = await abrirCampo(page);
+    const antes = page.url();
+    await entrada.fill("Def");
+    await entrada.press("Enter");
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText(/def/i);
+    expect(page.url()).toBe(antes);
+    await expect(page.getByRole("heading", { name: "Nova automação" })).toBeVisible();
+    expect(acoesServidor, "Enter não pode disparar Server Action").toEqual([]);
+    await sairSemSalvar(page);
+  });
+
+  test("duplicata ignorando maiúsculas e acentos não cria segundo chip", async ({ page }) => {
+    const { entrada, chips } = await abrirCampo(page);
+    await entrada.fill("abc,");
+    await expect(chips).toHaveCount(1);
+    await entrada.fill("ABC,");
+    await entrada.fill("ábc,");
+    await expect(chips).toHaveCount(1);
+    await sairSemSalvar(page);
+  });
+
+  test("Backspace no campo vazio remove o último chip", async ({ page }) => {
+    const { entrada, chips } = await abrirCampo(page);
+    await entrada.fill("um,");
+    await entrada.fill("dois,");
+    await expect(chips).toHaveCount(2);
+    await entrada.press("Backspace");
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText("um");
+    await sairSemSalvar(page);
+  });
+
+  test("botão 'Remover palavra' remove o chip", async ({ page }) => {
+    const { entrada, chips } = await abrirCampo(page);
+    await entrada.fill("um,");
+    await entrada.fill("dois,");
+    await expect(chips).toHaveCount(2);
+    await page.getByRole("button", { name: "Remover palavra um" }).click();
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText("dois");
+    await sairSemSalvar(page);
+  });
+
+  test("colar 'x, y, z' cria 3 chips", async ({ page }) => {
+    const { entrada, chips } = await abrirCampo(page);
+    await entrada.focus();
+    await entrada.evaluate((el) => {
+      const dt = new DataTransfer();
+      dt.setData("text", "x, y, z");
+      el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    await expect(chips).toHaveCount(3);
+    await expect(chips.nth(0)).toContainText("x");
+    await expect(chips.nth(1)).toContainText("y");
+    await expect(chips.nth(2)).toContainText("z");
+    await sairSemSalvar(page);
+  });
+
+  test("blur com texto pendente confirma o chip", async ({ page }) => {
+    const { entrada, chips } = await abrirCampo(page);
+    await entrada.fill("pendente");
+    await page.getByRole("heading", { name: "Nova automação" }).click();
+    await entrada.blur();
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText("pendente");
+    await sairSemSalvar(page);
+  });
+
+  test("sugestões de palavras já usadas: listbox, ArrowDown+Enter e Escape", async ({ page, acoesServidor }) => {
+    await abrirAdmin(page, "/admin/instagram/automacoes/");
+    const corpo = await page.locator("main").innerText();
+    const m = /Palavras?:\s*([^\n]+)/i.exec(corpo);
+    const existentes = (m?.[1] ?? "").split(",").map((s) => s.trim()).filter((s) => s.length >= 2);
+    test.skip(existentes.length === 0, "nenhuma automação com palavras-chave cadastrada: não há o que sugerir");
+    const palavra = existentes[0];
+
+    const { entrada, chips } = await abrirCampo(page);
+    const lista = page.getByRole("listbox", { name: "Palavras já usadas" });
+    await entrada.fill(palavra.slice(0, 2));
+    await expect(lista).toBeVisible();
+    await expect(entrada).toHaveAttribute("aria-expanded", "true");
+    await expect(lista.getByRole("option", { name: new RegExp(palavra, "i") }).first()).toBeVisible();
+
+    await entrada.press("ArrowDown");
+    await entrada.press("Enter");
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText(new RegExp(palavra, "i"));
+
+    await entrada.fill(palavra.slice(0, 2));
+    // a palavra já escolhida não é sugerida de novo; se houver outra, Escape fecha
+    if (await lista.isVisible()) {
+      await entrada.press("Escape");
+      await expect(lista).toBeHidden();
+      await expect(entrada).toHaveAttribute("aria-expanded", "false");
+    }
+    expect(acoesServidor).toEqual([]);
+    await sairSemSalvar(page);
+  });
+
+  for (const [rotulo, largura] of [["desktop", 1280], ["390px", 390]] as const) {
+  test(`layout ${rotulo}: chips quebram linha dentro da caixa e sem rolagem horizontal`, async ({ page }) => {
+    await page.setViewportSize({ width: largura, height: 900 });
+    const { entrada } = await abrirCampo(page);
+    for (const p of ["financiamento", "home equity", "consorcio", "imoveis", "palavra-longa-de-teste", "quero"]) {
+      await entrada.fill(`${p},`);
+    }
+    const caixa = entrada.locator("xpath=ancestor::div[contains(@class,'flex-wrap')][1]");
+    await caixa.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: `test-results/palavras-chips-${rotulo}.png` });
+    const medidas = await page.evaluate(() => ({
+      docOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    }));
+    expect(medidas.docOverflow, "overflow horizontal da página").toBeLessThanOrEqual(0);
+    const cx = await caixa.boundingBox();
+    const itens = await page.getByRole("list", { name: "Palavras-chave adicionadas" }).getByRole("listitem").all();
+    for (const li of itens) {
+      const b = await li.boundingBox();
+      expect(b!.x + b!.width).toBeLessThanOrEqual(cx!.x + cx!.width + 1);
+    }
+    await sairSemSalvar(page);
+  });
+  }
+});
+
+/*
+ * PR #94 (hot-fix/historico-automacao-excluida). SOMENTE LEITURA: o diálogo de
+ * exclusão é aberto e CANCELADO, nunca confirmado.
+ */
+test.describe("PR #94: páginas públicas seguem de pé", () => {
+  test("home responde 200", async ({ request }) => {
+    expect((await request.get("/")).status()).toBe(200);
+  });
+
+  test("/politica-de-privacidade/ responde 200", async ({ request }) => {
+    expect((await request.get("/politica-de-privacidade/")).status()).toBe(200);
+  });
+});
+
+test.describe("PR #94: caixa de entrada e exclusão de automação (somente leitura)", () => {
+  test.use({ storageState: ESTADO_ADMIN });
+
+  test("caixa de entrada mostra resumo do dia e filtros, sem erro", async ({ page, acoesServidor }) => {
+    await abrirAdmin(page, "/admin/instagram/");
+    await expect(page.getByRole("heading", { name: "Hoje" })).toBeVisible();
+    await expect(page.getByLabel("Filtrar por automação")).toBeVisible();
+    await expect(page.getByLabel("Filtrar por situação")).toBeVisible();
+    await expect(page.getByText(/Application error|Internal Server Error|Algo deu errado/i)).toHaveCount(0);
+    expect(acoesServidor).toEqual([]);
+  });
+
+  test("/admin/instagram/automacoes/ carrega sem erro", async ({ page, acoesServidor }) => {
+    await abrirAdmin(page, "/admin/instagram/automacoes/");
+    await expect(page.getByRole("main")).toBeVisible();
+    await expect(page.getByText(/Application error|Internal Server Error|Algo deu errado/i)).toHaveCount(0);
+    expect(acoesServidor).toEqual([]);
+  });
+
+  test("diálogo de exclusão explica o histórico e é CANCELADO", async ({ page, acoesServidor }) => {
+    await abrirAdmin(page, "/admin/instagram/automacoes/");
+    const botoes = page.getByRole("button", { name: "Excluir", exact: true });
+    test.skip((await botoes.count()) === 0, "nenhuma automação cadastrada: não há botão Excluir para abrir");
+    const dialogo = page.getByRole("alertdialog");
+    // Antes da hidratação o clique se perde: repete só enquanto o diálogo não abre.
+    await expect(async () => {
+      if (!(await dialogo.isVisible())) await botoes.first().click();
+      await expect(dialogo).toBeVisible({ timeout: 3_000 });
+    }).toPass({ timeout: 30_000 });
+    await expect(dialogo).toContainText("continuam na caixa de entrada");
+    await expect(dialogo).toContainText("Automação excluída");
+    await dialogo.getByRole("button", { name: "Cancelar" }).click();
+    await expect(dialogo).toBeHidden();
+    expect(acoesServidor, "nenhuma Server Action (exclusão não confirmada)").toEqual([]);
+  });
+});

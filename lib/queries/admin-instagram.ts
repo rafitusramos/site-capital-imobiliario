@@ -1,6 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { rankingDePalavras } from "@/lib/instagram/campo-palavras";
 import type { Automacao, Alvo, Situacao } from "@/lib/instagram/tipos";
+import { nomeDaAutomacao } from "@/lib/instagram/rotulos";
 
 // Leituras do painel /admin/instagram. Cliente de cookies: a RLS (só admin)
 // vale. Nunca lançam: falha vira console.error e resultado vazio/nulo.
@@ -104,6 +106,17 @@ export async function automacaoPorId(id: string): Promise<AutomacaoPainel | null
   return data ? mapearAutomacao(data as unknown as LinhaAutomacao) : null;
 }
 
+/** Palavras-chave já usadas em qualquer automação, da mais usada à menos (sugestões do editor). */
+export async function palavrasUsadas(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("ig_automacoes").select("palavras");
+  if (error) {
+    console.error("[palavrasUsadas]", error);
+    return [];
+  }
+  return rankingDePalavras(((data ?? []) as { palavras: string[] | null }[]).map((l) => l.palavras));
+}
+
 // ---------------------------------------------------------------------------
 // Caixa de entrada
 // ---------------------------------------------------------------------------
@@ -116,7 +129,8 @@ export type FiltroCaixa = {
 export type ItemCaixa = {
   participacaoId: string;
   contato: { id: string; username: string | null; nome: string | null; fotoUrl: string | null };
-  automacaoId: string;
+  /** Nulo = a automação foi excluída (migration 037); o histórico fica. */
+  automacaoId: string | null;
   automacaoNome: string;
   situacao: Situacao;
   comentarios: number;
@@ -130,7 +144,7 @@ export type ItemCaixa = {
 type LinhaCaixa = {
   id: string;
   contato_id: string;
-  automacao_id: string;
+  automacao_id: string | null;
   situacao: string;
   comentarios: number;
   falha_motivo: string | null;
@@ -201,7 +215,7 @@ export async function caixaDeEntrada(filtro: FiltroCaixa = {}): Promise<ItemCaix
       fotoUrl: l.ig_contatos?.foto_url ?? null,
     },
     automacaoId: l.automacao_id,
-    automacaoNome: l.ig_automacoes?.nome ?? "",
+    automacaoNome: nomeDaAutomacao(l.automacao_id, l.ig_automacoes?.nome),
     situacao: l.situacao as Situacao,
     comentarios: l.comentarios,
     falhaMotivo: l.falha_motivo,
