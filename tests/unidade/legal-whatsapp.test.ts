@@ -57,6 +57,6 @@ describe("consentimento e política (WhatsApp)", () => {
   });
 
   it("a data da política não mudou", () => {
-    expect(POLITICA_ATUALIZADA_EM).toBe("13 de novembro de 2026");
+    expect(POLITICA_ATUALIZADA_EM).toBe("14 de novembro de 2026");
   });
 });
