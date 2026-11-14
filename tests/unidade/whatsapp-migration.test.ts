@@ -40,6 +40,22 @@ describe("038: WhatsApp base", () => {
     expect(sql).toMatch(/grant execute on function public\.wa_reservar_envios\(int\) to service_role/i);
   });
 
+  it("wa_lead_por_wa_id: normaliza dígitos, prefixa 55, ignora arquivados e só a service role executa", () => {
+    const f = sql.match(/function public\.wa_lead_por_wa_id[\s\S]*?\$\$;/i)![0];
+    expect(f).toMatch(/returns setof public\.leads/i);
+    expect(f).toMatch(/language sql/i);
+    expect(f).toMatch(/stable/i);
+    expect(f).toMatch(/security definer/i);
+    expect(f).toMatch(/set search_path = public/i);
+    expect(f).toMatch(/regexp_replace\(l\.telefone, '\\D', '', 'g'\)/);
+    expect(f).toMatch(/in \(10, 11\)[\s\S]*'55' \|\|/i);
+    expect(f).toMatch(/= any\(p_variantes\)/i);
+    expect(f).toMatch(/arquivado_em is null/i);
+    expect(f).toMatch(/order by l\.created_at desc\s+limit 1/i);
+    expect(sql).toMatch(/revoke execute on function public\.wa_lead_por_wa_id\(text\[\]\) from public, anon, authenticated/i);
+    expect(sql).toMatch(/grant execute on function public\.wa_lead_por_wa_id\(text\[\]\) to service_role/i);
+  });
+
   it("reserva respeita 6 s por contato", () => {
     const f = sql.match(/function public\.wa_reservar_envios[\s\S]*?\$\$;/i)![0];
     expect(f).toMatch(/security definer/i);

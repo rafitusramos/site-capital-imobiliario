@@ -231,6 +231,32 @@ $$;
 revoke execute on function public.wa_reservar_envios(int) from public, anon, authenticated;
 grant execute on function public.wa_reservar_envios(int) to service_role;
 
+-- Lead mais recente (não arquivado) cujo telefone casa com alguma variante de
+-- wa_id. `leads.telefone` é texto livre ("(19) 99999-1234", com/sem 55), então
+-- normaliza para dígitos e prefixa 55 quando vem com 10 ou 11 dígitos. Só a
+-- service role chama (o webhook), por isso security definer e sem grant aos demais.
+create or replace function public.wa_lead_por_wa_id(p_variantes text[])
+returns setof public.leads
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select l.*
+    from public.leads l
+   where l.arquivado_em is null
+     and (case
+            when length(regexp_replace(l.telefone, '\D', '', 'g')) in (10, 11)
+              then '55' || regexp_replace(l.telefone, '\D', '', 'g')
+            else regexp_replace(l.telefone, '\D', '', 'g')
+          end) = any(p_variantes)
+   order by l.created_at desc
+   limit 1;
+$$;
+
+revoke execute on function public.wa_lead_por_wa_id(text[]) from public, anon, authenticated;
+grant execute on function public.wa_lead_por_wa_id(text[]) to service_role;
+
 -- Retenção: contato SEM lead e sem interação há 12 meses sai (a cascata leva
 -- mensagens e envios). Contato com lead fica enquanto o lead existir.
 create or replace function public.wa_apagar_inativos()
@@ -325,6 +351,7 @@ select cron.schedule(
 --    select cron.unschedule('wa-apagar-inativos');
 --    select cron.unschedule('wa-limpar-eventos');
 --    drop function public.wa_reservar_envios(int);
+--    drop function public.wa_lead_por_wa_id(text[]);
 --    drop function public.wa_apagar_inativos();
 --    drop function public.wa_limpar_eventos();
 --    drop table public.wa_envios, public.wa_mensagens, public.wa_contatos,

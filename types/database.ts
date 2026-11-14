@@ -466,7 +466,7 @@ export interface Database {
           id: string;
           lead_id: string;
           destinatario: string;
-          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead" | "simulacao";
+          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead" | "simulacao" | "whatsapp-admin";
           etapa: string | null;
           resend_id: string | null;
           status: "agendado" | "enviado" | "cancelado" | "falhou" | "sem-chave";
@@ -478,7 +478,7 @@ export interface Database {
           id?: string;
           lead_id: string;
           destinatario: string;
-          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead" | "simulacao";
+          tipo: "novo-lead-admin" | "novo-lead-lead" | "etapa-admin" | "etapa-lead" | "simulacao" | "whatsapp-admin";
           etapa?: string | null;
           resend_id?: string | null;
           status: "agendado" | "enviado" | "cancelado" | "falhou" | "sem-chave";
@@ -1566,6 +1566,10 @@ export interface Database {
       wa_reservar_envios: {
         Args: { p_limite: number };
         Returns: Database["public"]["Tables"]["wa_envios"]["Row"][];
+      };
+      wa_lead_por_wa_id: {
+        Args: { p_variantes: string[] };
+        Returns: Database["public"]["Tables"]["leads"]["Row"][];
       };
       wa_apagar_inativos: { Args: Record<PropertyKey, never>; Returns: number };
       wa_limpar_eventos: { Args: Record<PropertyKey, never>; Returns: number };
