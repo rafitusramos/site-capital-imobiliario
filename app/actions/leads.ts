@@ -13,6 +13,7 @@ import {
 import { after } from "next/server";
 import { dispararAvisosNovoLead } from "@/lib/email/notificar";
 import { camposDoFormulario } from "@/lib/email/campos-lead";
+import { dispararWhatsAppNovoLead } from "@/lib/whatsapp/notificar";
 
 export interface CriarLeadInput {
   tipo: LeadTipo;
@@ -210,6 +211,23 @@ export async function criarLead(input: CriarLeadInput): Promise<CriarLeadResulta
     after(() => dispararAvisosNovoLead(paraEmail, campos));
   } catch (e) {
     console.error("[criarLead] não foi possível agendar os e-mails:", e);
+  }
+
+  // WhatsApp: o consentimento do formulário (a mesma caixa LGPD) vira o carimbo que o motor
+  // exige. Se o carimbo falhar, o lead segue sem WhatsApp, nunca sem ser criado.
+  try {
+    const { data: carimbado, error: erroCarimbo } = await admin
+      .from("leads")
+      .update({ consentimento_whatsapp_em: new Date().toISOString() })
+      .eq("id", lead.id)
+      .select("id");
+    if (erroCarimbo || !carimbado || carimbado.length === 0) {
+      console.error("[criarLead] consentimento do WhatsApp não gravado:", erroCarimbo ?? "nenhuma linha atualizada");
+    } else {
+      after(() => dispararWhatsAppNovoLead(lead.id));
+    }
+  } catch (e) {
+    console.error("[criarLead] não foi possível agendar o WhatsApp:", e);
   }
 
   return { sucesso: true, protocolo: lead.protocolo };

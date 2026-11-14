@@ -20,6 +20,8 @@ const motor = {
 let repo: RepositorioFalso;
 let motorDisponivel = true;
 
+vi.mock("@/lib/whatsapp/motor-padrao", () => ({ motorWaPadrao: () => null }));
+vi.mock("@/lib/whatsapp/config", () => ({ configWhatsApp: () => null }));
 vi.mock("@/lib/instagram/config", () => ({ configMeta: () => configMeta() }));
 vi.mock("@/lib/instagram/motor-padrao", () => ({
   motorPadrao: async () => (motorDisponivel ? motor : null),
@@ -160,7 +162,7 @@ describe("disparar", () => {
   test("Bearer certo dispara a fila com 20", async () => {
     const r = await chamar("Bearer cron");
     expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ enviados: 2, falhas: 1 });
+    expect((await r.json()).instagram).toEqual({ enviados: 2, falhas: 1 });
     expect(motor.dispararFila).toHaveBeenCalledWith(20);
   });
   test("reprocessa eventos pendentes antes de disparar a fila", async () => {
@@ -173,7 +175,7 @@ describe("disparar", () => {
   test("motor indisponível devolve zeros", async () => {
     motorDisponivel = false;
     const r = await chamar("Bearer cron");
-    expect(await r.json()).toEqual({ enviados: 0, falhas: 0 });
+    expect((await r.json()).instagram).toEqual({ enviados: 0, falhas: 0 });
   });
 });
 
