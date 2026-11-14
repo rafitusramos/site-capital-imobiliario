@@ -22,59 +22,59 @@ function t(nome: string, corpo: string): TemplateWa {
 export const TEMPLATES: Record<string, TemplateWa> = {
   rt_confirmacao_credito: t(
     "rt_confirmacao_credito",
-    "Olá, {{1}}! Recebemos o seu pedido de crédito na RT Capital Imobiliário. Seu protocolo é {{2}}. Entraremos em contato em breve.",
+    "Olá, {{1}}! 👋\nRecebemos o seu pedido de simulação de crédito na RT Capital Imobiliário.\nSeu protocolo é {{2}}. 📄\nEm até 1 dia útil entraremos em contato.\nPor este número você recebe os avisos do seu atendimento. O Rafael fala com você pelo WhatsApp dele e pelo seu e-mail cadastrado.\nAté breve! 🤝",
   ),
   rt_confirmacao_imovel: t(
     "rt_confirmacao_imovel",
-    "Olá, {{1}}! Recebemos o seu interesse em imóvel na RT Capital Imobiliário. Seu protocolo é {{2}}. Entraremos em contato em breve.",
+    "Olá, {{1}}! 👋\nRecebemos o seu interesse em um imóvel da RT Capital Imobiliário.\nSeu protocolo é {{2}}. 📄\nEm até 1 dia útil entraremos em contato para entender o que você procura.\nPor este número você recebe os avisos do seu atendimento. O Rafael fala com você pelo WhatsApp dele e pelo seu e-mail cadastrado.\nAté breve! 🤝",
   ),
   rt_etapa_credito_simulacao: t(
     "rt_etapa_credito_simulacao",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a etapa de simulação. Os valores são estimativas e dependem da análise da instituição financeira.",
+    "Olá, {{1}}! 👋\nSeu atendimento avançou para a etapa de simulação. 📊\nProtocolo {{2}}.\nEstamos calculando as condições possíveis. Os valores são estimativas e dependem da análise da instituição financeira.\nAté breve! 🤝",
   ),
   rt_etapa_credito_pre_aprovacao: t(
     "rt_etapa_credito_pre_aprovacao",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a análise de crédito. A decisão é da instituição financeira e depende do seu perfil e da documentação.",
+    "Olá, {{1}}! 👋\nSeu atendimento avançou para a análise de crédito. 🏦\nProtocolo {{2}}.\nEstamos encaminhando a sua proposta à instituição financeira. A decisão é dela e depende do seu perfil e da documentação. Avisaremos assim que houver retorno.\nAté breve! 🤝",
   ),
   rt_etapa_credito_vistoria: t(
     "rt_etapa_credito_vistoria",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a vistoria do imóvel. Entraremos em contato para combinar os detalhes.",
+    "Olá, {{1}}! 👋\nSeu atendimento avançou para a vistoria do imóvel. 🏠\nProtocolo {{2}}.\nA instituição financeira vai avaliar o imóvel. Entraremos em contato para combinar os detalhes.\nAté breve! 🤝",
   ),
   rt_etapa_credito_contrato: t(
     "rt_etapa_credito_contrato",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a etapa de contrato. Vamos conferir com você as condições e os documentos antes da assinatura.",
+    "Olá, {{1}}! 👋\nSeu atendimento chegou à etapa de contrato. 📝\nProtocolo {{2}}.\nVamos conferir com você as condições e os documentos antes da assinatura. Em caso de dúvida, fale com a gente antes de assinar.\nAté breve! 🤝",
   ),
   rt_etapa_consorcio_apresentacao: t(
     "rt_etapa_consorcio_apresentacao",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a apresentação das opções de consórcio. Vamos explicar prazos e regras para você comparar com calma.",
+    "Olá, {{1}}! 👋\nSeu atendimento avançou para a apresentação das opções de consórcio. 📋\nProtocolo {{2}}.\nVamos explicar prazos e regras de contemplação para você comparar com calma.\nAté breve! 🤝",
   ),
   rt_etapa_consorcio_proposta: t(
     "rt_etapa_consorcio_proposta",
-    "Olá, {{1}}! Preparamos a proposta de consórcio do seu atendimento (protocolo {{2}}). Ela traz as condições de adesão para a sua análise.",
+    "Olá, {{1}}! 👋\nA sua proposta de consórcio está pronta. 📄\nProtocolo {{2}}.\nEla traz as condições de adesão para a sua análise. Fique à vontade para tirar dúvidas antes de decidir.\nAté breve! 🤝",
   ),
   rt_etapa_consorcio_contrato: t(
     "rt_etapa_consorcio_contrato",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a etapa de contrato. Vamos conferir com você as condições e a documentação antes da assinatura.",
+    "Olá, {{1}}! 👋\nSeu atendimento chegou à etapa de contrato. 📝\nProtocolo {{2}}.\nVamos conferir com você as condições e a documentação antes da assinatura. Em caso de dúvida, fale com a gente antes de assinar.\nAté breve! 🤝",
   ),
   rt_etapa_imovel_qualificacao: t(
     "rt_etapa_imovel_qualificacao",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a etapa de qualificação. Estamos conferindo o perfil do imóvel que você procura.",
+    "Olá, {{1}}! 👋\nSeu atendimento avançou para a etapa de qualificação. 🔎\nProtocolo {{2}}.\nEstamos entendendo o perfil do imóvel que você procura para indicar as melhores opções.\nAté breve! 🤝",
   ),
   rt_etapa_imovel_visita: t(
     "rt_etapa_imovel_visita",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a visita ao imóvel. Entraremos em contato para combinar data e horário.",
+    "Olá, {{1}}! 👋\nSeu atendimento avançou para a visita ao imóvel. 🏡\nProtocolo {{2}}.\nEntraremos em contato para combinar data e horário.\nAté breve! 🤝",
   ),
   rt_etapa_imovel_proposta: t(
     "rt_etapa_imovel_proposta",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a etapa de proposta. Vamos apoiar você na formalização e no acompanhamento da resposta do vendedor.",
+    "Olá, {{1}}! 👋\nSeu atendimento avançou para a etapa de proposta. 📄\nProtocolo {{2}}.\nVamos apoiar você na formalização e no acompanhamento da resposta do vendedor.\nAté breve! 🤝",
   ),
   rt_etapa_imovel_contrato: t(
     "rt_etapa_imovel_contrato",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) avançou para a etapa de contrato. Vamos conferir com você as condições e os documentos antes da assinatura.",
+    "Olá, {{1}}! 👋\nSeu atendimento chegou à etapa de contrato. 📝\nProtocolo {{2}}.\nVamos conferir com você as condições e os documentos antes da assinatura. Em caso de dúvida, fale com a gente antes de assinar.\nAté breve! 🤝",
   ),
   rt_etapa_ganho: t(
     "rt_etapa_ganho",
-    "Olá, {{1}}! Seu atendimento (protocolo {{2}}) foi concluído. Agradecemos a confiança na RT Capital Imobiliário.",
+    "Olá, {{1}}! 👋\nSeu atendimento foi concluído. ✅\nProtocolo {{2}}.\nObrigado pela confiança na RT Capital Imobiliário. Se precisar de algo, é só chamar o Rafael.\nAté logo! 🤝",
   ),
 };
 

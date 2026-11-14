@@ -29,11 +29,20 @@ describe("registro de templates", () => {
       expect(t.corpo).not.toMatch(/aprovad|garantid|%|taxa|parcela|promo|desconto|!!/i);
     }
   });
-  it("corpo não começa nem termina com variável e cita o protocolo", () => {
+  it("corpo abre com a saudação, não começa nem termina com variável e cita o protocolo", () => {
     for (const t of Object.values(TEMPLATES)) {
+      expect(t.corpo.startsWith("Olá, {{1}}!")).toBe(true);
+      expect(t.corpo).toContain("{{2}}");
       expect(t.corpo).not.toMatch(/^\{\{/);
       expect(t.corpo).not.toMatch(/\}\}[.!?\s]*$/);
-      expect(t.corpo).toContain("protocolo");
+      expect(t.corpo.toLowerCase()).toContain("protocolo");
+    }
+  });
+  it("nenhuma linha termina com espaço e o corpo não tem espaço nas pontas", () => {
+    for (const t of Object.values(TEMPLATES)) {
+      for (const l of t.corpo.split("\n")) expect(l, t.nome).toBe(l.trimEnd());
+      expect(t.corpo, t.nome).toBe(t.corpo.trim());
+      expect(t.corpo, t.nome).not.toContain("\r");
     }
   });
   it("etapa sem texto devolve null; imóvel visita tem nome fixo", () => {
@@ -85,7 +94,12 @@ describe("docs/whatsapp-templates.md", () => {
   const secoes = md.split(/^## /m).slice(1).map((bloco) => {
     const [nome, ...resto] = bloco.split("\n");
     const linha = (rotulo: string) => resto.find((l) => l.startsWith(`- ${rotulo}: `))?.slice(rotulo.length + 4);
-    return { nome: nome.trim(), corpo: linha("Corpo"), idioma: linha("Idioma"), categoria: linha("Categoria") };
+    // O corpo é o bloco de código cercado logo após "- Corpo:".
+    const iCorpo = resto.findIndex((l) => l.trim() === "- Corpo:");
+    const abre = resto.findIndex((l, i) => i > iCorpo && l.startsWith("```"));
+    const fecha = resto.findIndex((l, i) => i > abre && l.startsWith("```"));
+    const corpo = iCorpo >= 0 && abre >= 0 && fecha > abre ? resto.slice(abre + 1, fecha).join("\n") : undefined;
+    return { nome: nome.trim(), corpo, idioma: linha("Idioma"), categoria: linha("Categoria") };
   });
 
   it("lista exatamente os templates do registro", () => {
