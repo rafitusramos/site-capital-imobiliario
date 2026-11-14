@@ -48,6 +48,17 @@ describe("038: WhatsApp base", () => {
     expect(f).toMatch(/for update (of \w+ )?skip locked/i);
   });
 
+  it("reserva confere o estado de novo dentro do lock e no update final", () => {
+    const f = sql.match(/function public\.wa_reservar_envios[\s\S]*?\$\$;/i)![0];
+    const escolhidos = f.match(/escolhidos as \([\s\S]*?\)\s*update/i)![0];
+    expect(escolhidos).toMatch(/e\.estado = 'pendente' and e\.enviar_apos <= now\(\)/i);
+    expect(escolhidos).toMatch(/e\.estado = 'processando' and e\.reservado_em < now\(\) - interval '5 minutes'/i);
+    expect(escolhidos.indexOf("e.estado")).toBeLessThan(escolhidos.search(/for update/i));
+    const final = f.slice(f.search(/update public\.wa_envios u/i));
+    expect(final).toMatch(/u\.estado = 'pendente' and u\.enviar_apos <= now\(\)/i);
+    expect(final).toMatch(/u\.estado = 'processando' and u\.reservado_em < now\(\) - interval '5 minutes'/i);
+  });
+
   it("limpezas: inativos sem lead e eventos antigos, agendadas de forma idempotente", () => {
     expect(sql).toMatch(/lead_id is null[\s\S]*?interval '12 months'/i);
     expect(sql).toMatch(/interval '30 days'/i);

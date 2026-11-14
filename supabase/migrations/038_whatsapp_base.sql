@@ -212,6 +212,8 @@ begin
     select e.id
       from public.wa_envios e
       join candidatos c on c.id = e.id
+     where (e.estado = 'pendente' and e.enviar_apos <= now())
+        or (e.estado = 'processando' and e.reservado_em < now() - interval '5 minutes')
      order by c.enviar_apos
      limit p_limite
        for update of e skip locked
@@ -220,6 +222,8 @@ begin
      set estado = 'processando',
          reservado_em = now()
    where u.id in (select id from escolhidos)
+     and ((u.estado = 'pendente' and u.enviar_apos <= now())
+       or (u.estado = 'processando' and u.reservado_em < now() - interval '5 minutes'))
   returning u.*;
 end;
 $$;
