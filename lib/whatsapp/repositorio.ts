@@ -239,14 +239,56 @@ export function criarRepositorioWa(): RepositorioWa {
       if (error) falha("registrar interação no lead", error);
     },
 
-    async marcarRespostaFixa(contatoId, em) {
+    async reivindicarRespostaFixa(contatoId, em, intervaloMs) {
+      // UPDATE condicional atômico: só um dos chamadores concorrentes casa a linha.
+      const limite = new Date(em.getTime() - intervaloMs).toISOString();
       const { data, error } = await db
         .from("wa_contatos")
         .update({ resposta_fixa_em: em.toISOString() })
         .eq("id", contatoId)
+        .or(`resposta_fixa_em.is.null,resposta_fixa_em.lt.${limite}`)
         .select("id");
-      if (error) falha("marcar resposta fixa", error);
-      if (!data || data.length === 0) falha("marcar resposta fixa", { message: "nenhuma linha casou" });
+      if (error) falha("reivindicar resposta fixa", error);
+      return (data?.length ?? 0) > 0;
+    },
+
+    async marcarEvento(chave, erro) {
+      if (!erro) {
+        const { error } = await db
+          .from("wa_eventos")
+          .update({ processado_em: new Date().toISOString(), erro: null })
+          .eq("chave", chave)
+          .select("chave");
+        if (error) console.error("[whatsapp] marcar evento falhou:", error.message);
+        return;
+      }
+      // Com erro, `processado_em` fica nulo para o reprocesso; conta a tentativa.
+      const { data: atual, error: erroLeitura } = await db
+        .from("wa_eventos")
+        .select("tentativas")
+        .eq("chave", chave)
+        .maybeSingle();
+      if (erroLeitura) console.error("[whatsapp] ler tentativas do evento falhou:", erroLeitura.message);
+      const { error } = await db
+        .from("wa_eventos")
+        .update({ erro, tentativas: (atual?.tentativas ?? 0) + 1 })
+        .eq("chave", chave)
+        .select("chave");
+      if (error) console.error("[whatsapp] marcar evento falhou:", error.message);
+    },
+
+    async eventosPendentes(ate, limite) {
+      const { data, error } = await db
+        .from("wa_eventos")
+        .select("chave, payload")
+        .is("processado_em", null)
+        .not("payload", "is", null)
+        .lt("tentativas", 3)
+        .lte("recebido_em", ate.toISOString())
+        .order("recebido_em", { ascending: true })
+        .limit(limite);
+      if (error) falha("ler eventos pendentes", error);
+      return (data ?? []).map((l) => ({ chave: l.chave, payload: l.payload }));
     },
 
     async numeroOficial() {

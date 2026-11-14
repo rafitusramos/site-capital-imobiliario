@@ -45,6 +45,18 @@ export class RepositorioWaFalso implements RepositorioWa {
   cancelamentos: Array<{ leadId: string; motivo: string }> = [];
   numero: string | null = "(19) 99999-0000";
   toques = 0;
+  eventosGravados: Array<{
+    chave: string;
+    payload: unknown;
+    recebidoEm: Date;
+    processado: boolean;
+    tentativas: number;
+    erro?: string;
+  }> = [];
+  /** Faz os próximos N `atualizarStatus` lançarem. */
+  falharStatus = 0;
+  /** Faz `concluir` com este estado lançar. */
+  falharConcluir: string | null = null;
   private seq = 0;
 
   async contatoPorWaId(variantes: string[]) {
@@ -108,6 +120,7 @@ export class RepositorioWaFalso implements RepositorioWa {
     return lote.map((e) => ({ ...e }));
   }
   async concluir(id: string, c: ConclusaoEnvioWa) {
+    if (this.falharConcluir === c.estado) throw new Error("banco fora do ar");
     const e = this.envios.find((x) => x.id === id)!;
     e.estado = c.estado;
     if (c.estado === "enviado") e.metaId = c.metaId;
@@ -122,14 +135,35 @@ export class RepositorioWaFalso implements RepositorioWa {
     this.mensagens.push(m);
   }
   async atualizarStatus(metaId: string, status: StatusWa, erro: string | null) {
+    if (this.falharStatus > 0) {
+      this.falharStatus -= 1;
+      throw new Error("banco fora do ar");
+    }
     this.statusRecebidos.push({ metaId, status, erro });
   }
   async registrarInteracaoNoLead(leadId: string, texto: string) {
     this.interacoes.push({ leadId, texto });
   }
-  async marcarRespostaFixa(contatoId: string, em: Date) {
+  async reivindicarRespostaFixa(contatoId: string, em: Date, intervaloMs: number) {
     const c = this.contatos.find((x) => x.id === contatoId)!;
+    if (c.respostaFixaEm && new Date(c.respostaFixaEm).getTime() >= em.getTime() - intervaloMs) return false;
     c.respostaFixaEm = em.toISOString();
+    return true;
+  }
+  async marcarEvento(chave: string, erro?: string) {
+    const e = this.eventosGravados.find((x) => x.chave === chave);
+    if (!e) return;
+    if (!erro) e.processado = true;
+    else {
+      e.tentativas += 1;
+      e.erro = erro;
+    }
+  }
+  async eventosPendentes(ate: Date, limite: number) {
+    return this.eventosGravados
+      .filter((e) => !e.processado && e.tentativas < 3 && e.recebidoEm.getTime() <= ate.getTime())
+      .slice(0, limite)
+      .map((e) => ({ chave: e.chave, payload: e.payload }));
   }
   async numeroOficial() {
     return this.numero;

@@ -161,3 +161,29 @@ export function lerEventosWa(corpo: unknown): EventoWa[] {
   }
   return eventos;
 }
+
+const gravadoSchema = z.discriminatedUnion("tipo", [
+  z.object({
+    tipo: z.literal("mensagem"),
+    chave: z.string(),
+    waId: z.string(),
+    nomePerfil: z.string().nullable(),
+    metaId: z.string(),
+    conteudo: z.enum(["texto", "botao", "outro"]),
+    texto: z.string().nullable(),
+    em: z.string(),
+  }),
+  z.object({
+    tipo: z.literal("status"),
+    chave: z.string(),
+    metaId: z.string(),
+    status: z.enum(["enviado", "entregue", "lido", "falhou"]),
+    erro: z.object({ codigo: z.number(), mensagem: z.string() }).nullable(),
+  }),
+]);
+
+/** Volta o payload gravado em wa_eventos (o próprio EventoWa) ao tipo; null se a forma não confere. */
+export function lerEventoGravadoWa(payload: unknown): EventoWa | null {
+  const r = gravadoSchema.safeParse(payload);
+  return r.success ? r.data : null;
+}

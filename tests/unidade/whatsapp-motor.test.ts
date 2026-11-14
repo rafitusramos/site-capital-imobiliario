@@ -235,3 +235,86 @@ describe("dispararFila", () => {
     expect(repo.envios[0].estado).toBe("pendente");
   });
 });
+
+describe("envio aceito nunca volta para a fila", () => {
+  it("concluir(enviado) lançando depois do envio ok: um único cloud.enviar", async () => {
+    await motor.agendarConfirmacao(leadFalso());
+    repo.falharConcluir = "enviado";
+    const r = await motor.dispararFila(10);
+    expect(r).toEqual({ enviados: 1, falhas: 0 });
+    expect(cloud.chamadas).toHaveLength(1);
+    expect(repo.envios[0].estado).not.toBe("pendente");
+    await motor.dispararFila(10);
+    expect(cloud.chamadas).toHaveLength(1);
+  });
+});
+
+describe("resposta fixa atômica", () => {
+  it("mensagens concorrentes do mesmo contato geram uma só resposta", async () => {
+    await Promise.all([
+      motor.processarEvento(mensagem({ chave: "m:1", metaId: "wamid.a" })),
+      motor.processarEvento(mensagem({ chave: "m:2", metaId: "wamid.b" })),
+      motor.processarEvento(mensagem({ chave: "m:3", metaId: "wamid.c" })),
+    ]);
+    expect(repo.envios.filter((e) => e.motivo === "resposta_fixa")).toHaveLength(1);
+  });
+});
+
+describe("reprocesso de eventos", () => {
+  const evento = (): EventoWa => ({ tipo: "status", chave: "s:1:read", metaId: "w1", status: "lido", erro: null });
+  function gravar(e: EventoWa, recebidoEm = new Date(AGORA.getTime() - 5 * 60_000)) {
+    repo.eventosGravados.push({ chave: `wa:${e.chave}`, payload: e, recebidoEm, processado: false, tentativas: 0 });
+  }
+
+  it("falha no processamento grava o erro e não relança", async () => {
+    const e = evento();
+    gravar(e);
+    repo.falharStatus = 1;
+    await expect(motor.processarEvento(e)).resolves.toBeUndefined();
+    expect(repo.eventosGravados[0]).toMatchObject({ processado: false, tentativas: 1, erro: "banco fora do ar" });
+  });
+
+  it("sucesso marca o evento como processado", async () => {
+    const e = evento();
+    gravar(e);
+    await motor.processarEvento(e);
+    expect(repo.eventosGravados[0].processado).toBe(true);
+  });
+
+  it("reprocessarPendentes tenta de novo e marca processado", async () => {
+    const e = evento();
+    gravar(e);
+    repo.falharStatus = 1;
+    await motor.processarEvento(e);
+    await motor.reprocessarPendentes(10);
+    expect(repo.statusRecebidos).toHaveLength(1);
+    expect(repo.eventosGravados[0].processado).toBe(true);
+  });
+
+  it("3 falhas param o reprocesso", async () => {
+    const e = evento();
+    gravar(e);
+    repo.falharStatus = 99;
+    await motor.processarEvento(e);
+    await motor.reprocessarPendentes(10);
+    await motor.reprocessarPendentes(10);
+    expect(repo.eventosGravados[0]).toMatchObject({ processado: false, tentativas: 3 });
+    repo.falharStatus = 0;
+    await motor.reprocessarPendentes(10);
+    expect(repo.statusRecebidos).toHaveLength(0);
+  });
+
+  it("evento recente (menos de 1 min) não é reprocessado; payload inválido é marcado com erro", async () => {
+    repo.eventosGravados.push({
+      chave: "wa:x",
+      payload: { lixo: 1 },
+      recebidoEm: new Date(AGORA.getTime() - 5 * 60_000),
+      processado: false,
+      tentativas: 0,
+    });
+    gravar(evento(), AGORA);
+    await motor.reprocessarPendentes(10);
+    expect(repo.eventosGravados[0].erro).toBe("payload inválido");
+    expect(repo.statusRecebidos).toHaveLength(0);
+  });
+});

@@ -8,7 +8,7 @@ import { proximaTentativa } from "@/lib/instagram/fila";
 import type { LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 import type { CloudWa } from "./cloud";
 import { ehTemporarioWa, motivoLegivelWa } from "./erros";
-import type { EventoWa, StatusWa } from "./eventos";
+import { lerEventoGravadoWa, type EventoWa, type StatusWa } from "./eventos";
 import { linkDoNumeroOficial, respostaFixa } from "./mensagens";
 import { waIdDoTelefone, variantesDoWaId } from "./telefone";
 import { payloadDeTemplate, TEMPLATES, templateDaEtapa, templateDeConfirmacao } from "./templates";
@@ -16,6 +16,8 @@ import { payloadDeTemplate, TEMPLATES, templateDaEtapa, templateDeConfirmacao } 
 const HORA_MS = 3600_000;
 /** Resposta automática fixa: no máximo uma por contato nesta janela. */
 const INTERVALO_RESPOSTA_FIXA_MS = 12 * HORA_MS;
+/** Evento só é reprocessado depois deste tempo (dá folga ao processamento em curso). */
+const ESPERA_REPROCESSO_MS = 60_000;
 const ROTULO_SEM_TEXTO = "[áudio/imagem/outro]";
 
 // ---------------------------------------------------------------------------
@@ -115,7 +117,16 @@ export interface RepositorioWa {
   atualizarStatus(metaId: string, status: StatusWa, erro: string | null): Promise<void>;
   /** lead_interacoes tipo 'whatsapp', automática (sem autor). */
   registrarInteracaoNoLead(leadId: string, texto: string): Promise<void>;
-  marcarRespostaFixa(contatoId: string, em: Date): Promise<void>;
+  /**
+   * Reivindicação atômica da resposta fixa: grava `resposta_fixa_em = em` só se estava nulo ou
+   * anterior a `em - intervaloMs`, e diz se este chamador ganhou. Webhooks concorrentes não
+   * enfileiram duas respostas.
+   */
+  reivindicarRespostaFixa(contatoId: string, em: Date, intervaloMs: number): Promise<boolean>;
+  /** Sem erro: grava `processado_em`. Com erro: grava o erro, soma 1 em `tentativas` e deixa `processado_em` nulo. */
+  marcarEvento(chave: string, erro?: string): Promise<void>;
+  /** Eventos não processados, recebidos até `ate`, com menos de 3 tentativas. */
+  eventosPendentes(ate: Date, limite: number): Promise<{ chave: string; payload: unknown }[]>;
   numeroOficial(): Promise<string | null>;
   tocarUltimoEvento(): Promise<void>;
 }
@@ -126,6 +137,8 @@ export interface MotorWa {
   cancelarAvisosEtapa(leadId: string): Promise<void>;
   processarEvento(e: EventoWa): Promise<void>;
   dispararFila(limite: number): Promise<{ enviados: number; falhas: number }>;
+  /** Reprocessa eventos gravados cujo processamento falhou. Nunca lança. */
+  reprocessarPendentes(limite: number): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -230,8 +243,8 @@ export function criarMotorWa(dep: {
     });
 
     // Resposta fixa: no máximo uma por contato a cada 12 h (a janela de 24 h está aberta pelo cliente).
-    const ultima = antes?.respostaFixaEm ? new Date(antes.respostaFixaEm).getTime() : null;
-    if (ultima === null || ultima < agora().getTime() - INTERVALO_RESPOSTA_FIXA_MS) {
+    // A reivindicação é atômica e vem ANTES de enfileirar: eventos concorrentes não duplicam.
+    if (await repo.reivindicarRespostaFixa(contato.id, agora(), INTERVALO_RESPOSTA_FIXA_MS)) {
       const numero = await repo.numeroOficial();
       const link = numero ? linkDoNumeroOficial(numero) : null;
       await repo.enfileirar({
@@ -242,23 +255,73 @@ export function criarMotorWa(dep: {
         payload: { type: "text", text: { body: respostaFixa(link), preview_url: true } },
         enviarApos: agora(),
       });
-      await repo.marcarRespostaFixa(contato.id, agora());
     }
   }
 
-  async function processarEvento(e: EventoWa): Promise<void> {
+  async function aplicarEvento(e: EventoWa): Promise<void> {
     if (e.tipo === "status") {
-      const erro = e.status === "falhou" && e.erro ? motivoLegivelWa({ status: 0, codigo: e.erro.codigo, mensagem: e.erro.mensagem }) : null;
+      const erro =
+        e.status === "falhou" && e.erro
+          ? motivoLegivelWa({ status: 0, codigo: e.erro.codigo, mensagem: e.erro.mensagem })
+          : null;
       await repo.atualizarStatus(e.metaId, e.status, erro);
       return;
     }
     await processarMensagem(e);
   }
 
+  /** Chave do evento em wa_eventos: o webhook grava o EventoWa sob `wa:<chave>`. */
+  const chaveGravada = (e: EventoWa) => `wa:${e.chave}`;
+
+  /** Processa e marca `processado_em`; em falha grava o erro (reprocessável) e NÃO relança. */
+  async function processarEvento(e: EventoWa): Promise<void> {
+    try {
+      await aplicarEvento(e);
+    } catch (ex) {
+      console.error("[whatsapp] falha ao processar evento", e.chave, ex);
+      try {
+        await repo.marcarEvento(chaveGravada(e), ex instanceof Error ? ex.message : String(ex));
+      } catch (ex2) {
+        console.error("[whatsapp] não foi possível gravar o erro do evento", e.chave, ex2);
+      }
+      return;
+    }
+    try {
+      await repo.marcarEvento(chaveGravada(e));
+    } catch (ex) {
+      console.error("[whatsapp] evento processado, mas não foi marcado", e.chave, ex);
+    }
+  }
+
+  async function reprocessarPendentes(limite: number): Promise<void> {
+    try {
+      const ate = new Date(agora().getTime() - ESPERA_REPROCESSO_MS);
+      const pendentes = await repo.eventosPendentes(ate, limite);
+      for (const p of pendentes) {
+        const evento = lerEventoGravadoWa(p.payload);
+        if (!evento) {
+          console.error("[whatsapp] evento pendente com payload inválido", p.chave);
+          await repo.marcarEvento(p.chave, "payload inválido");
+          continue;
+        }
+        await processarEvento(evento);
+      }
+    } catch (ex) {
+      console.error("[whatsapp] reprocessarPendentes falhou", ex);
+    }
+  }
+
   async function processarEnvio(envio: EnvioWa): Promise<"enviado" | "falha"> {
     const r = await cloud.enviar(envio.waId, envio.payload);
     if (r.ok) {
-      await repo.concluir(envio.id, { estado: "enviado", metaId: r.metaId });
+      // A Meta já aceitou: daqui em diante o envio NUNCA volta para a fila, aconteça o que acontecer
+      // com o registro (um erro aqui só é logado; o envio ficaria `processando`, e o `meta_id` guardado
+      // no log permite conciliar).
+      try {
+        await repo.concluir(envio.id, { estado: "enviado", metaId: r.metaId });
+      } catch (ex) {
+        console.error("[whatsapp] envio aceito pela Meta, mas não foi marcado como enviado", envio.id, r.metaId, ex);
+      }
       try {
         const conteudo = textoDoPayload(envio.payload);
         await repo.registrarMensagem({
@@ -325,5 +388,5 @@ export function criarMotorWa(dep: {
     return total;
   }
 
-  return { agendarConfirmacao, agendarAvisoEtapa, cancelarAvisosEtapa, processarEvento, dispararFila };
+  return { agendarConfirmacao, agendarAvisoEtapa, cancelarAvisosEtapa, processarEvento, reprocessarPendentes, dispararFila };
 }
