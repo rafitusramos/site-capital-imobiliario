@@ -181,18 +181,31 @@ describe("disparar (os dois motores)", () => {
       motorWa.dispararFila.mock.invocationCallOrder[0],
     );
   });
-  test("motor do Instagram lançando não derruba o do WhatsApp", async () => {
+  test("motor do Instagram lançando não derruba o do WhatsApp (e responde 500)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     motorIg.dispararFila.mockRejectedValueOnce(new Error("boom"));
     const r = await chamar();
+    expect(r.status).toBe(500);
     expect(motorWa.dispararFila).toHaveBeenCalledWith(20);
     expect((await r.json()).whatsapp).toEqual({ enviados: 3, falhas: 0 });
   });
-  test("motor do WhatsApp lançando não derruba o do Instagram", async () => {
+  test("Instagram falhando sem motor do WhatsApp configurado responde 500", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    motorWaDisponivel = false;
+    motorIg.dispararFila.mockRejectedValueOnce(new Error("boom"));
+    expect((await chamar()).status).toBe(500);
+  });
+  test("os dois falhando responde 500", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    motorIg.dispararFila.mockRejectedValueOnce(new Error("boom"));
+    motorWa.dispararFila.mockRejectedValueOnce(new Error("boom"));
+    expect((await chamar()).status).toBe(500);
+  });
+  test("motor do WhatsApp lançando não derruba o do Instagram (e responde 500)", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     motorWa.dispararFila.mockRejectedValueOnce(new Error("boom"));
     const r = await chamar();
-    expect(r.status).toBe(200);
+    expect(r.status).toBe(500);
     expect((await r.json()).instagram).toEqual({ enviados: 2, falhas: 1 });
   });
   test("sem motor do WhatsApp o Instagram segue", async () => {

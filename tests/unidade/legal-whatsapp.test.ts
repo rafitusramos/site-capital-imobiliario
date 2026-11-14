@@ -38,6 +38,24 @@ describe("consentimento e política (WhatsApp)", () => {
     expect(secao).not.toMatch(/intelig[êe]ncia artificial|\bIA\b/);
   });
 
+  it("a Meta (WhatsApp Business Platform) aparece em compartilhamento e transferência internacional", () => {
+    const trecho = (id: string) => {
+      const ini = pagina.indexOf(`<section id="${id}">`);
+      return pagina.slice(ini, pagina.indexOf("</section>", ini));
+    };
+    expect(trecho("com-quem-compartilhamos")).toContain("Meta Platforms");
+    expect(trecho("transferencia-internacional")).toContain("Meta Platforms");
+  });
+
+  it("a retenção do WhatsApp remete à seção 7 e não promete avisos vagos", () => {
+    const ini = pagina.indexOf('<section id="conversas-no-whatsapp">');
+    const secao = pagina.slice(ini, pagina.indexOf("</section>", ini));
+    expect(secao).toContain("seção 7");
+    expect(secao).not.toContain("acompanham o seu");
+    expect(secao).not.toContain("avisa você sobre o andamento");
+    expect(secao.match(/<p>/g)?.length).toBe(2);
+  });
+
   it("a data da política não mudou", () => {
     expect(POLITICA_ATUALIZADA_EM).toBe("13 de novembro de 2026");
   });

@@ -58,5 +58,5 @@ export async function POST(req: Request): Promise<Response> {
     whatsappFalhou = true;
   }
 
-  return json({ instagram, whatsapp }, instagramFalhou && whatsappFalhou ? 500 : 200);
+  return json({ instagram, whatsapp }, instagramFalhou || whatsappFalhou ? 500 : 200);
 }

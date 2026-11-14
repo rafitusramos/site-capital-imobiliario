@@ -198,6 +198,10 @@ export default function PoliticaDePrivacidadePage() {
                   nome, sob instrução nossa;
                 </li>
                 <li>
+                  <strong>Meta Platforms</strong> (WhatsApp Business Platform), que opera o canal
+                  do WhatsApp e processa as mensagens trocadas com o nosso número de atendimento;
+                </li>
+                <li>
                   <strong>Autoridades públicas</strong>, quando houver exigência legal ou ordem
                   de autoridade competente.
                 </li>
@@ -219,6 +223,12 @@ export default function PoliticaDePrivacidadePage() {
                 serviço — hospedar o site e armazenar as informações que você envia — e os
                 fornecedores contratados são vinculados por cláusulas contratuais de proteção de
                 dados equivalentes às exigidas pela legislação brasileira.
+              </p>
+              <p>
+                As mensagens trocadas com o nosso número de atendimento no WhatsApp são
+                processadas também pela Meta Platforms (WhatsApp Business Platform), operadora do
+                canal, que pode tratá-las em servidores fora do Brasil, apenas para entregar e
+                receber essas mensagens.
               </p>
             </section>
 
@@ -362,15 +372,20 @@ export default function PoliticaDePrivacidadePage() {
               </h2>
               <p>
                 Depois que você envia o formulário, o nosso número de atendimento no WhatsApp
-                confirma o seu pedido e avisa você sobre o andamento dele. Se você escrever para
-                esse número, recebe uma resposta automática com o número oficial de Rafael
-                Teixeira, e a sua mensagem é encaminhada à nossa equipe. Guardamos o seu número de
-                WhatsApp, o nome do seu perfil, as mensagens trocadas com o número de atendimento
-                e o status de entrega de cada mensagem. As mensagens são processadas pela Meta
-                (WhatsApp Business Platform), que opera o canal. As conversas acompanham o seu
-                cadastro de solicitação. Um contato que não tenha solicitação e fique 12 meses sem
-                nenhuma interação é apagado automaticamente. Para pedir a exclusão antes disso,
-                escreva para <a href={`mailto:${EMAIL_LGPD}`}>{EMAIL_LGPD}</a>.
+                confirma o seu pedido e pode enviar atualizações sobre etapas relevantes dele. Se
+                você escrever para esse número, recebe uma resposta automática com o número
+                oficial de Rafael Teixeira, e a sua mensagem é encaminhada à nossa equipe. As
+                mensagens são processadas pela Meta (WhatsApp Business Platform), que opera o
+                canal.
+              </p>
+              <p>
+                Guardamos o seu número de WhatsApp, o nome do seu perfil, as mensagens trocadas
+                com o número de atendimento e o status de entrega de cada mensagem. Se houver
+                solicitação sua, esses dados ficam guardados enquanto ela existir e pelo prazo
+                descrito na seção 7 (Por quanto tempo guardamos). Um contato que não tenha
+                solicitação e fique 12 meses sem nenhuma interação é apagado automaticamente. Para
+                pedir a exclusão antes disso, escreva para{" "}
+                <a href={`mailto:${EMAIL_LGPD}`}>{EMAIL_LGPD}</a>.
               </p>
             </section>
 
