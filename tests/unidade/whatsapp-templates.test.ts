@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { ETAPAS_POR_TIPO } from "@/lib/crm/etapas";
 import { etapasComTextoParaLead } from "@/lib/email/templates/etapa-lead";
@@ -75,5 +77,25 @@ describe("mensagens fixas", () => {
   it("resposta com e sem link", () => {
     expect(respostaFixa("https://wa.me/5519999998888")).toContain("https://wa.me/5519999998888");
     expect(respostaFixa(null)).toContain("responda ao nosso e-mail");
+  });
+});
+
+describe("docs/whatsapp-templates.md", () => {
+  const md = readFileSync(join(process.cwd(), "docs", "whatsapp-templates.md"), "utf8").replaceAll("\r\n", "\n");
+  const secoes = md.split(/^## /m).slice(1).map((bloco) => {
+    const [nome, ...resto] = bloco.split("\n");
+    const linha = (rotulo: string) => resto.find((l) => l.startsWith(`- ${rotulo}: `))?.slice(rotulo.length + 4);
+    return { nome: nome.trim(), corpo: linha("Corpo"), idioma: linha("Idioma"), categoria: linha("Categoria") };
+  });
+
+  it("lista exatamente os templates do registro", () => {
+    expect(secoes.map((s) => s.nome).sort()).toEqual(Object.keys(TEMPLATES).sort());
+  });
+  it("corpo, idioma e categoria batem com o registro", () => {
+    for (const s of secoes) {
+      expect(s.corpo, s.nome).toBe(TEMPLATES[s.nome].corpo);
+      expect(s.idioma, s.nome).toContain("pt_BR");
+      expect(s.categoria, s.nome).toBe("Utilidade");
+    }
   });
 });
