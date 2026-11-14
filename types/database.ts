@@ -679,6 +679,8 @@ export interface Database {
           enviado_crm: boolean;
           consentimento_lgpd: boolean;
           consentimento_em: string | null;
+          // Autorização de contato por WhatsApp (038_whatsapp_base.sql); nulo = sem registro.
+          consentimento_whatsapp_em: string | null;
           // Motivo obrigatório ao entrar em 'perdido'/'nao-qualificado'
           // (mover_lead_crm, 017_crm_funcoes_rls.sql). Nulo fora dessas etapas.
           motivo_perda: string | null;
@@ -716,6 +718,7 @@ export interface Database {
           enviado_crm?: boolean;
           consentimento_lgpd?: boolean;
           consentimento_em?: string | null;
+          consentimento_whatsapp_em?: string | null;
           motivo_perda?: string | null;
           motivo_obs?: string | null;
           favorito?: boolean;
@@ -1230,6 +1233,133 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["ig_cliques"]["Insert"]>;
         Relationships: [];
       };
+      // Atendimento por WhatsApp (038_whatsapp_base.sql), à mão como as ig_*.
+      wa_config: {
+        Row: {
+          id: number;
+          numero_oficial: string | null;
+          atualizado_em: string;
+          ultimo_evento_em: string | null;
+        };
+        Insert: {
+          id?: number;
+          numero_oficial?: string | null;
+          atualizado_em?: string;
+          ultimo_evento_em?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["wa_config"]["Insert"]>;
+        Relationships: [];
+      };
+      wa_contatos: {
+        Row: {
+          id: string;
+          wa_id: string;
+          nome_perfil: string | null;
+          lead_id: string | null;
+          ultima_entrada_em: string | null;
+          resposta_fixa_em: string | null;
+          ultima_interacao_em: string;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          wa_id: string;
+          nome_perfil?: string | null;
+          lead_id?: string | null;
+          ultima_entrada_em?: string | null;
+          resposta_fixa_em?: string | null;
+          ultima_interacao_em?: string;
+          criado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["wa_contatos"]["Insert"]>;
+        Relationships: [];
+      };
+      wa_mensagens: {
+        Row: {
+          id: string;
+          contato_id: string;
+          direcao: "entrada" | "saida";
+          tipo: "texto" | "template" | "botao" | "outro";
+          texto: string | null;
+          template: string | null;
+          meta_id: string | null;
+          status: "enviado" | "entregue" | "lido" | "falhou" | null;
+          erro: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          contato_id: string;
+          direcao: "entrada" | "saida";
+          tipo: "texto" | "template" | "botao" | "outro";
+          texto?: string | null;
+          template?: string | null;
+          meta_id?: string | null;
+          status?: "enviado" | "entregue" | "lido" | "falhou" | null;
+          erro?: string | null;
+          criado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["wa_mensagens"]["Insert"]>;
+        Relationships: [];
+      };
+      wa_envios: {
+        Row: {
+          id: string;
+          chave: string;
+          contato_id: string;
+          lead_id: string | null;
+          motivo: "confirmacao" | "etapa" | "resposta_fixa";
+          etapa: string | null;
+          payload: Record<string, unknown>;
+          enviar_apos: string;
+          estado: "pendente" | "processando" | "enviado" | "falhou" | "cancelado";
+          tentativas: number;
+          erro: string | null;
+          meta_id: string | null;
+          reservado_em: string | null;
+          enviado_em: string | null;
+          criado_em: string;
+        };
+        Insert: {
+          id?: string;
+          chave: string;
+          contato_id: string;
+          lead_id?: string | null;
+          motivo: "confirmacao" | "etapa" | "resposta_fixa";
+          etapa?: string | null;
+          payload: Record<string, unknown>;
+          enviar_apos?: string;
+          estado?: "pendente" | "processando" | "enviado" | "falhou" | "cancelado";
+          tentativas?: number;
+          erro?: string | null;
+          meta_id?: string | null;
+          reservado_em?: string | null;
+          enviado_em?: string | null;
+          criado_em?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["wa_envios"]["Insert"]>;
+        Relationships: [];
+      };
+      wa_eventos: {
+        Row: {
+          chave: string;
+          payload: Record<string, unknown> | null;
+          recebido_em: string;
+          processado_em: string | null;
+          erro: string | null;
+          tentativas: number;
+        };
+        Insert: {
+          chave: string;
+          payload?: Record<string, unknown> | null;
+          recebido_em?: string;
+          processado_em?: string | null;
+          erro?: string | null;
+          tentativas?: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["wa_eventos"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: {
       // Consulta consolidada do quadro do CRM (recriada em
@@ -1432,6 +1562,13 @@ export interface Database {
         Args: { p_automacao?: string | null };
         Returns: { comentarios: number; links_enviados: number; links_abertos: number; falhas: number }[];
       };
+      // WhatsApp (038): só a service role / pg_cron chamam.
+      wa_reservar_envios: {
+        Args: { p_limite: number };
+        Returns: Database["public"]["Tables"]["wa_envios"]["Row"][];
+      };
+      wa_apagar_inativos: { Args: Record<PropertyKey, never>; Returns: number };
+      wa_limpar_eventos: { Args: Record<PropertyKey, never>; Returns: number };
       ig_apagar_inativos: { Args: Record<PropertyKey, never>; Returns: number };
       ig_limpar_eventos: { Args: Record<PropertyKey, never>; Returns: number };
       // Do admin (confere eh_admin() por dentro): apaga os eventos do webhook de um contato.
