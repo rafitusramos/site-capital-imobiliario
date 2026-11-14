@@ -252,14 +252,26 @@ export function criarRepositorioWa(): RepositorioWa {
       return (data?.length ?? 0) > 0;
     },
 
+    async liberarRespostaFixa(contatoId, em) {
+      const { error } = await db
+        .from("wa_contatos")
+        .update({ resposta_fixa_em: null })
+        .eq("id", contatoId)
+        .eq("resposta_fixa_em", em.toISOString())
+        .select("id");
+      if (error) falha("liberar resposta fixa", error);
+    },
+
     async marcarEvento(chave, erro) {
       if (!erro) {
-        const { error } = await db
+        const { data, error } = await db
           .from("wa_eventos")
           .update({ processado_em: new Date().toISOString(), erro: null })
           .eq("chave", chave)
           .select("chave");
         if (error) console.error("[whatsapp] marcar evento falhou:", error.message);
+        else if (!data || data.length === 0)
+          console.error("[whatsapp] marcar evento: nenhuma linha casou com a chave", chave);
         return;
       }
       // Com erro, `processado_em` fica nulo para o reprocesso; conta a tentativa.
@@ -269,12 +281,14 @@ export function criarRepositorioWa(): RepositorioWa {
         .eq("chave", chave)
         .maybeSingle();
       if (erroLeitura) console.error("[whatsapp] ler tentativas do evento falhou:", erroLeitura.message);
-      const { error } = await db
+      const { data, error } = await db
         .from("wa_eventos")
         .update({ erro, tentativas: (atual?.tentativas ?? 0) + 1 })
         .eq("chave", chave)
         .select("chave");
       if (error) console.error("[whatsapp] marcar evento falhou:", error.message);
+      else if (!data || data.length === 0)
+        console.error("[whatsapp] marcar evento: nenhuma linha casou com a chave", chave);
     },
 
     async eventosPendentes(ate, limite) {

@@ -187,3 +187,11 @@ export function lerEventoGravadoWa(payload: unknown): EventoWa | null {
   const r = gravadoSchema.safeParse(payload);
   return r.success ? r.data : null;
 }
+
+/**
+ * Chave de um evento em wa_eventos. O webhook grava o EventoWa sob esta chave e o motor
+ * marca/reprocessa por ela: as duas pontas DEVEM usar este helper.
+ */
+export function chaveGravadaWa(e: EventoWa): string {
+  return `wa:${e.chave}`;
+}

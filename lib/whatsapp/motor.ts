@@ -8,7 +8,7 @@ import { proximaTentativa } from "@/lib/instagram/fila";
 import type { LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 import type { CloudWa } from "./cloud";
 import { ehTemporarioWa, motivoLegivelWa } from "./erros";
-import { lerEventoGravadoWa, type EventoWa, type StatusWa } from "./eventos";
+import { chaveGravadaWa, lerEventoGravadoWa, type EventoWa, type StatusWa } from "./eventos";
 import { linkDoNumeroOficial, respostaFixa } from "./mensagens";
 import { waIdDoTelefone, variantesDoWaId } from "./telefone";
 import { payloadDeTemplate, TEMPLATES, templateDaEtapa, templateDeConfirmacao } from "./templates";
@@ -123,6 +123,8 @@ export interface RepositorioWa {
    * enfileiram duas respostas.
    */
   reivindicarRespostaFixa(contatoId: string, em: Date, intervaloMs: number): Promise<boolean>;
+  /** Desfaz a reivindicação (`resposta_fixa_em` = nulo) só onde ainda vale `em`. */
+  liberarRespostaFixa(contatoId: string, em: Date): Promise<void>;
   /** Sem erro: grava `processado_em`. Com erro: grava o erro, soma 1 em `tentativas` e deixa `processado_em` nulo. */
   marcarEvento(chave: string, erro?: string): Promise<void>;
   /** Eventos não processados, recebidos até `ate`, com menos de 3 tentativas. */
@@ -244,17 +246,28 @@ export function criarMotorWa(dep: {
 
     // Resposta fixa: no máximo uma por contato a cada 12 h (a janela de 24 h está aberta pelo cliente).
     // A reivindicação é atômica e vem ANTES de enfileirar: eventos concorrentes não duplicam.
-    if (await repo.reivindicarRespostaFixa(contato.id, agora(), INTERVALO_RESPOSTA_FIXA_MS)) {
-      const numero = await repo.numeroOficial();
-      const link = numero ? linkDoNumeroOficial(numero) : null;
-      await repo.enfileirar({
-        chave: `fixa:${e.metaId}`,
-        contatoId: contato.id,
-        leadId: lead?.id ?? null,
-        motivo: "resposta_fixa",
-        payload: { type: "text", text: { body: respostaFixa(link), preview_url: true } },
-        enviarApos: agora(),
-      });
+    const reivindicadaEm = agora();
+    if (await repo.reivindicarRespostaFixa(contato.id, reivindicadaEm, INTERVALO_RESPOSTA_FIXA_MS)) {
+      try {
+        const numero = await repo.numeroOficial();
+        const link = numero ? linkDoNumeroOficial(numero) : null;
+        await repo.enfileirar({
+          chave: `fixa:${e.metaId}`,
+          contatoId: contato.id,
+          leadId: lead?.id ?? null,
+          motivo: "resposta_fixa",
+          payload: { type: "text", text: { body: respostaFixa(link), preview_url: true } },
+          enviarApos: agora(),
+        });
+      } catch (ex) {
+        // Nada foi enfileirado: devolve a janela de 12 h para o reprocesso poder responder.
+        try {
+          await repo.liberarRespostaFixa(contato.id, reivindicadaEm);
+        } catch (ex2) {
+          console.error("[whatsapp] não foi possível liberar a resposta fixa", contato.id, ex2);
+        }
+        throw ex;
+      }
     }
   }
 
@@ -270,8 +283,6 @@ export function criarMotorWa(dep: {
     await processarMensagem(e);
   }
 
-  /** Chave do evento em wa_eventos: o webhook grava o EventoWa sob `wa:<chave>`. */
-  const chaveGravada = (e: EventoWa) => `wa:${e.chave}`;
 
   /** Processa e marca `processado_em`; em falha grava o erro (reprocessável) e NÃO relança. */
   async function processarEvento(e: EventoWa): Promise<void> {
@@ -280,14 +291,14 @@ export function criarMotorWa(dep: {
     } catch (ex) {
       console.error("[whatsapp] falha ao processar evento", e.chave, ex);
       try {
-        await repo.marcarEvento(chaveGravada(e), ex instanceof Error ? ex.message : String(ex));
+        await repo.marcarEvento(chaveGravadaWa(e), ex instanceof Error ? ex.message : String(ex));
       } catch (ex2) {
         console.error("[whatsapp] não foi possível gravar o erro do evento", e.chave, ex2);
       }
       return;
     }
     try {
-      await repo.marcarEvento(chaveGravada(e));
+      await repo.marcarEvento(chaveGravadaWa(e));
     } catch (ex) {
       console.error("[whatsapp] evento processado, mas não foi marcado", e.chave, ex);
     }

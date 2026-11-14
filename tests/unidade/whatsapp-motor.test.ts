@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { criarMotorWa, type AvisoDonoWa, type MotorWa } from "@/lib/whatsapp/motor";
-import type { EventoWa } from "@/lib/whatsapp/eventos";
+import { chaveGravadaWa, type EventoWa } from "@/lib/whatsapp/eventos";
 import { ATRASO_EMAIL_LEAD_MS } from "@/lib/email/notificar";
 import { CloudFalso, leadFalso, RepositorioWaFalso } from "../apoio/whatsapp-falsos";
 
@@ -316,5 +316,30 @@ describe("reprocesso de eventos", () => {
     await motor.reprocessarPendentes(10);
     expect(repo.eventosGravados[0].erro).toBe("payload inválido");
     expect(repo.statusRecebidos).toHaveLength(0);
+  });
+});
+
+describe("chave do evento e liberação da resposta fixa", () => {
+  it("chaveGravadaWa prefixa com wa:", () => {
+    expect(chaveGravadaWa(mensagem({ chave: "m:wamid.X" }))).toBe("wa:m:wamid.X");
+  });
+
+  it("enfileirar falha: libera a janela, grava o erro e o reprocesso envia uma única resposta", async () => {
+    const e = mensagem({ chave: "m:wamid.X", metaId: "wamid.X" });
+    repo.eventosGravados.push({
+      chave: chaveGravadaWa(e),
+      payload: e,
+      recebidoEm: new Date(AGORA.getTime() - 5 * 60_000),
+      processado: false,
+      tentativas: 0,
+    });
+    repo.falharEnfileirar = 1;
+    await motor.processarEvento(e);
+    expect(repo.contatos[0].respostaFixaEm).toBeNull();
+    expect(repo.envios).toHaveLength(0);
+    expect(repo.eventosGravados[0]).toMatchObject({ processado: false, tentativas: 1 });
+    await motor.reprocessarPendentes(10);
+    expect(repo.envios.filter((x) => x.motivo === "resposta_fixa")).toHaveLength(1);
+    expect(repo.eventosGravados[0].processado).toBe(true);
   });
 });

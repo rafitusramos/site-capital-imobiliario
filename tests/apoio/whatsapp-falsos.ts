@@ -55,6 +55,8 @@ export class RepositorioWaFalso implements RepositorioWa {
   }> = [];
   /** Faz os próximos N `atualizarStatus` lançarem. */
   falharStatus = 0;
+  /** Faz os próximos N `enfileirar` lançarem. */
+  falharEnfileirar = 0;
   /** Faz `concluir` com este estado lançar. */
   falharConcluir: string | null = null;
   private seq = 0;
@@ -90,6 +92,10 @@ export class RepositorioWaFalso implements RepositorioWa {
     return novas;
   }
   async enfileirar(e: NovoEnvioWa) {
+    if (this.falharEnfileirar > 0) {
+      this.falharEnfileirar -= 1;
+      throw new Error("banco fora do ar");
+    }
     if (this.envios.some((x) => x.chave === e.chave)) return;
     this.seq += 1;
     const waId = this.contatos.find((c) => c.id === e.contatoId)?.waId ?? "";
@@ -149,6 +155,10 @@ export class RepositorioWaFalso implements RepositorioWa {
     if (c.respostaFixaEm && new Date(c.respostaFixaEm).getTime() >= em.getTime() - intervaloMs) return false;
     c.respostaFixaEm = em.toISOString();
     return true;
+  }
+  async liberarRespostaFixa(contatoId: string, em: Date) {
+    const c = this.contatos.find((x) => x.id === contatoId)!;
+    if (c.respostaFixaEm === em.toISOString()) c.respostaFixaEm = null;
   }
   async marcarEvento(chave: string, erro?: string) {
     const e = this.eventosGravados.find((x) => x.chave === chave);
