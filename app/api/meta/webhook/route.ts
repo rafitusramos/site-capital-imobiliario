@@ -4,6 +4,10 @@ import { configMeta } from "@/lib/instagram/config";
 import { lerEventos } from "@/lib/instagram/eventos";
 import { chaveDoEvento } from "@/lib/instagram/motor";
 import { motorPadrao, repositorioPadrao } from "@/lib/instagram/motor-padrao";
+import { configWhatsApp } from "@/lib/whatsapp/config";
+import { chaveGravadaWa, lerEventosWa } from "@/lib/whatsapp/eventos";
+import { motorWaPadrao } from "@/lib/whatsapp/motor-padrao";
+import { criarRepositorioWa } from "@/lib/whatsapp/repositorio";
 
 // Webhook da Meta (comentários e mensagens do Instagram). Spec §7.1.
 // Responde rápido: grava os eventos, devolve 200 e processa em after().
@@ -38,14 +42,24 @@ export async function POST(req: Request): Promise<Response> {
   const corpo = await req.text();
   if (Buffer.byteLength(corpo, "utf8") > LIMITE_CORPO_BYTES) return resposta("Corpo grande demais.", 413);
 
-  if (!assinaturaValida(corpo, req.headers.get("x-hub-signature-256"), cfg.appSecret)) {
-    return resposta("Assinatura inválida.", 401);
-  }
-
+  // O WhatsApp chega neste mesmo endereço, mas pode vir assinado por outro app: o corpo é
+  // lido antes só para saber o `object`. Todo o resto segue o caminho do Instagram.
   let json: unknown;
   try {
     json = JSON.parse(corpo);
   } catch {
+    json = undefined;
+  }
+  const ehWhatsApp =
+    json !== null &&
+    typeof json === "object" &&
+    (json as { object?: unknown }).object === "whatsapp_business_account";
+  if (ehWhatsApp) return processarWhatsApp(req, corpo, json);
+
+  if (!assinaturaValida(corpo, req.headers.get("x-hub-signature-256"), cfg.appSecret)) {
+    return resposta("Assinatura inválida.", 401);
+  }
+  if (json === undefined) {
     return resposta("ok", 200); // assinado, mas sem JSON: nada a processar, e a Meta não precisa reentregar.
   }
   const eventos = lerEventos(json);
@@ -79,6 +93,48 @@ export async function POST(req: Request): Promise<Response> {
   } catch (ex) {
     // 500 faz a Meta reentregar: o evento ainda não foi gravado.
     console.error("[instagram] webhook: falha ao gravar eventos", ex);
+    return resposta("Erro ao gravar.", 500);
+  }
+  return resposta("ok", 200);
+}
+
+/** Webhook do WhatsApp (Cloud API). Mesma disciplina do Instagram: grava, responde 200, processa em after(). */
+async function processarWhatsApp(req: Request, corpo: string, json: unknown): Promise<Response> {
+  const cfgWa = configWhatsApp();
+  if (!cfgWa) return resposta("ok", 200); // módulo desligado neste ambiente: ignora.
+
+  const assinatura = req.headers.get("x-hub-signature-256");
+  if (!cfgWa.segredos.some((segredo) => assinaturaValida(corpo, assinatura, segredo))) {
+    return resposta("Assinatura inválida.", 401);
+  }
+
+  const eventos = lerEventosWa(json);
+  if (eventos.length === 0) return resposta("ok", 200);
+
+  try {
+    const repo = criarRepositorioWa();
+    const porChave = new Map(eventos.map((e) => [chaveGravadaWa(e), e]));
+    const novas = await repo.registrarEventos([...porChave].map(([chave, e]) => ({ chave, payload: e })));
+    try {
+      await repo.tocarUltimoEvento();
+    } catch (ex) {
+      console.error("[whatsapp] webhook: falha ao registrar último evento", ex);
+    }
+
+    const novos = novas.map((c) => porChave.get(c)).filter((e) => e !== undefined);
+    if (novos.length > 0) {
+      after(async () => {
+        try {
+          const motor = motorWaPadrao();
+          if (!motor) return;
+          for (const e of novos) await motor.processarEvento(e);
+        } catch (ex) {
+          console.error("[whatsapp] webhook: falha ao processar eventos", ex);
+        }
+      });
+    }
+  } catch (ex) {
+    console.error("[whatsapp] webhook: falha ao gravar eventos", ex);
     return resposta("Erro ao gravar.", 500);
   }
   return resposta("ok", 200);

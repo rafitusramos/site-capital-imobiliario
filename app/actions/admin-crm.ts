@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { dispararAvisosMudancaEtapa } from "@/lib/email/notificar";
+import { dispararWhatsAppMudancaEtapa } from "@/lib/whatsapp/notificar";
 import { caminhosDasSimulacoesDoLead, removerArquivosDasSimulacoes } from "@/lib/simulacao/armazenar";
 import type { createClient } from "@/lib/supabase/server";
 import { idSchema, usuarioAutenticado } from "@/lib/admin/auth";
@@ -332,6 +333,11 @@ export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
       after(() => dispararAvisosMudancaEtapa(mudanca));
     } catch (e) {
       console.error("[moverLead] não foi possível agendar os e-mails:", e);
+    }
+    try {
+      after(() => dispararWhatsAppMudancaEtapa(mudanca.lead.id, mudanca.para, simulacaoTemSubstitutoDoAviso));
+    } catch (e) {
+      console.error("[moverLead] não foi possível agendar o WhatsApp:", e);
     }
   }
 

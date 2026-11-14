@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { configMeta } from "@/lib/instagram/config";
 import { motorPadrao } from "@/lib/instagram/motor-padrao";
+import { motorWaPadrao } from "@/lib/whatsapp/motor-padrao";
 
 // Disparador da fila de envios, chamado a cada minuto pelo pg_cron. Spec §7.5.
 
@@ -27,13 +28,35 @@ export async function POST(req: Request): Promise<Response> {
   if (!igual(req.headers.get("authorization") ?? "", `Bearer ${cfg.cronSecret}`)) {
     return json({ erro: "Não autorizado." }, 401);
   }
+  let instagram: unknown;
+  let instagramFalhou = false;
   try {
     const motor = await motorPadrao();
-    if (!motor) return json({ enviados: 0, falhas: 0 }, 200);
-    await motor.reprocessarPendentes(LOTE);
-    return json(await motor.dispararFila(LOTE), 200);
+    if (!motor) instagram = { enviados: 0, falhas: 0 };
+    else {
+      await motor.reprocessarPendentes(LOTE);
+      instagram = await motor.dispararFila(LOTE);
+    }
   } catch (ex) {
     console.error("[instagram] disparar falhou", ex);
-    return json({ erro: "Falha ao disparar." }, 500);
+    instagram = { erro: "Falha ao disparar." };
+    instagramFalhou = true;
   }
+
+  // Um motor falhar não impede o outro.
+  let whatsapp: unknown = null;
+  let whatsappFalhou = false;
+  try {
+    const motorWa = motorWaPadrao();
+    if (motorWa) {
+      await motorWa.reprocessarPendentes(LOTE);
+      whatsapp = await motorWa.dispararFila(LOTE);
+    }
+  } catch (ex) {
+    console.error("[whatsapp] disparar falhou", ex);
+    whatsapp = { erro: "Falha ao disparar." };
+    whatsappFalhou = true;
+  }
+
+  return json({ instagram, whatsapp }, instagramFalhou || whatsappFalhou ? 500 : 200);
 }

@@ -176,7 +176,7 @@ describe("moverLead — e-mails", () => {
     expect(idxLeitura).toBeGreaterThanOrEqual(0);
     expect(falso.chamadasRpc.find((c) => c.nome === "mover_lead_crm")).toBeDefined();
     expect(dispararAvisosMudancaEtapa).not.toHaveBeenCalled();
-    expect(agendados).toHaveLength(1);
+    expect(agendados).toHaveLength(2); // e-mails + WhatsApp
 
     await agendados[0]();
     expect(dispararAvisosMudancaEtapa).toHaveBeenCalledWith({
