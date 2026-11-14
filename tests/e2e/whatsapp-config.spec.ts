@@ -18,7 +18,7 @@ test.describe("WhatsApp: página de configuração (somente leitura)", () => {
     const erros = coletarErros(page, baseURL!);
     await abrirAdmin(page, "/admin/whatsapp/");
     await expect(page.getByRole("heading", { name: "WhatsApp", level: 1 })).toBeVisible();
-    await expect(page.getByLabel("Número oficial")).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "Número oficial" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Últimos envios" })).toBeVisible();
     await expect(page.getByText(/Application error|Internal Server Error|Algo deu errado/i)).toHaveCount(0);
     expect(erros.proprios, "erros de console próprios").toEqual([]);
