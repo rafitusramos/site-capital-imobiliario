@@ -49,6 +49,7 @@ const SECOES = [
   { id: "cookies-e-rastreamento", titulo: "Cookies e rastreamento" },
   { id: "criancas-e-adolescentes", titulo: "Crianças e adolescentes" },
   { id: "conversas-no-instagram", titulo: "Conversas no Instagram" },
+  { id: "conversas-no-whatsapp", titulo: "Conversas no WhatsApp" },
   { id: "alteracoes-nesta-politica", titulo: "Alterações nesta política" },
   { id: "fale-com-a-gente", titulo: "Fale com a gente" },
 ];
@@ -355,9 +356,27 @@ export default function PoliticaDePrivacidadePage() {
               </p>
             </section>
 
+            <section id="conversas-no-whatsapp">
+              <h2>
+                <span className="num">14.</span>Conversas no WhatsApp
+              </h2>
+              <p>
+                Depois que você envia o formulário, o nosso número de atendimento no WhatsApp
+                confirma o seu pedido e avisa você sobre o andamento dele. Se você escrever para
+                esse número, recebe uma resposta automática com o número oficial de Rafael
+                Teixeira, e a sua mensagem é encaminhada à nossa equipe. Guardamos o seu número de
+                WhatsApp, o nome do seu perfil, as mensagens trocadas com o número de atendimento
+                e o status de entrega de cada mensagem. As mensagens são processadas pela Meta
+                (WhatsApp Business Platform), que opera o canal. As conversas acompanham o seu
+                cadastro de solicitação. Um contato que não tenha solicitação e fique 12 meses sem
+                nenhuma interação é apagado automaticamente. Para pedir a exclusão antes disso,
+                escreva para <a href={`mailto:${EMAIL_LGPD}`}>{EMAIL_LGPD}</a>.
+              </p>
+            </section>
+
             <section id="alteracoes-nesta-politica">
               <h2>
-                <span className="num">14.</span>Alterações nesta política
+                <span className="num">15.</span>Alterações nesta política
               </h2>
               <p>
                 A versão vigente desta política é sempre a publicada nesta página, com a data de
@@ -368,7 +387,7 @@ export default function PoliticaDePrivacidadePage() {
 
             <section id="fale-com-a-gente">
               <h2>
-                <span className="num">15.</span>Fale com a gente
+                <span className="num">16.</span>Fale com a gente
               </h2>
               <p>
                 Dúvidas sobre esta política ou sobre o tratamento dos seus dados podem ser
