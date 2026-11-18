@@ -28,7 +28,7 @@ export const RETENCAO_ANOS = 5;
 export const ATUALIZADO_EM = "30 de julho de 2026";
 
 /** Data da Política de Privacidade: mude a cada alteração do texto dela. */
-export const POLITICA_ATUALIZADA_EM = "13 de novembro de 2026";
+export const POLITICA_ATUALIZADA_EM = "14 de novembro de 2026";
 
 /**
  * Frase exata do checkbox de consentimento nos formulários de lead. A
@@ -36,4 +36,4 @@ export const POLITICA_ATUALIZADA_EM = "13 de novembro de 2026";
  * podem divergir.
  */
 export const TEXTO_CONSENTIMENTO =
-  "Autorizo o uso dos meus dados, para a pré-qualificação de crédito e o encaminhamento às instituições financeiras parceiras.";
+  "Autorizo o uso dos meus dados para a pré-qualificação de crédito e o encaminhamento às instituições financeiras parceiras, e aceito receber o atendimento da RT Capital Imobiliário pelo WhatsApp.";

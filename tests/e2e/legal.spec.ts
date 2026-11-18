@@ -12,9 +12,9 @@ test.describe("Páginas legais", () => {
     await expect(secao).toContainText("habitacional");
   });
 
-  test("política: topo mostra 'Atualizado em 13 de novembro de 2026'", async ({ page }) => {
+  test("política: topo mostra 'Atualizado em 14 de novembro de 2026'", async ({ page }) => {
     await page.goto("/politica-de-privacidade/");
-    await expect(page.locator(".legal-atualizado")).toHaveText("Atualizado em 13 de novembro de 2026");
+    await expect(page.locator(".legal-atualizado")).toHaveText("Atualizado em 14 de novembro de 2026");
   });
 
   test("política: canonical segue /politica-de-privacidade/", async ({ page }) => {
