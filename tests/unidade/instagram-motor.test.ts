@@ -188,6 +188,41 @@ describe("comentário", () => {
     expect(graph.respostasPrivadas).toHaveLength(1);
   });
 
+  it("'próxima publicação' que não casa deixa o motivo no log (sem data ou publicação anterior)", async () => {
+    const aviso = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const semData = montar({
+      automacao: { alvo: "proxima", proximaDesde: "2026-11-10T00:00:00.000Z" },
+    });
+    semData.graph.midiaCriada = null;
+    await semData.motor.processarEvento(comentario());
+    expect(semData.graph.respostasPrivadas).toHaveLength(0);
+    expect(aviso).toHaveBeenCalledWith(
+      expect.stringContaining("próxima publicação"),
+      expect.objectContaining({ midiaId: "m1", motivo: "sem-data-da-midia" }),
+    );
+
+    aviso.mockClear();
+    const anterior = montar({
+      automacao: { alvo: "proxima", proximaDesde: "2026-11-10T00:00:00.000Z" },
+    });
+    anterior.graph.midiaCriada = "2026-11-09T00:00:00.000Z";
+    await anterior.motor.processarEvento(comentario());
+    expect(aviso).toHaveBeenCalledWith(
+      expect.stringContaining("próxima publicação"),
+      expect.objectContaining({ midiaId: "m1", motivo: "publicacao-anterior" }),
+    );
+
+    aviso.mockClear();
+    const semPalavra = montar({
+      automacao: { alvo: "proxima", proximaDesde: "2026-11-10T00:00:00.000Z", palavras: ["saber"] },
+    });
+    semPalavra.graph.midiaCriada = "2026-11-09T00:00:00.000Z";
+    await semPalavra.motor.processarEvento(comentario({ texto: "bom dia" }));
+    expect(aviso).not.toHaveBeenCalled();
+    aviso.mockRestore();
+  });
+
   it("sem conta conectada ou sem Graph nada sai, mas o comentário fica registrado", async () => {
     const a = montar({ semGraph: true });
     await a.motor.processarEvento(comentario());
