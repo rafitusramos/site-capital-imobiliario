@@ -14,23 +14,23 @@ import type { MensagemSaida } from "./tipos";
 //    System User token). CONFIRMADO.
 //  - Versão v27.0: exemplos de
 //    .../instagram-api-with-instagram-login/messaging-api. A página é do host
-//    graph.instagram.com, mas a versão é a vigente na doc. CONFERIR para o host
-//    graph.facebook.com.
+//    graph.instagram.com, mas a versão é a vigente na doc. Validada no host
+//    graph.facebook.com com a conta real em 2026-11-18.
 //  - Send API (recipient.id / recipient.comment_id, message): CONFIRMADO.
 //  - Botão do template: doc só detalha `generic` (postback/web_url CONFIRMADO).
-//    Template `button` e seu uso em resposta privada: CONFERIR.
+//    Template `button` em resposta privada: validado com a conta real em 2026-11-18.
 // ---------------------------------------------------------------------------
 export const GRAPH_BASE = "https://graph.facebook.com";
 export const GRAPH_VERSAO = "v27.0";
-/** Diálogo OAuth do Facebook Login for Business (config_id). CONFERIR. */
+/** Diálogo OAuth do Facebook Login for Business (config_id). Validado em 2026-11-18. */
 export const LOGIN_DIALOGO_BASE = "https://www.facebook.com";
-/** Campo "a pessoa segue a conta". CONFERIR (não consta nas páginas lidas). */
+/** Campo "a pessoa segue a conta" (não consta na doc lida). Validado em 2026-11-18. */
 export const CAMPO_SEGUE = "is_user_follow_business";
 export const CAMPOS_PERFIL = `name,username,profile_pic,${CAMPO_SEGUE}`;
 export const CAMPOS_PUBLICACAO =
   "id,caption,media_type,thumbnail_url,media_url,permalink,timestamp";
 export const CAMPOS_CONTA = "id,username,name,profile_picture_url";
-/** Contas atribuídas ao usuário de sistema. CONFERIR. */
+/** Contas atribuídas ao usuário de sistema. Validado em 2026-11-18. */
 export const CAMINHO_CONTAS = "me/assigned_instagram_accounts";
 export const CAMPOS_WEBHOOK = "comments,messages,messaging_postbacks";
 
@@ -220,7 +220,7 @@ export function urlDeLogin(state: string, redirectUri: string): string | null {
 
 /**
  * Troca o code pelo token. O segredo do app vai no corpo do POST (form), não na URL.
- * CONFERIR: a doc do Meta mostra GET com query; POST form é aceito pela Graph.
+ * A doc do Meta mostra GET com query; POST form é aceito pela Graph (validado em 2026-11-18).
  */
 export async function trocarCodigo(
   code: string,

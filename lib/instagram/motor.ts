@@ -8,6 +8,7 @@ import { decidirAoComentar, decidirAoTocar, decidirLembrete, type Acao } from ".
 import type { GraphIg, ResultadoGraph } from "./graph";
 import { destinoComUtm, ehRoboDePrevia, gerarCodigo, urlCurta } from "./link";
 import { lerPayload } from "./mensagens";
+import { casaPalavras } from "./palavras";
 import { escolherAutomacao } from "./selecao";
 import type { Automacao, MensagemSaida, Participacao, Situacao } from "./tipos";
 
@@ -148,6 +149,30 @@ export interface Motor {
   registrarClique(codigo: string, ua: string | null): Promise<string | null>;
 }
 
+/**
+ * Comentário com a palavra-chave de uma automação "próxima publicação" ainda sem
+ * vínculo que não foi atendido: deixa o motivo no log. Sem isso, data da mídia
+ * ausente ou publicação anterior à automação viram silêncio total.
+ */
+function avisarProximaSemVinculo(
+  ativas: Automacao[],
+  e: { midiaId: string; texto: string },
+  midiaCriadaEm: string | null,
+): void {
+  const candidatas = ativas.filter(
+    (a) => a.alvo === "proxima" && !a.midiaId && casaPalavras(e.texto, a.palavras),
+  );
+  for (const a of candidatas) {
+    console.warn("[instagram] próxima publicação não vinculada", {
+      automacaoId: a.id,
+      midiaId: e.midiaId,
+      motivo: midiaCriadaEm ? "publicacao-anterior" : "sem-data-da-midia",
+      midiaCriadaEm,
+      proximaDesde: a.proximaDesde,
+    });
+  }
+}
+
 /** Chave de ig_eventos: o tipo na frente evita colisão entre ids de comentário e de mensagem. */
 export function chaveDoEvento(e: EventoIg): string {
   return `${e.tipo}:${e.chave}`;
@@ -269,7 +294,10 @@ export function criarMotor(dep: DependenciasMotor): Motor {
       }
     }
     const escolha = escolherAutomacao(ativas, { midiaId: e.midiaId, texto: e.texto, midiaCriadaEm });
-    if (!escolha) return;
+    if (!escolha) {
+      avisarProximaSemVinculo(ativas, e, midiaCriadaEm);
+      return;
+    }
     const { automacao } = escolha;
     if (escolha.vincular) await repo.vincularProxima(automacao.id, e.midiaId);
 
