@@ -150,9 +150,9 @@ Substitui o ManyChat: comentário numa publicação com palavra-chave dispara re
   corretos. `repo.automacao(null)` devolve nulo = "automação não encontrada": toque em botão é
   ignorado, lembrete pendente é cancelado no disparo e o link antigo cai no fallback do `/ir/`
   (site). Apagar de verdade é só por "Excluir dados deste contato".
-- **`// CONFERIR:` em `lib/instagram/graph.ts`** (versão/endereço da Graph, formato do template de
-  botão, campo "segue a conta") não foram validados com a conta real: confirmar no primeiro teste
-  com a conta real antes de desligar o ManyChat.
+- **Validado com a conta real em 2026-11-18** (versão/endereço da Graph, template de botão na
+  resposta privada, campo "segue a conta", login e troca do código em `lib/instagram/graph.ts`).
+  O ManyChat foi desligado: o fluxo comentário → DM roda só por este código.
 - **Política de privacidade** ganhou seção própria sobre as conversas do Instagram (data "atualizado em" 13/11/2026);
   `TEXTO_CONSENTIMENTO` não muda.
 - **Vitest só roda a partir de `C:\` maiúsculo** (PowerShell). Com `c:` minúsculo todo arquivo
