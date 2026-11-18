@@ -64,6 +64,15 @@ function IconeInstagram({ className }: { className?: string }) {
   );
 }
 
+function IconeWhatsApp({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 17l1.1-3.6A7 7 0 1 1 7 15.9L3 17z" />
+      <path d="M7.5 7.5c0 2.5 2.5 5 5 5l1-1.2-1.8-.9-.8.6c-.9-.4-1.6-1.1-2-2l.6-.8-.9-1.8-1.1 1.1z" />
+    </svg>
+  );
+}
+
 const ITENS: {
   label: string;
   href: string | null;
@@ -73,6 +82,7 @@ const ITENS: {
   { label: "Cadastro de Artigos", href: "/admin/posts", icone: IconeArtigos },
   { label: "Cadastro de Imóveis", href: "/admin/imoveis", icone: IconeImoveis },
   { label: "Instagram", href: "/admin/instagram", icone: IconeInstagram },
+  { label: "WhatsApp", href: "/admin/whatsapp", icone: IconeWhatsApp },
   { label: "Taxas dos Simuladores", href: "/admin/parametros", icone: IconeTaxas },
 ];
 

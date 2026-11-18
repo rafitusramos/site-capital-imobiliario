@@ -37,8 +37,8 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 `content/blog/` são referência histórica do texto migrado, não fonte de
 renderização.
 
-Suíte em Vitest: `npm test` — 1619 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **037**.
+Suíte em Vitest: `npm test` — 1770 passando + 1 *expected fail*, que é intencional
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **038**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
@@ -150,13 +150,49 @@ Substitui o ManyChat: comentário numa publicação com palavra-chave dispara re
   corretos. `repo.automacao(null)` devolve nulo = "automação não encontrada": toque em botão é
   ignorado, lembrete pendente é cancelado no disparo e o link antigo cai no fallback do `/ir/`
   (site). Apagar de verdade é só por "Excluir dados deste contato".
-- **`// CONFERIR:` em `lib/instagram/graph.ts`** (versão/endereço da Graph, formato do template de
-  botão, campo "segue a conta") não foram validados com a conta real: confirmar no primeiro teste
-  com a conta real antes de desligar o ManyChat.
-- **Política de privacidade** ganhou seção própria sobre as conversas do Instagram (data "atualizado em" 13/11/2026);
-  `TEXTO_CONSENTIMENTO` não muda.
+- **Validado com a conta real em 2026-11-18** (versão/endereço da Graph, template de botão na
+  resposta privada, campo "segue a conta", login e troca do código em `lib/instagram/graph.ts`).
+  O ManyChat foi desligado: o fluxo comentário → DM roda só por este código.
+- **Política de privacidade** ganhou seção própria sobre as conversas do Instagram (data "atualizado em" 13/11/2026).
 - **Vitest só roda a partir de `C:\` maiúsculo** (PowerShell). Com `c:` minúsculo todo arquivo
   falha com "Cannot read properties of undefined (reading 'config')": não é bug do código.
+
+### WhatsApp
+Atendimento por WhatsApp Cloud API (fase 1: base de crédito). Especificação:
+`docs/superpowers/specs/2026-11-13-whatsapp-atendimento-design.md`. Código em `lib/whatsapp/*`
+(puros: `telefone`, `eventos` com `statusAvanca`/`chaveGravadaWa`, `templates`, `mensagens`,
+`erros`, `mascara`; com I/O: `config`, `cloud`, `repositorio`, `motor`/`motor-padrao`, `notificar`).
+Admin em `/admin/whatsapp/`.
+
+- **Rotas reaproveitadas, sem rota nova de webhook:** `POST /api/meta/webhook/` despacha pelo
+  `object` (`whatsapp_business_account` vai ao motor do WhatsApp, o resto ao Instagram);
+  `/api/meta/disparar/` roda os dois motores e responde `{ instagram, whatsapp }` (o do WhatsApp faz
+  `reprocessarPendentes` + `dispararFila`). Como a rota tem a trava 503 do Instagram, **a fila do
+  WhatsApp só escoa se as 5 variáveis `META_*`/`CRON_SECRET` também existirem**: os dois conjuntos
+  precisam estar no ambiente Production da Vercel. Variáveis do WhatsApp (`.env.local.example`):
+  `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WABA_ID` e, opcional,
+  `WHATSAPP_APP_SECRET` (segredo extra aceito na assinatura do webhook, além de `META_APP_SECRET`).
+- **Migration 038** (`038_whatsapp_base.sql`): tabelas `wa_config`, `wa_contatos`, `wa_mensagens`,
+  `wa_envios` (fila), `wa_eventos` (brutos); `wa_reservar_envios` (1 envio por contato por vez,
+  espaçamento de 6 s, estado reconferido dentro do lock); `wa_lead_por_wa_id` (normaliza o telefone
+  de formato livre do lead); `wa_apagar_inativos` e `wa_limpar_eventos` com jobs pg_cron;
+  `leads.consentimento_whatsapp_em`; `crm_emails.tipo` aceita `whatsapp-admin`.
+- **Consentimento:** template só para lead com `consentimento_whatsapp_em`, carimbado **apenas**
+  pelo formulário público. Lead anterior à mudança do texto não tem consentimento de WhatsApp.
+- **Avisos de etapa** saem +10 min depois, são cancelados por movimento posterior do mesmo lead,
+  respeitam `notifica_lead` e a supressão da simulação (mesma regra do e-mail).
+- **Resposta fixa** a quem escreve: no máximo 1 por 12 h por contato (reserva atômica; liberada se
+  o enfileiramento falhar). **Toda mensagem recebida** vira interação do lead (`lead_interacoes`,
+  tipo `whatsapp`) e e-mail ao dono.
+- **Envio aceito pela Meta nunca volta para a fila.** Evento que falha no processamento é
+  reprocessado até 3 vezes. Status de entrega **nunca regride** (`statusAvanca`). Variantes do
+  9º dígito casam o mesmo contato.
+- **Templates** vivem em `lib/whatsapp/templates.ts` e têm de ser **iguais** a
+  `docs/whatsapp-templates.md` (travado em teste). Mudar corpo exige novo cadastro e nova
+  aprovação no WhatsApp Manager.
+- **`TEXTO_CONSENTIMENTO` mudou em 2026-11 por decisão do dono**, para cobrir o WhatsApp. Mudança
+  futura tem de gravar nova coluna/versão de aceite (não reinterpretar consentimentos antigos). A
+  CAPI ainda exige revisar o texto.
 
 ### Data de nascimento do lead (migration 033)
 Obrigatória nos formulários de **financiamento** e **home equity** (a idade entra no
@@ -204,8 +240,8 @@ documentadas em `.env.local.example`: `RESEND_API_KEY`, `EMAIL_REMETENTE`,
   `agendado` não vira `enviado` sozinho (sem webhook): compare `agendado_para` com agora.
 - Templates em `lib/email/templates/` são funções puras; todo dado do visitante passa
   por `escaparHtml`. Copy para o lead nunca promete aprovação de crédito.
-- `TEXTO_CONSENTIMENTO` não muda por causa disto: são e-mails transacionais sobre o
-  pedido da própria pessoa. A regra de só mudá-lo com a CAPI continua valendo.
+- Estes e-mails não dependem de mudança em `TEXTO_CONSENTIMENTO`: são transacionais
+  sobre o pedido da própria pessoa (a mudança de 2026-11 foi por causa do WhatsApp; ver "WhatsApp").
 - `enviado_whatsapp` em `leads` ficou sem uso (a coluna foi mantida; o stub de
   WhatsApp foi removido).
 
@@ -500,10 +536,10 @@ Meta Conversions API disparada da server action de lead, e importação de
 conversão offline a partir do pipeline do CRM, casando o `gclid` já capturado —
 é o que permite otimizar por contrato assinado em vez de formulário preenchido.
 
-A CAPI exige mudar `TEXTO_CONSENTIMENTO` em `lib/legal.ts`: hoje ele autoriza o
-compartilhamento apenas com instituições financeiras parceiras, e a Meta não é
-uma. Não mude antes de a CAPI existir, para o texto não descrever algo que ainda
-não acontece.
+A CAPI ainda exige **revisar** `TEXTO_CONSENTIMENTO` em `lib/legal.ts`: ele cobre
+instituições financeiras parceiras e o WhatsApp, e a Meta (CAPI) não é nenhuma
+das duas. Revise antes de a CAPI existir, para o texto não descrever algo que ainda
+não acontece, e siga a regra de nova versão de aceite (ver "WhatsApp").
 
 ### Domínio
 O apex é o canônico; `www` redireciona 308 para ele. Isso é configuração de
