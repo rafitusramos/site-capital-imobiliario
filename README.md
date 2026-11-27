@@ -20,6 +20,7 @@ npm run dev
 | `npm run dev` | servidor de desenvolvimento |
 | `npm run build` | build de produção |
 | `npm start` | serve o build |
+| `npm run typecheck` | checagem de tipos (`tsc --noEmit`) |
 | `npm run lint` | ESLint (`eslint .`, flat config) |
 | `npm test` | suíte de testes (Vitest) |
 | `npm run test:watch` | testes em watch |

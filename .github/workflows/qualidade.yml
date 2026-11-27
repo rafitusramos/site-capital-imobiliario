@@ -1,0 +1,65 @@
+# Qualidade
+#
+# Roda em PRs e pushes para `Preview` e `main`: typecheck, lint e testes
+# unitários (Vitest), mais um job separado de `npm audit`.
+#
+# Por que NÃO há `next build` aqui: o deploy de preview da Vercel já builda todo
+# PR e publica o resultado como check. Um build no CI precisaria das variáveis do
+# Supabase e, como preview e produção usam o MESMO banco, leria o banco de
+# produção em tempo de build. Duplicaria a Vercel sem ganho.
+#
+# Sem secrets neste workflow. Actions fixadas por SHA (o comentário traz a versão).
+name: Qualidade
+
+on:
+  pull_request:
+    branches: [Preview, main]
+  push:
+    branches: [Preview, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: qualidade-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualidade:
+    name: qualidade
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes unitários
+        run: npm test
+
+  auditoria:
+    name: qualidade-auditoria
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      # Só dependências de produção; bloqueia em severidade alta ou crítica.
+      - name: npm audit
+        run: npm audit --omit=dev --audit-level=high

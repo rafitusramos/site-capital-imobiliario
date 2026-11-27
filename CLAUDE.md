@@ -41,7 +41,13 @@ Suíte em Vitest: `npm test` — 1770 passando + 1 *expected fail*, que é inten
 e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **038**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
-o merge em `Preview` roda `supabase db push` (o dry-run aparece nos checks do PR).
+o merge em `Preview` roda `supabase db push` no job `aplicar` (environment
+`producao-db`, onde se pode exigir revisor); o dry-run aparece nos checks do PR.
+Migration adicionada/modificada com `drop table`, `truncate` ou `delete from` falha
+nos dois jobs, a menos que o arquivo tenha a linha `-- destrutivo: aprovado`
+(`.github/scripts/guarda-sql-destrutivo.sh`).
+`.github/workflows/qualidade.yml` roda typecheck (`npm run typecheck`), lint, testes
+unitários e `npm audit` nos PRs e pushes para `Preview` e `main`.
 **`Preview` e produção usam o MESMO banco** — mergear em `Preview` aplica em produção.
 Arquivo novo: prefixo numérico `NNN_nome.sql` seguindo a sequência e **sem
 `begin;`/`commit;`** (a CLI já abre uma transação por arquivo). SQL Editor só como
