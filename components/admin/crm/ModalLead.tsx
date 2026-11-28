@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { carregarDetalheLead, type DetalheLeadCarregado } from "@/components/admin/crm/carregar-lead";
+import { carregarDetalheLead, type DetalheLeadCarregado } from "@/app/actions/admin-crm-leitura";
 import { atualizarLead, moverLead, type AcaoResultado } from "@/app/actions/admin-crm";
 import { etapaPorSlug } from "@/lib/crm/etapas";
 import { formatarData } from "@/lib/crm/tempo";
@@ -42,7 +42,7 @@ type EstadoDialogoMotivo = { etapaLabel: string; resolver: (dados: { motivo: str
  * Casca do modal de lead (docs/crm-spec.md §1.4/§3.1/§4). Os dados
  * (`getLead`/`getTimeline`/`getLembretes`) são carregados SOB DEMANDA aqui —
  * nunca no payload do quadro (§3.2/§6) — via `carregarDetalheLead`
- * (components/admin/crm/carregar-lead.ts, a "action de leitura" citada no
+ * (app/actions/admin-crm-leitura.ts, a "action de leitura" citada no
  * escopo; ver o comentário lá para a justificativa completa de por que não
  * um Server Component com Suspense).
  *

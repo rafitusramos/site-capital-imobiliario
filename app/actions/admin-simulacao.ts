@@ -1,6 +1,6 @@
 "use server";
 
-import { idSchema, usuarioAutenticado } from "@/lib/admin/auth";
+import { exigirMembroCRM, idSchema } from "@/lib/admin/auth";
 import { BUCKET_SIMULACOES } from "@/lib/simulacao/armazenar";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -20,8 +20,8 @@ export interface UrlSimulacaoResultado {
  * service role assina.
  */
 export async function urlDownloadSimulacao(simulacaoId: string): Promise<UrlSimulacaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
   if (!idSchema.safeParse(simulacaoId).success) return { sucesso: false, erro: "Simulação inválida." };
 
   const { data: linha, error } = await supabase
@@ -67,8 +67,8 @@ export interface SimulacaoPendenteResultado {
  * leitura vira console.error e "sem simulação", e a pessoa anexa o PDF.
  */
 export async function simulacaoPendenteDoLead(leadId: string): Promise<SimulacaoPendenteResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
   if (!idSchema.safeParse(leadId).success) return { sucesso: false, erro: "Lead inválido." };
 
   try {

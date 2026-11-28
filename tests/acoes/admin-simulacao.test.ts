@@ -5,7 +5,9 @@ vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }));
 
 import { createClient } from "@/lib/supabase/server";
-import { simulacaoPendenteDoLead } from "@/app/actions/admin-simulacao";
+import { ERRO_SEM_ACESSO_CRM } from "@/lib/admin/auth";
+import * as modulo from "@/app/actions/admin-simulacao";
+import { simulacaoPendenteDoLead, urlDownloadSimulacao } from "@/app/actions/admin-simulacao";
 
 const LEAD = "11111111-1111-4111-8111-111111111111";
 
@@ -18,6 +20,25 @@ function montar() {
 
 afterEach(() => vi.clearAllMocks());
 
+describe("conta logada sem perfil (fora da equipe)", () => {
+  const acoes: Array<[string, () => Promise<unknown>]> = [
+    ["urlDownloadSimulacao", () => urlDownloadSimulacao(LEAD)],
+    ["simulacaoPendenteDoLead", () => simulacaoPendenteDoLead(LEAD)],
+  ];
+
+  test("a lista cobre todas as ações exportadas", () => {
+    const exportadas = Object.keys(modulo).filter((k) => typeof (modulo as Record<string, unknown>)[k] === "function");
+    expect(acoes.map(([nome]) => nome).sort()).toEqual(exportadas.sort());
+  });
+
+  test.each(acoes)("%s é barrada sem tocar em tabela de CRM", async (_nome, chamar) => {
+    const falso = montar();
+    falso.definirPapel(null);
+    expect(await chamar()).toMatchObject({ sucesso: false, erro: ERRO_SEM_ACESSO_CRM });
+    expect(falso.chamadas.filter((c) => c.tabela !== "profiles")).toEqual([]);
+  });
+});
+
 describe("simulacaoPendenteDoLead", () => {
   test("sem sessão devolve erro de sessão", async () => {
     montar().definirUsuario(null);
@@ -27,7 +48,7 @@ describe("simulacaoPendenteDoLead", () => {
   test("id que não é uuid é recusado sem consultar o banco", async () => {
     const falso = montar();
     expect(await simulacaoPendenteDoLead("x")).toMatchObject({ sucesso: false });
-    expect(falso.chamadas).toEqual([]);
+    expect(falso.chamadas.filter((c) => c.tabela !== "profiles")).toEqual([]);
   });
 
   test("devolve a mais recente que ainda não foi enviada (anexada, falha ou sem chave)", async () => {
@@ -40,7 +61,7 @@ describe("simulacaoPendenteDoLead", () => {
     const r = await simulacaoPendenteDoLead(LEAD);
 
     expect(r).toEqual({ sucesso: true, simulacao: { id: "sim-9", anexadaEm: "2026-11-09T12:00:00+00:00" } });
-    const filtros = falso.chamadas[0].filtros;
+    const filtros = falso.chamadas.find((c) => c.tabela === "crm_simulacoes")!.filtros;
     expect(filtros).toEqual(
       expect.arrayContaining([
         { metodo: "eq", args: ["lead_id", LEAD] },

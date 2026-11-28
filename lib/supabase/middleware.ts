@@ -42,6 +42,35 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  if (user) {
+    // Sessão sem perfil = conta que não é da equipe (auto-cadastro reativado,
+    // convite por engano). A RLS (migration 039) já não mostra nada a ela; aqui
+    // encerramos a sessão e mandamos para o login com o aviso.
+    const { data: perfil, error: erroPerfil } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (erroPerfil) {
+      // Falha transitória não tranca o admin para fora: segue (layout e RLS protegem).
+      console.error("[middleware] falha ao ler o perfil:", erroPerfil);
+    } else if (!perfil) {
+      await supabase.auth.signOut();
+      // Na página de login só limpamos a sessão (sem redirect, sem loop).
+      if (ehLogin) return supabaseResponse;
+
+      const url = request.nextUrl.clone();
+      url.pathname = `${LOGIN_PATH}/`;
+      url.search = "?acesso=negado";
+      const redirecionamento = NextResponse.redirect(url);
+      // O signOut grava os cookies limpos em `supabaseResponse`: sem copiá-los
+      // para o redirect, o navegador mantém a sessão.
+      supabaseResponse.cookies.getAll().forEach((cookie) => redirecionamento.cookies.set(cookie));
+      return redirecionamento;
+    }
+  }
+
   if (user && ehLogin) {
     const url = request.nextUrl.clone();
     url.pathname = ADMIN_HOME_COM_BARRA;

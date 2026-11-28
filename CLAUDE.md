@@ -38,7 +38,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 renderização.
 
 Suíte em Vitest: `npm test` — 1770 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **038**.
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **039**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` no job `aplicar` (environment
@@ -99,6 +99,14 @@ Quadro kanban em `/admin/crm/<origem>`, uma aba por origem de lead
 - Barra de etapa do modal: `components/admin/crm/BarraEtapa.tsx`, uma linha,
   grid `1fr auto 1fr auto` (etapa atual centrada). Perdido / Não Qualificado são
   botões só com ícone (`title` + `aria-label`).
+- **Só membro da equipe acessa o CRM** (migration 039). `eh_membro_crm()` (linha em
+  `profiles`) é a primeira cláusula de toda policy do CRM, das tabelas de domínio e
+  da leitura geral de `profiles`; `leads_visiveis` virou `leads_membros_select|insert|update`
+  e **DELETE em `leads` é só `eh_admin()`** (`leads_admin_delete`). No app, toda action do CRM,
+  a rota da simulação e `carregarDetalheLead` (`app/actions/admin-crm-leitura.ts`) começam por
+  `exigirMembroCRM()` (`lib/admin/auth.ts`; sem perfil = `ERRO_SEM_ACESSO_CRM`, 403 na rota). O
+  middleware encerra a sessão de conta sem perfil e redireciona a `/admin/login/?acesso=negado`.
+  Falha ao ler o perfil não tranca ninguém: registra e segue (RLS protege).
 - Trocar um lead de etapa passa **sempre** pelo RPC `mover_lead_crm`, nunca por
   update solto. É lá que vivem o motivo obrigatório de perdido/não-qualificado
   e a concorrência otimista — e vale igual para o arrastar e para os botões do
@@ -693,6 +701,7 @@ Financiamento, Home Equity, Consórcio, Imóveis.
 - A tabela `supabase_migrations.schema_migrations` tinha versões por timestamp (apply
   via MCP) e não listava as migrations aplicadas à mão; a `018b` existia só em
   produção (hoje `0181_*`). Versão ausente ali = `db push` reexecuta o arquivo.
+- **Policy nova de CRM** usa `to authenticated` **e** `public.eh_membro_crm()` (migration 039); `auth.role() = 'authenticated'` deixa entrar conta sem perfil.
 - `eslint .` tem de sair com zero erro e zero aviso — é assim que a suíte está
   hoje. Regra desligada exige comentário com o motivo e a condição de voltar,
   no próprio `eslint.config.mjs`. Não silencie aviso sem justificar.

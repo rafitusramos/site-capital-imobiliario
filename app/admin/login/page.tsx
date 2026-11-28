@@ -1,13 +1,26 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Marca } from "@/components/admin/Marca";
 import { ADMIN_HOME } from "@/lib/admin/rotas";
 
+const MENSAGEM_ACESSO_NEGADO = "Sua conta não tem acesso ao painel. Fale com o administrador.";
+
 export default function AdminLoginPage() {
+  // useSearchParams exige Suspense para a página continuar estática no build.
+  return (
+    <Suspense>
+      <FormularioLogin />
+    </Suspense>
+  );
+}
+
+function FormularioLogin() {
   const router = useRouter();
+  // O middleware manda para cá com ?acesso=negado quando a conta existe, mas não é da equipe.
+  const acessoNegado = useSearchParams().get("acesso") === "negado";
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
@@ -74,6 +87,12 @@ export default function AdminLoginPage() {
           onChange={(e) => setSenha(e.target.value)}
           className="mb-4 w-full rounded-md border border-neutral-300 px-3 py-2 text-sm focus:border-[var(--jade)] focus:outline-none focus:ring-1 focus:ring-[var(--jade)]"
         />
+
+        {acessoNegado && !erro ? (
+          <p role="alert" className="mb-4 text-sm text-[var(--erro)]">
+            {MENSAGEM_ACESSO_NEGADO}
+          </p>
+        ) : null}
 
         {erro ? (
           <p role="alert" className="mb-4 text-sm text-[var(--erro)]">
