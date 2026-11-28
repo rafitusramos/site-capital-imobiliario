@@ -18,6 +18,21 @@ export default async function AdminProtectedLayout({
 
   if (!user) redirect("/admin/login");
 
+  // Ser da equipe = ter linha em `profiles` (mesma pergunta de eh_membro_crm(),
+  // migration 039). O middleware já encerra a sessão dessa conta; aqui só
+  // barramos a renderização — Server Component não grava cookie, então sem signOut.
+  const { data: perfil, error: erroPerfil } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (erroPerfil) {
+    // Falha transitória não pode trancar o admin para fora: segue, a RLS protege os dados.
+    console.error("[admin/layout] falha ao ler o perfil:", erroPerfil);
+  } else if (!perfil) {
+    redirect("/admin/login/?acesso=negado");
+  }
+
   return (
     // ToasterProvider envolve todo o admin autenticado (docs/crm-spec.md
     // §3.1): o CRM é o primeiro consumidor, mas o toast é um utilitário de

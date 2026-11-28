@@ -1,5 +1,5 @@
 import { dependenciasEmailDoAmbiente } from "@/lib/email/notificar";
-import { usuarioAutenticado, ERRO_SESSAO_EXPIRADA } from "@/lib/admin/auth";
+import { exigirMembroCRM, ERRO_SEM_ACESSO_CRM, ERRO_SESSAO_EXPIRADA } from "@/lib/admin/auth";
 import { gerarPdfSimulacao } from "@/lib/simulacao/pdf";
 import { corpoSimulacaoSchema, LIMITE_CORPO_BYTES } from "@/lib/simulacao/schema";
 import { ErroSimulacao, enviarSimulacaoAnexada, executarSimulacao, obterPdfAnexado, type DepsSimulacao } from "@/lib/simulacao/servico";
@@ -16,9 +16,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * - enviar  { simulacaoId }: envia ao lead o PDF JÁ gravado (lido do bucket, nunca
  *           regerado). Só o movimento Criado -> Simulação chama isto.
  *
- * Quem pode: qualquer usuário do CRM que ENXERGUE o lead. O lead é lido com o
- * cliente de cookies, então a RLS (`leads_visiveis`) decide: quem não vê recebe
- * 404. Não usa `exigirAdmin` de propósito: corretores também operam o CRM.
+ * Quem pode: membro da equipe (linha em `profiles`; sem ela, 403) que ENXERGUE
+ * o lead. O lead é lido com o cliente de cookies, então a RLS
+ * (`leads_membros_select`, migration 039) decide: quem não vê recebe 404. Não usa `exigirAdmin` de propósito: corretores também operam o CRM.
  * Nome e e-mail do cliente vêm SEMPRE do banco, e a simulação precisa pertencer
  * ao lead informado.
  */
@@ -35,8 +35,9 @@ const pdfResposta = (pdf: Uint8Array, nomeArquivo: string) =>
   });
 
 export async function POST(req: Request) {
-  const { supabase, user } = await usuarioAutenticado();
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
   if (!user) return erro(ERRO_SESSAO_EXPIRADA, 401);
+  if (erroAcesso) return erro(erroAcesso, erroAcesso === ERRO_SEM_ACESSO_CRM ? 403 : 500);
 
   const declarado = Number(req.headers.get("content-length") ?? 0);
   if (declarado > LIMITE_CORPO_BYTES) return erro("Dados grandes demais.", 413);

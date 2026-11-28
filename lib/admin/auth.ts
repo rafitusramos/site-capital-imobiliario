@@ -9,6 +9,7 @@ export const idSchema = z.string().uuid();
 
 export const ERRO_SESSAO_EXPIRADA = "Sessão expirada. Faça login novamente.";
 export const ERRO_APENAS_ADMIN = "Apenas administradores podem fazer isso.";
+export const ERRO_SEM_ACESSO_CRM = "Sua conta não tem acesso ao CRM.";
 
 /** Cliente Supabase do request + usuário da sessão (null se não houver). */
 export async function usuarioAutenticado() {
@@ -41,6 +42,31 @@ export async function exigirAdmin() {
   if (!perfil || perfil.role !== "admin") return { supabase, user, erro: ERRO_APENAS_ADMIN };
 
   return { supabase, user, erro: undefined };
+}
+
+/**
+ * Porta de entrada das actions, da rota e da leitura do CRM: exige sessão E
+ * linha em `profiles` (ser da equipe). Espelha `eh_membro_crm()` (migration
+ * 039), que faz a mesma pergunta na RLS — sessão sozinha não basta, porque
+ * uma conta que exista em auth.users sem perfil não pode ver lead nenhum.
+ * Devolve o `papel` lido, para quem precisar (ex.: `excluirLead`).
+ */
+export async function exigirMembroCRM() {
+  const { supabase, user } = await usuarioAutenticado();
+  if (!user) return { supabase, user: null, papel: undefined, erro: ERRO_SESSAO_EXPIRADA };
+
+  const { data: perfil, error } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (error) {
+    console.error("[exigirMembroCRM] falha ao ler o perfil:", error);
+    return { supabase, user, papel: undefined, erro: "Não foi possível confirmar sua permissão." };
+  }
+  if (!perfil) return { supabase, user, papel: undefined, erro: ERRO_SEM_ACESSO_CRM };
+
+  return { supabase, user, papel: perfil.role as string | null, erro: undefined };
 }
 
 /**

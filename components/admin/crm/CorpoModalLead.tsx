@@ -8,7 +8,7 @@ import { NovaInteracao } from "@/components/admin/crm/NovaInteracao";
 import { ListaLembretes } from "@/components/admin/crm/ListaLembretes";
 import { PainelSimulacoes } from "@/components/admin/crm/PainelSimulacoes";
 import type { AcaoResultado } from "@/app/actions/admin-crm";
-import type { DetalheLeadCarregado } from "@/components/admin/crm/carregar-lead";
+import type { DetalheLeadCarregado } from "@/app/actions/admin-crm-leitura";
 import type { DominiosCRM } from "@/lib/queries/admin-crm";
 import type { LeadEtapaSlug, LeadTipoSlug } from "@/types/database";
 

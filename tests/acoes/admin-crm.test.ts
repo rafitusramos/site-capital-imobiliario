@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { dispararAvisosMudancaEtapa } from "@/lib/email/notificar";
 import { caminhosDasSimulacoesDoLead, removerArquivosDasSimulacoes } from "@/lib/simulacao/armazenar";
+import { ERRO_SEM_ACESSO_CRM } from "@/lib/admin/auth";
 import {
   alternarFavorito,
   arquivarLead,
@@ -32,6 +33,7 @@ import {
   registrarInteracao,
   restaurarLead,
 } from "@/app/actions/admin-crm";
+import * as modulo from "@/app/actions/admin-crm";
 
 const LEAD_1 = "11111111-1111-4111-8111-111111111111";
 const LEAD_2 = "22222222-2222-4222-8222-222222222222";
@@ -50,25 +52,35 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("sessão expirada", () => {
-  const acoes: Array<[string, () => Promise<unknown>]> = [
-    ["moverLead", () => moverLead({ leadId: LEAD_1, etapa: "criado" })],
-    ["criarLead", () => criarLead({ tipo: "financiamento", dados: {} })],
-    ["atualizarLead", () => atualizarLead({ leadId: LEAD_1, tipo: "financiamento" })],
-    ["arquivarLead", () => arquivarLead(LEAD_1)],
-    ["restaurarLead", () => restaurarLead(LEAD_1)],
-    ["excluirLead", () => excluirLead(LEAD_1, "pedido do titular")],
-    ["registrarInteracao", () => registrarInteracao({ leadId: LEAD_1, tipo: "nota", conteudo: "oi" })],
-    ["editarInteracao", () => editarInteracao({ interacaoId: INTERACAO_1, conteudo: "novo" })],
-    ["excluirInteracao", () => excluirInteracao(INTERACAO_1)],
-    ["concluirLembrete", () => concluirLembrete(LEMBRETE_1)],
-    ["reagendarLembrete", () => reagendarLembrete(LEMBRETE_1, "2026-01-01T00:00:00.000Z")],
-    ["alternarFavorito", () => alternarFavorito(LEAD_1)],
-    ["definirTags", () => definirTags(LEAD_1, [])],
-    ["atribuirResponsavel", () => atribuirResponsavel(LEAD_1, null)],
-    ["criarTag", () => criarTag("Urgente")],
-  ];
+/** Toda action começa lendo o próprio perfil (exigirMembroCRM); "não toca no banco" é sobre o resto. */
+function chamadasAlemDoPerfil(falso: ReturnType<typeof criarSupabaseFalso>) {
+  return falso.chamadas.filter((c) => c.tabela !== "profiles");
+}
 
+const acoes: Array<[string, () => Promise<unknown>]> = [
+  ["moverLead", () => moverLead({ leadId: LEAD_1, etapa: "criado" })],
+  ["criarLead", () => criarLead({ tipo: "financiamento", dados: {} })],
+  ["atualizarLead", () => atualizarLead({ leadId: LEAD_1, tipo: "financiamento" })],
+  ["arquivarLead", () => arquivarLead(LEAD_1)],
+  ["restaurarLead", () => restaurarLead(LEAD_1)],
+  ["excluirLead", () => excluirLead(LEAD_1, "pedido do titular")],
+  ["registrarInteracao", () => registrarInteracao({ leadId: LEAD_1, tipo: "nota", conteudo: "oi" })],
+  ["editarInteracao", () => editarInteracao({ interacaoId: INTERACAO_1, conteudo: "novo" })],
+  ["excluirInteracao", () => excluirInteracao(INTERACAO_1)],
+  ["concluirLembrete", () => concluirLembrete(LEMBRETE_1)],
+  ["reagendarLembrete", () => reagendarLembrete(LEMBRETE_1, "2026-01-01T00:00:00.000Z")],
+  ["alternarFavorito", () => alternarFavorito(LEAD_1)],
+  ["definirTags", () => definirTags(LEAD_1, [])],
+  ["atribuirResponsavel", () => atribuirResponsavel(LEAD_1, null)],
+  ["criarTag", () => criarTag("Urgente")],
+];
+
+test("a lista de ações cobre todas as exportadas por admin-crm.ts", () => {
+  const exportadas = Object.keys(modulo).filter((k) => typeof (modulo as Record<string, unknown>)[k] === "function");
+  expect(acoes.map(([nome]) => nome).sort()).toEqual(exportadas.sort());
+});
+
+describe("sessão expirada", () => {
   test.each(acoes)("%s sem usuário autenticado devolve erro de sessão", async (_nome, chamar) => {
     montarSupabase().definirUsuario(null);
     const resultado = await chamar();
@@ -76,6 +88,21 @@ describe("sessão expirada", () => {
       sucesso: false,
       erro: "Sessão expirada. Faça login novamente.",
     });
+  });
+});
+
+describe("conta logada sem perfil (fora da equipe)", () => {
+  test.each(acoes)("%s é barrada e não escreve nem chama RPC", async (_nome, chamar) => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "user-sem-perfil" });
+    falso.definirPapel(null);
+
+    const resultado = await chamar();
+
+    expect(resultado).toMatchObject({ sucesso: false, erro: ERRO_SEM_ACESSO_CRM });
+    expect(falso.chamadasRpc).toEqual([]);
+    expect(falso.chamadas.filter((c) => c.tabela !== "profiles")).toEqual([]);
+    expect(falso.chamadas.filter((c) => c.operacao && c.operacao !== "select")).toEqual([]);
   });
 });
 
@@ -323,7 +350,7 @@ describe("criarLead", () => {
     const resultado = await criarLead({ tipo: "financiamento", dados: { nome: "Jo" } });
 
     expect(resultado.sucesso).toBe(false);
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("cria o lead e a linha de detalhe (financiamento) com campos mapeados para snake_case", async () => {
@@ -410,7 +437,7 @@ describe("atualizarLead", () => {
     const resultado = await atualizarLead({ leadId: "não-é-uuid", tipo: "financiamento" });
 
     expect(resultado).toEqual({ sucesso: false, erro: "Lead inválido." });
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("atualiza dados comuns e revalida", async () => {
@@ -695,7 +722,7 @@ describe("excluirLead", () => {
 
       expect(resultado.sucesso).toBe(false);
       expect(resultado.erro).toMatch(/motivo/i);
-      expect(falso.chamadas).toEqual([]);
+      expect(chamadasAlemDoPerfil(falso)).toEqual([]);
     }
   });
 
@@ -721,7 +748,7 @@ describe("editarInteracao", () => {
     const resultado = await editarInteracao({ interacaoId: INTERACAO_1, conteudo: "   " });
 
     expect(resultado.sucesso).toBe(false);
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("interação inexistente (ou invisível pela RLS) devolve erro", async () => {
@@ -800,7 +827,7 @@ describe("excluirInteracao", () => {
     const falso = montarSupabase();
     falso.definirUsuario({ id: "user-1" });
     expect((await excluirInteracao("x")).sucesso).toBe(false);
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("outro corretor não pode apagar interação alheia", async () => {
@@ -938,7 +965,7 @@ describe("concluirLembrete / reagendarLembrete", () => {
     const resultado = await concluirLembrete("não-é-uuid");
 
     expect(resultado).toEqual({ sucesso: false, erro: "Lembrete inválido." });
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("concluirLembrete sem linha afetada devolve erro de permissão", async () => {
@@ -974,7 +1001,7 @@ describe("concluirLembrete / reagendarLembrete", () => {
     const resultado = await reagendarLembrete(LEMBRETE_1, "não é uma data");
 
     expect(resultado.sucesso).toBe(false);
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 });
 
@@ -1040,7 +1067,7 @@ describe("definirTags", () => {
     const resultado = await definirTags(LEAD_1, ["a", "b", "c", "d", "e", "f", "g", "h", "i"]);
 
     expect(resultado.sucesso).toBe(false);
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("lead não encontrado (ou fora do alcance da RLS) devolve erro da RPC traduzido", async () => {
@@ -1100,7 +1127,7 @@ describe("atribuirResponsavel", () => {
     const resultado = await atribuirResponsavel(LEAD_1, "não-é-uuid");
 
     expect(resultado.sucesso).toBe(false);
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("sucesso ao assumir um lead sem dono (null -> corretor)", async () => {
@@ -1162,7 +1189,7 @@ describe("criarTag", () => {
     const resultado = await criarTag("a");
 
     expect(resultado.sucesso).toBe(false);
-    expect(falso.chamadas).toEqual([]);
+    expect(chamadasAlemDoPerfil(falso)).toEqual([]);
   });
 
   test("slug já existente devolve a tag existente sem inserir", async () => {

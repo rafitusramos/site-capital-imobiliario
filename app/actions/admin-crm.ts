@@ -7,7 +7,7 @@ import { dispararAvisosMudancaEtapa } from "@/lib/email/notificar";
 import { dispararWhatsAppMudancaEtapa } from "@/lib/whatsapp/notificar";
 import { caminhosDasSimulacoesDoLead, removerArquivosDasSimulacoes } from "@/lib/simulacao/armazenar";
 import type { createClient } from "@/lib/supabase/server";
-import { idSchema, usuarioAutenticado } from "@/lib/admin/auth";
+import { exigirMembroCRM, idSchema } from "@/lib/admin/auth";
 import { etapaInicial } from "@/lib/crm/etapas";
 import { slugify } from "@/lib/blog/slugify";
 import {
@@ -32,7 +32,7 @@ import type { LeadEtapaSlug, LeadInteracaoTipo, LeadTipoSlug } from "@/types/dat
 /**
  * Todas as server actions do módulo de CRM (docs/crm-spec.md §3.5). Mesmo
  * estilo de app/actions/admin-parametros.ts e app/actions/admin-imoveis.ts:
- * `AcaoResultado` como retorno, `usuarioAutenticado()` no início de cada
+ * `AcaoResultado` como retorno, `exigirMembroCRM()` no início de cada
  * função, `createClient()` (anon + cookies) — nunca `createAdminClient()`,
  * porque aqui é a RLS de 017_crm_funcoes_rls.sql quem decide o que cada
  * papel pode fazer, não o código da action.
@@ -276,8 +276,8 @@ export interface MoverLeadInput {
  * inalcançáveis a partir da action.
  */
 export async function moverLead(input: MoverLeadInput): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = moverLeadBaseSchema.safeParse(input);
   if (!parsed.success) {
@@ -396,8 +396,8 @@ export interface CriarLeadInput {
  * de detalhe não desfaz o lead, apenas avisa o operador.
  */
 export async function criarLead(input: CriarLeadInput): Promise<CriarLeadResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const schema = schemaCriarLeadPorTipo[input.tipo];
   const parsed = schema.safeParse(input.dados);
@@ -481,8 +481,8 @@ export interface AtualizarLeadInput {
 
 /** Atualiza dados comuns e/ou campos de origem. A origem faz upsert (caso de borda 5) — nunca update seco. */
 export async function atualizarLead(input: AtualizarLeadInput): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   if (!idSchema.safeParse(input.leadId).success) {
     return { sucesso: false, erro: "Lead inválido." };
@@ -542,8 +542,8 @@ export async function atualizarLead(input: AtualizarLeadInput): Promise<AcaoResu
 
 /** A lixeira arquiva (decisão travada #3, docs/crm-spec.md): preserva o dado, some do quadro (o filtro mora na view). */
 export async function arquivarLead(leadId: string): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   if (!idSchema.safeParse(leadId).success) return { sucesso: false, erro: "Lead inválido." };
 
@@ -564,8 +564,8 @@ export async function arquivarLead(leadId: string): Promise<AcaoResultado> {
 }
 
 export async function restaurarLead(leadId: string): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   if (!idSchema.safeParse(leadId).success) return { sucesso: false, erro: "Lead inválido." };
 
@@ -592,12 +592,11 @@ export async function restaurarLead(leadId: string): Promise<AcaoResultado> {
 // ---------------------------------------------------------------------------
 
 /**
- * Exclusão definitiva — só admin (docs/crm-spec.md §3.5). Diferente das
- * outras ações, a RLS de `leads` (`leads_visiveis`) NÃO restringe DELETE a
- * admin: um corretor pode apagar os próprios leads ou os sem dono pela
- * mesma policy que o deixa editá-los. Por isso o papel é checado aqui, na
- * action — a única ação deste arquivo que precisa disso, porque é a única
- * em que a RLS sozinha não impõe a regra de negócio.
+ * Exclusão definitiva — só admin (docs/crm-spec.md §3.5). Desde a migration
+ * 039 a RLS de `leads` também restringe DELETE a `eh_admin()` (antes, a
+ * `leads_visiveis` deixava o corretor apagar direto pelo PostgREST). O papel
+ * segue checado aqui, na action, para devolver mensagem clara e porque o
+ * registro de LGPD (`crm_exclusoes`) é gravado antes do delete.
  *
  * O motivo é obrigatório (mínimo 5 caracteres): `crm_exclusoes.motivo` é a
  * evidência de LGPD da exclusão (§2.3/§3.5) e ficava sempre vazio.
@@ -607,8 +606,8 @@ export async function restaurarLead(leadId: string): Promise<AcaoResultado> {
  * onde ler protocolo/tipo para o registro.
  */
 export async function excluirLead(leadId: string, motivo: string): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, papel, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   if (!idSchema.safeParse(leadId).success) return { sucesso: false, erro: "Lead inválido." };
 
@@ -617,13 +616,7 @@ export async function excluirLead(leadId: string, motivo: string): Promise<AcaoR
     return { sucesso: false, erro: motivoParsed.error.issues[0]?.message ?? "Informe o motivo da exclusão." };
   }
 
-  const { data: perfil, error: erroPerfil } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
-    .maybeSingle();
-  if (erroPerfil) return { sucesso: false, erro: "Não foi possível confirmar sua permissão." };
-  if (!perfil || perfil.role !== "admin") {
+  if (papel !== "admin") {
     return { sucesso: false, erro: "Somente administradores podem excluir leads definitivamente." };
   }
 
@@ -678,8 +671,8 @@ export interface RegistrarInteracaoInput {
 
 /** Grava interação e lembrete (quando informado) via RPC `registrar_interacao_crm` — transação só, nunca dois inserts soltos. */
 export async function registrarInteracao(input: RegistrarInteracaoInput): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = novaInteracaoSchema.safeParse(input);
   if (!parsed.success) {
@@ -751,8 +744,8 @@ export interface EditarInteracaoInput {
 }
 
 export async function editarInteracao(input: EditarInteracaoInput): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = editarInteracaoSchema.safeParse(input);
   if (!parsed.success) return { sucesso: false, erro: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -778,8 +771,8 @@ export async function editarInteracao(input: EditarInteracaoInput): Promise<Acao
 }
 
 export async function excluirInteracao(interacaoId: string): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   if (!idSchema.safeParse(interacaoId).success) return { sucesso: false, erro: "Interação inválida." };
 
@@ -804,8 +797,8 @@ export async function excluirInteracao(interacaoId: string): Promise<AcaoResulta
 // ---------------------------------------------------------------------------
 
 export async function concluirLembrete(lembreteId: string): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   if (!idSchema.safeParse(lembreteId).success) return { sucesso: false, erro: "Lembrete inválido." };
 
@@ -825,8 +818,8 @@ export async function concluirLembrete(lembreteId: string): Promise<AcaoResultad
 }
 
 export async function reagendarLembrete(lembreteId: string, novaData: string): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = lembreteReagendarSchema.safeParse({ lembreteId, agendadoPara: novaData });
   if (!parsed.success) {
@@ -853,8 +846,8 @@ export async function reagendarLembrete(lembreteId: string, novaData: string): P
 // ---------------------------------------------------------------------------
 
 export async function alternarFavorito(leadId: string): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   if (!idSchema.safeParse(leadId).success) return { sucesso: false, erro: "Lead inválido." };
 
@@ -887,8 +880,8 @@ export async function alternarFavorito(leadId: string): Promise<AcaoResultado> {
 
 /** Substitui o conjunto de tags do lead (máx. 8 — lib/validations/crm.ts). */
 export async function definirTags(leadId: string, tags: string[]): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = definirTagsSchema.safeParse({ leadId, tags });
   if (!parsed.success) {
@@ -933,8 +926,8 @@ export interface CriarTagResultado extends AcaoResultado {
  * autoridade, mesmo padrão do resto deste arquivo.
  */
 export async function criarTag(label: string): Promise<CriarTagResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = criarTagSchema.safeParse({ label });
   if (!parsed.success) {
@@ -994,8 +987,8 @@ export async function criarTag(label: string): Promise<CriarTagResultado> {
  * `ATRIBUICAO_NAO_PERMITIDA` chega aqui como `error` para ser traduzido.
  */
 export async function atribuirResponsavel(leadId: string, corretorId: string | null): Promise<AcaoResultado> {
-  const { supabase, user } = await usuarioAutenticado();
-  if (!user) return { sucesso: false, erro: "Sessão expirada. Faça login novamente." };
+  const { supabase, user, erro: erroAcesso } = await exigirMembroCRM();
+  if (erroAcesso || !user) return { sucesso: false, erro: erroAcesso };
 
   const parsed = atribuirResponsavelSchema.safeParse({ leadId, corretorId });
   if (!parsed.success) {
