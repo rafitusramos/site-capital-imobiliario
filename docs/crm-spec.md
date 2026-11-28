@@ -48,6 +48,9 @@ Já verificado no código e no banco de produção:
 3. **A lixeira arquiva.** Exclusão definitiva é uma ação separada, numa tela de
    arquivados.
 4. **RLS por papel.** `admin` vê tudo; `corretor` vê os seus e os não atribuídos.
+   Desde a migration 039 isso só vale para **membro da equipe** (linha em
+   `profiles`, `eh_membro_crm()`): conta logada sem perfil não vê nada. DELETE de
+   lead é só `admin` (ver §2.4 e §7).
 5. **Idioma pt-BR** em toda a interface, nos slugs e nos identificadores de
    código — o projeto inteiro é pt-BR.
 
@@ -553,11 +556,18 @@ create policy "leads_visiveis" on public.leads for all
   using (public.eh_admin() or corretor_id = auth.uid() or corretor_id is null);
 ```
 
+> **Atualizado pela migration 039:** `leads_visiveis` foi substituída por
+> `leads_membros_select|insert|update` (`eh_membro_crm() and` o predicado acima)
+> e `leads_admin_delete` (`eh_admin()`, só admin apaga). Toda policy do CRM é
+> `to authenticated` e exige `eh_membro_crm()` (função `security definer`, true
+> se `auth.uid()` tem linha em `profiles`). Isso vale também para as filhas, as
+> tabelas de domínio e a leitura geral de `profiles`.
+
 As tabelas filhas herdam por `exists (select 1 from public.leads l where
 l.id = <t>.lead_id and (public.eh_admin() or l.corretor_id = auth.uid() or
 l.corretor_id is null))`. Tabelas de domínio (`crm_etapas`,
 `crm_motivos_perda`, `crm_interacao_tipos`, `crm_tags`) têm leitura para
-autenticados e escrita só para `eh_admin()`.
+membros (`eh_membro_crm()`, antes qualquer autenticado) e escrita só para `eh_admin()`.
 
 **Reatribuição de responsável é trigger, não policy.** `with check` só enxerga a
 linha nova, e "assumi um lead livre" e "larguei o meu lead" produzem linhas
@@ -707,7 +717,8 @@ em particular.
 
 O projeto não tem route handlers no admin — tudo é server action. Mantido.
 Todas retornam `AcaoResultado` (o tipo já existente em
-`app/actions/admin-parametros.ts`), todas revalidam `auth.getUser()`, todas usam
+`app/actions/admin-parametros.ts`), todas começam por `exigirMembroCRM()` (`lib/admin/auth.ts`: sessão + linha em
+`profiles`; sem perfil, `ERRO_SEM_ACESSO_CRM`), todas usam
 `createClient()` (anon + cookies, RLS aplicada).
 
 | Ação | Entrada | Regras |
@@ -801,8 +812,9 @@ documento com dado parcial; (3) prévia: `POST /api/admin/crm/simulacao/` com
 
 **Rota** (`app/api/admin/crm/simulacao/route.ts`, nodejs, `maxDuration` 60):
 autentica com o usuário logado e lê o lead com o cliente de cookies, então a RLS
-(`leads_visiveis`) decide: quem não vê o lead recebe 404. **Não** usa `exigirAdmin`
-(corretores também operam o CRM). 401 sem sessão. Recusa lead que não é financiamento.
+(`leads_membros_select`, 039) decide: quem não vê o lead recebe 404. **Não** usa
+`exigirAdmin` (corretores também operam o CRM), mas exige `exigirMembroCRM()`:
+401 sem sessão, 403 para conta logada sem perfil. Recusa lead que não é financiamento.
 Corpo validado por zod (`lib/simulacao/schema.ts`: números finitos, limites de
 tamanho, logo só `data:image/png;base64,`, total < 4 MB). Nome e e-mail do cliente
 vêm **sempre** do banco; a referência do documento e do arquivo é `leads.protocolo`.
@@ -967,6 +979,13 @@ custar um byte a mais de download.
 - **`SUPABASE_SERVICE_ROLE_KEY` não entra em lugar nenhum deste módulo.** Toda
   ação usa `createClient()` (anon + cookies) para que a RLS seja a autoridade.
   `createAdminClient()` não é importado no CRM.
+- **Membro da equipe (039).** `eh_membro_crm()` (`security definer`, `search_path`
+  fixo, execute só para `authenticated`) é a primeira cláusula de toda policy do
+  CRM. O app espelha com `exigirMembroCRM()` (actions, rota da simulação,
+  `carregarDetalheLead` em `app/actions/admin-crm-leitura.ts`), o middleware
+  encerra a sessão de conta sem perfil (`/admin/login/?acesso=negado`) e o layout
+  protegido barra a renderização. Policy nova de CRM: `to authenticated` +
+  `eh_membro_crm()`.
 - `eh_admin()` é `security definer` com `search_path` fixo em `public, pg_temp`.
 - `mover_lead_crm` e `registrar_interacao_crm` são `security invoker`: elas
   impõem regra de negócio, não contornam permissão.

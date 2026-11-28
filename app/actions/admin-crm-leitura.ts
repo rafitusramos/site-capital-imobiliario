@@ -1,5 +1,6 @@
 "use server";
 
+import { exigirMembroCRM, idSchema } from "@/lib/admin/auth";
 import { getLead, getLembretes, getSimulacoes, getTimeline, getUsuarioCRM, type LeadDetalhado, type LinhaTimelineCRM, type SimulacaoEnviada, type UsuarioCRM } from "@/lib/queries/admin-crm";
 import type { Database } from "@/types/database";
 
@@ -11,9 +12,9 @@ import type { Database } from "@/types/database";
  * `getTimeline`, `getLembretes`, em lib/queries/admin-crm.ts, já existentes e
  * "server-only") não podem ser importadas direto num client component.
  *
- * `app/actions/admin-crm.ts` é uma das camadas que a Etapa 7/8 não pode
- * alterar (regra dura do escopo) e só tem ações de ESCRITA — por isso esta
- * ponte de LEITURA mora aqui, em vez de lá. É o mecanismo "action de
+ * `app/actions/admin-crm.ts` só tem ações de ESCRITA — por isso esta ponte
+ * de LEITURA mora num arquivo próprio, também em `app/actions/` (o único lugar
+ * do projeto com arquivos "use server"). É o mecanismo "action de
  * leitura" citado no escopo, escolhido em vez de um Server Component
  * aninhado com Suspense: `QuadroCRM.tsx` já é uma árvore client pesada
  * (DndContext, useOptimistic, vários diálogos) — encaixar ali um Server
@@ -32,6 +33,13 @@ export type DetalheLeadCarregado = LeadDetalhado & {
 };
 
 export async function carregarDetalheLead(leadId: string): Promise<DetalheLeadCarregado | null> {
+  // Server action é endpoint público: sem isto qualquer um chamaria `getLead`
+  // com um id qualquer. Sessão + perfil (membro) + uuid, nesta ordem; a RLS
+  // ainda decide quais leads o membro enxerga.
+  const { erro } = await exigirMembroCRM();
+  if (erro) return null;
+  if (!idSchema.safeParse(leadId).success) return null;
+
   const detalhado = await getLead(leadId);
   if (!detalhado) return null;
 

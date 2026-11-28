@@ -9,7 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { createClient } from "@/lib/supabase/server";
-import { exigirAdmin, garantirAdminOuRedirecionar } from "@/lib/admin/auth";
+import { ERRO_SEM_ACESSO_CRM, exigirAdmin, exigirMembroCRM, garantirAdminOuRedirecionar } from "@/lib/admin/auth";
 
 function montarSupabase() {
   const falso = criarSupabaseFalso();
@@ -55,6 +55,55 @@ describe("exigirAdmin", () => {
     expect(erro).toBe("Não foi possível confirmar sua permissão.");
     expect(log).toHaveBeenCalled();
     log.mockRestore();
+  });
+});
+
+describe("exigirMembroCRM", () => {
+  test("sem sessão devolve erro de sessão", async () => {
+    montarSupabase().definirUsuario(null);
+    const { erro, user } = await exigirMembroCRM();
+    expect(erro).toBe("Sessão expirada. Faça login novamente.");
+    expect(user).toBeNull();
+  });
+
+  test("falha ao ler o perfil é registrada e nega o acesso", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "u1" });
+    falso.programarResposta("profiles", "select", { data: null, error: { message: "boom" } });
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const { erro } = await exigirMembroCRM();
+
+    expect(erro).toBe("Não foi possível confirmar sua permissão.");
+    expect(log).toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  test("conta sem perfil é barrada com a mensagem de acesso ao CRM", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "u1" });
+    falso.definirPapel(null);
+    const { erro, papel } = await exigirMembroCRM();
+    expect(erro).toBe(ERRO_SEM_ACESSO_CRM);
+    expect(papel).toBeUndefined();
+  });
+
+  test("corretor passa e o papel é devolvido", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "u1" });
+    falso.definirPapel("corretor");
+    const { erro, papel, user } = await exigirMembroCRM();
+    expect(erro).toBeUndefined();
+    expect(papel).toBe("corretor");
+    expect(user?.id).toBe("u1");
+  });
+
+  test("admin passa e o papel é devolvido", async () => {
+    const falso = montarSupabase();
+    falso.definirUsuario({ id: "u1" });
+    const { erro, papel } = await exigirMembroCRM();
+    expect(erro).toBeUndefined();
+    expect(papel).toBe("admin");
   });
 });
 
