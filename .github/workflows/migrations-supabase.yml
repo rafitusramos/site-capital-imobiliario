@@ -1,23 +1,35 @@
 # Migrations do Supabase
 #
-# O que faz:
-#   - Pull request para `Preview`: `supabase db push --dry-run` (só lista o que
-#     seria aplicado; não escreve nada no banco).
-#   - Push (merge) em `Preview`, ou execução manual: `supabase db push` de verdade.
+# O que faz (dois jobs):
+#   - `dry-run`: pull request para `Preview` -> `supabase db push --dry-run` (só
+#     lista o que seria aplicado; não escreve nada no banco).
+#   - `aplicar`: push (merge) em `Preview`, ou execução manual -> `supabase db push`
+#     de verdade. Roda no environment `producao-db`, para que um revisor
+#     obrigatório possa ser configurado em Settings > Environments.
 #
 # ATENÇÃO: Preview e produção compartilham UM único banco Supabase. Mergear em
 # `Preview` aplica a migration em PRODUÇÃO.
+#
+# Guarda de SQL destrutivo (nos dois jobs, ANTES de conectar ao banco): falha se
+# uma migration adicionada/modificada tiver `drop table`, `truncate` ou
+# `delete from`, a menos que o arquivo tenha a linha `-- destrutivo: aprovado`.
+# Script: .github/scripts/guarda-sql-destrutivo.sh
 #
 # Secret obrigatório: SUPABASE_DB_PASSWORD — só a senha do banco (Project
 # Settings > Database > Reset database password), crua, sem codificar. A URL do
 # Session pooler é montada aqui e a senha é codificada pelo próprio workflow:
 # montar a URI à mão errou três vezes (reticências copiadas, conexão direta
-# IPv6-only, senha rejeitada). Host e usuário não são segredo.
-# Trocou a senha do banco? Só este secret precisa ser atualizado.
+# IPv6-only, senha rejeitada). Host e usuário não são segredo. A senha só é
+# exposta ao passo que monta a URL (nunca como env do job inteiro).
+# Trocou a senha do banco? Só este secret precisa ser atualizado. Ele pode viver
+# no repositório ou, depois, dentro do environment `producao-db`.
 #
 # Pré-requisito: a tabela `supabase_migrations.schema_migrations` precisa listar
 # a versão de TODO arquivo já aplicado em `supabase/migrations/`. Se faltar uma,
 # o push tenta rodar o arquivo de novo.
+#
+# Actions fixadas por SHA de commit (o comentário traz a versão). Atualização
+# fica por conta do Dependabot (.github/dependabot.yml).
 name: Migrations Supabase
 
 on:
@@ -26,11 +38,13 @@ on:
     paths:
       - 'supabase/migrations/**'
       - '.github/workflows/migrations-supabase.yml'
+      - '.github/scripts/guarda-sql-destrutivo.sh'
   push:
     branches: [Preview]
     paths:
       - 'supabase/migrations/**'
       - '.github/workflows/migrations-supabase.yml'
+      - '.github/scripts/guarda-sql-destrutivo.sh'
   workflow_dispatch:
 
 concurrency:
@@ -40,17 +54,30 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Session pooler (IPv4). A conexão direta db.<ref>.supabase.co é só IPv6,
+  # e os runners do GitHub Actions não têm IPv6.
+  POOLER_HOST: aws-1-us-west-2.pooler.supabase.com
+  POOLER_USER: postgres.lqiztovibxbrertyxead
+
 jobs:
-  migrations:
+  dry-run:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    env:
-      # Session pooler (IPv4). A conexão direta db.<ref>.supabase.co é só IPv6,
-      # e os runners do GitHub Actions não têm IPv6.
-      POOLER_HOST: aws-1-us-west-2.pooler.supabase.com
-      POOLER_USER: postgres.lqiztovibxbrertyxead
-      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+    timeout-minutes: 10
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - name: Guarda de SQL destrutivo
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: bash .github/scripts/guarda-sql-destrutivo.sh
+
       - name: Montar URL do banco
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: |
           if [ -z "$SUPABASE_DB_PASSWORD" ]; then
             echo "::error::Secret SUPABASE_DB_PASSWORD vazio ou ausente. Configure em Settings > Secrets and variables > Actions (só a senha do banco, sem codificar)."
@@ -60,16 +87,47 @@ jobs:
           echo "::add-mask::$SENHA_CODIFICADA"
           echo "SUPABASE_DB_URL=postgresql://${POOLER_USER}:${SENHA_CODIFICADA}@${POOLER_HOST}:5432/postgres" >> "$GITHUB_ENV"
 
-      - uses: actions/checkout@v4
-
-      - uses: supabase/setup-cli@v1
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
         with:
           version: 2.122.1
 
       - name: Dry-run (pull request)
-        if: github.event_name == 'pull_request'
         run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
 
+  aplicar:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Environment sem secrets próprios: o secret do repositório continua valendo.
+    # Configure um revisor obrigatório aqui para exigir aprovação antes de escrever
+    # no banco de produção.
+    environment: producao-db
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+
+      - name: Guarda de SQL destrutivo
+        env:
+          # push: commit anterior ao push; workflow_dispatch: vazio (usa HEAD^).
+          BASE: ${{ github.event.before }}
+        run: bash .github/scripts/guarda-sql-destrutivo.sh
+
+      - name: Montar URL do banco
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          if [ -z "$SUPABASE_DB_PASSWORD" ]; then
+            echo "::error::Secret SUPABASE_DB_PASSWORD vazio ou ausente. Configure em Settings > Secrets and variables > Actions (só a senha do banco, sem codificar)."
+            exit 1
+          fi
+          SENHA_CODIFICADA=$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["SUPABASE_DB_PASSWORD"], safe=""))')
+          echo "::add-mask::$SENHA_CODIFICADA"
+          echo "SUPABASE_DB_URL=postgresql://${POOLER_USER}:${SENHA_CODIFICADA}@${POOLER_HOST}:5432/postgres" >> "$GITHUB_ENV"
+
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          version: 2.122.1
+
       - name: Aplicar migrations (push / manual)
-        if: github.event_name != 'pull_request'
         run: supabase db push --db-url "$SUPABASE_DB_URL"
