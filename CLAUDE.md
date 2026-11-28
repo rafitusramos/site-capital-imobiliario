@@ -38,7 +38,7 @@ CRM de leads, que é a tela padrão de quem entra. O pipeline estático antigo
 renderização.
 
 Suíte em Vitest: `npm test` — 1770 passando + 1 *expected fail*, que é intencional
-e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **039**.
+e deve continuar existindo. Migrations em `supabase/migrations/`; a última é a **040**.
 
 **Migrations são aplicadas pelo workflow `.github/workflows/migrations-supabase.yml`**:
 o merge em `Preview` roda `supabase db push` no job `aplicar` (environment
@@ -667,6 +667,14 @@ Financiamento, Home Equity, Consórcio, Imóveis.
      importada dali. A regra `@next/next/no-html-link-for-pages` está
      desligada no `eslint.config.mjs` por causa disso; para religar, primeiro
      dispare `page_view` a cada mudança de rota em `lib/analytics/eventos.ts`.
+- **Endurecimento do banco (migration 040).** Função em `public` sempre com
+  `set search_path = public, pg_temp`. RPC nova do admin precisa de `grant execute
+  ... to authenticated` explícito e `revoke execute ... from public, anon` na
+  própria migration (o padrão global de PUBLIC não se remove por schema; os
+  privilégios padrão da 040 só fecham `anon` e tabelas novas). `anon` só tem
+  SELECT nas tabelas de conteúdo (nunca devolva escrita/TRUNCATE). Os buckets
+  públicos `blog-images` e `imovel-images` **não têm** policy de SELECT público:
+  a URL pública continua servindo, mas listar/baixar via API é só admin.
 - **Policy sem `to authenticated` vale para o anônimo.** `create policy` sem
   `to <papel>` vale para `public`, que inclui `anon` — a chave pública que vai
   no navegador de todo visitante. Somado ao grant padrão do Supabase para
